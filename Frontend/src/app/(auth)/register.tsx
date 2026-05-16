@@ -11,6 +11,11 @@ export default function RegisterScreen() {
         secureTextEntry
         style={styles.input}
       />
+      <TextInput
+        placeholder="Confirmer Mot de passe"
+        secureTextEntry
+        style={styles.input}
+      />
       <Button title="S'inscrire" onPress={() => {}} />
     </View>
   );
