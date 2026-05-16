@@ -1,6 +1,11 @@
 import { View, Text, StyleSheet, Button } from "react-native";
+import { NavigationProp } from "@react-navigation/native";
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({
+  navigation,
+}: {
+  navigation: NavigationProp<any>;
+}) {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Bienvenue dans ta Bibliothèque 📚</Text>
