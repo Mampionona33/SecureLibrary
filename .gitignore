@@ -1,0 +1,64 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+# Frontend (Expo / React Native)
+*/node_modules/
+node_modules/
+.expo/
+.expo-packager-cache/
+.expo-developer-tools/
+dist/
+web-build/
+expo-env.d.ts
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env*.local
+*.tsbuildinfo
+app-example
+/ios
+/android
+
+# Backend (Django / Python)
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+db.sqlite3
+*/migrations/__pycache__/
+*/migrations/*.py
+*.log
+media/
+staticfiles/
+*.pot
+*.mo
+
+# Tests / Coverage
+coverage/
+.coverage
+htmlcov/
+junit.xml
+.pytest_cache/
+.tox/
+.mypy_cache/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Divers
+*.swp
+*.swo
+*.bak
