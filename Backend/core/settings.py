@@ -25,7 +25,12 @@ SECRET_KEY = 'django-insecure-&fk*uf84l6=d5j6rd#eqbjsrgqt@-m+r8e$hn-no0xq!(@18t6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+    "10.0.2.2",
+]
 
 
 # Application definition
@@ -90,8 +95,7 @@ DATABASES = {
 }
 
 # Custom user model configuration
-AUTH_USER_MODEL = 'users.CustomUser'
-
+AUTH_USER_MODEL = "users.CustomUser"
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
