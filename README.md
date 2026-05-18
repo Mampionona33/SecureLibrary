@@ -94,6 +94,9 @@ Ce projet utilise [Django](https://www.djangoproject.com/) et [Django REST Frame
 
    ```bash
    python manage.py runserver
+   # ou
+   python manage.py runserver 0.0.0.0:8000
+
    ```
 
 Par défaut, le serveur est accessible sur :
