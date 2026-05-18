@@ -12,6 +12,7 @@ import { File, Image as ImageIcon, Save } from "lucide-react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookFormData, bookSchema } from "@/schemas/book-schema";
+import * as DocumentPicker from "expo-document-picker";
 
 export default function AddBookScreen() {
   const {
@@ -34,6 +35,21 @@ export default function AddBookScreen() {
   const onSubmit = (data: BookFormData) => {
     console.log("📚 Nouveau livre validé :", data);
   };
+
+  async function pickDocument(onChange: (uri: string) => void) {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      copyToCacheDirectory: true,
+    });
+
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      const file = result.assets[0];
+      console.log("📄 PDF sélectionné :", file.name, file.uri);
+      onChange(file.uri); // ✅ stocke l'URI du PDF
+    } else {
+      console.log("❌ Sélection annulée");
+    }
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -129,7 +145,7 @@ export default function AddBookScreen() {
           render={({ field: { onChange, value } }) => (
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={() => onChange("fake/path/to/book.pdf")}
+              onPress={() => pickDocument(onChange)}
             >
               <File color="#2F66DD" size={20} />
               <Text style={styles.uploadText}>
