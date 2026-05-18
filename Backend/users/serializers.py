@@ -11,7 +11,8 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         # ⚠️ Ne pas inclure "username" si USERNAME_FIELD = "email"
-        fields = ["id", "first_name", "last_name", "email", "password", "status", "role"]
+        # Ne pas inclure status ici, il est géré automatiquement à "pending"
+        fields = ["id", "first_name", "last_name", "email", "password", "role"]
 
     def create(self, validated_data):
         user = User.objects.create_user(
@@ -19,7 +20,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             password=validated_data["password"],
             first_name=validated_data.get("first_name", ""),
             last_name=validated_data.get("last_name", ""),
-            status=validated_data.get("status", "active"),
+            status=validated_data.get("status", "pending"),
             role=validated_data.get("role", "reader")
         )
         # ⚠️ Promotion automatique si rôle = admin
