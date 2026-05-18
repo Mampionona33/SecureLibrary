@@ -13,6 +13,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookFormData, bookSchema } from "@/schemas/book-schema";
 import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 
 export default function AddBookScreen() {
   const {
@@ -32,8 +33,15 @@ export default function AddBookScreen() {
     },
   });
 
-  const onSubmit = (data: BookFormData) => {
-    console.log("📚 Nouveau livre validé :", data);
+  const onSubmit = async (data: BookFormData) => {
+    try {
+      const response = await api.post("/books", data); // ✅ endpoint à adapter
+      console.log("📚 Livre enregistré :", response.data);
+      alert("Livre ajouté avec succès !");
+    } catch (error: any) {
+      console.error("❌ Erreur lors de l'ajout du livre :", error.message);
+      alert("Impossible d'ajouter le livre. Vérifie l'API.");
+    }
   };
 
   async function pickDocument(onChange: (uri: string) => void) {
@@ -162,7 +170,28 @@ export default function AddBookScreen() {
           render={({ field: { onChange, value } }) => (
             <TouchableOpacity
               style={styles.uploadButton}
-              onPress={() => onChange("fake/path/to/cover.jpg")}
+              onPress={async () => {
+                // Demande permission
+                const permission =
+                  await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (!permission.granted) {
+                  alert("Permission refusée pour accéder aux images");
+                  return;
+                }
+
+                // Ouvre la galerie
+                const result = await ImagePicker.launchImageLibraryAsync({
+                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                  allowsEditing: true,
+                  quality: 1,
+                });
+
+                if (!result.canceled && result.assets.length > 0) {
+                  const image = result.assets[0];
+                  console.log("🖼️ Image sélectionnée :", image.uri);
+                  onChange(image.uri); // ✅ stocke l'URI dans le formulaire
+                }
+              }}
             >
               <ImageIcon color="#2F66DD" size={20} />
               <Text style={styles.uploadText}>
