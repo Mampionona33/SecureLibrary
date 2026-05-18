@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -9,22 +9,30 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { File, Image as ImageIcon, Save } from "lucide-react-native";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { BookFormData, bookSchema } from "@/schemas/book-schema";
 
 export default function AddBookScreen() {
-  const [title, setTitle] = useState("");
-  const [category, setCategory] = useState("");
-  const [author, setAuthor] = useState("");
-  const [pdfPath, setPdfPath] = useState("");
-  const [coverImage, setCoverImage] = useState("");
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<BookFormData>({
+    resolver: zodResolver(bookSchema),
+    defaultValues: {
+      title: "",
+      category: "",
+      author: "",
+      year: "",
+      pdfPath: "",
+      coverImage: "",
+      description: "",
+    },
+  });
 
-  const handleSave = () => {
-    console.log("📚 Nouveau livre ajouté :", {
-      title,
-      category,
-      author,
-      pdfPath,
-      coverImage,
-    });
+  const onSubmit = (data: BookFormData) => {
+    console.log("📚 Nouveau livre validé :", data);
   };
 
   return (
@@ -33,66 +41,126 @@ export default function AddBookScreen() {
         <Text style={styles.header}>Ajouter un livre</Text>
 
         {/* Nom du livre */}
-        <TextInput
-          style={styles.input}
-          placeholder="Nom du livre"
-          value={title}
-          onChangeText={setTitle}
+        <Controller
+          control={control}
+          name="title"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Nom du livre"
+              value={value}
+              onChangeText={onChange}
+            />
+          )}
         />
+        {errors.title && (
+          <Text style={styles.error}>{errors.title.message}</Text>
+        )}
 
         {/* Catégorie */}
-        <TextInput
-          style={styles.input}
-          placeholder="Catégorie"
-          value={category}
-          onChangeText={setCategory}
+        <Controller
+          control={control}
+          name="category"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Catégorie"
+              value={value}
+              onChangeText={onChange}
+            />
+          )}
         />
+        {errors.category && (
+          <Text style={styles.error}>{errors.category.message}</Text>
+        )}
 
         {/* Auteur */}
-        <TextInput
-          style={styles.input}
-          placeholder="Auteur"
-          value={author}
-          onChangeText={setAuthor}
+        <Controller
+          control={control}
+          name="author"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Auteur"
+              value={value}
+              onChangeText={onChange}
+            />
+          )}
+        />
+        {errors.author && (
+          <Text style={styles.error}>{errors.author.message}</Text>
+        )}
+
+        {/* Année de publication */}
+        <Controller
+          control={control}
+          name="year"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Année de publication"
+              keyboardType="numeric"
+              value={value}
+              onChangeText={onChange}
+            />
+          )}
+        />
+        {errors.year && <Text style={styles.error}>{errors.year.message}</Text>}
+
+        {/* Description */}
+        <Controller
+          control={control}
+          name="description"
+          render={({ field: { onChange, value } }) => (
+            <TextInput
+              style={styles.input}
+              placeholder="Description / résumé"
+              multiline
+              value={value}
+              onChangeText={onChange}
+            />
+          )}
         />
 
         {/* PDF Upload (placeholder) */}
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={() => setPdfPath("fake/path/to/book.pdf")}
-        >
-          <File color="#2F66DD" size={20} />
-          <Text style={styles.uploadText}>
-            {pdfPath ? "PDF sélectionné" : "Choisir un PDF"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Image couverture */}
-        <TouchableOpacity
-          style={styles.uploadButton}
-          onPress={() => setCoverImage("fake/path/to/cover.jpg")}
-        >
-          <ImageIcon color="#2F66DD" size={20} />
-          <Text style={styles.uploadText}>
-            {coverImage ? "Image sélectionnée" : "Choisir une image"}
-          </Text>
-        </TouchableOpacity>
-
-        {/* ✅ Autres éléments utiles */}
-        <TextInput
-          style={styles.input}
-          placeholder="Description / résumé"
-          multiline
+        <Controller
+          control={control}
+          name="pdfPath"
+          render={({ field: { onChange, value } }) => (
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => onChange("fake/path/to/book.pdf")}
+            >
+              <File color="#2F66DD" size={20} />
+              <Text style={styles.uploadText}>
+                {value ? "PDF sélectionné" : "Choisir un PDF"}
+              </Text>
+            </TouchableOpacity>
+          )}
         />
 
-        <TextInput
-          style={styles.input}
-          placeholder="Année de publication"
-          keyboardType="numeric"
+        {/* Image couverture */}
+        <Controller
+          control={control}
+          name="coverImage"
+          render={({ field: { onChange, value } }) => (
+            <TouchableOpacity
+              style={styles.uploadButton}
+              onPress={() => onChange("fake/path/to/cover.jpg")}
+            >
+              <ImageIcon color="#2F66DD" size={20} />
+              <Text style={styles.uploadText}>
+                {value ? "Image sélectionnée" : "Choisir une image"}
+              </Text>
+            </TouchableOpacity>
+          )}
         />
 
         {/* Bouton sauvegarde */}
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+        <TouchableOpacity
+          style={styles.saveButton}
+          onPress={handleSubmit(onSubmit)}
+        >
           <Save color="#FFF" size={20} />
           <Text style={styles.saveText}>Enregistrer</Text>
         </TouchableOpacity>
@@ -138,4 +206,5 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   saveText: { color: "#FFF", fontSize: 16, fontWeight: "600", marginLeft: 8 },
+  error: { color: "red", marginBottom: 10 },
 });
