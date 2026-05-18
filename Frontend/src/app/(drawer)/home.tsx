@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Plus } from "lucide-react-native";
 import BookActions from "@/components/book-actions";
+import { useRouter } from "expo-router";
 
 const CATEGORIES = ["Tous", "Développement", "Cuisine", "Sport", "IT"];
 
@@ -57,6 +58,7 @@ const BOOKS_DATA = [
 export default function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [searchQuery, setSearchQuery] = useState("");
+  const router = useRouter();
 
   const filteredBooks = BOOKS_DATA.filter((book) => {
     const matchSearch = book.title
@@ -125,7 +127,7 @@ export default function HomeScreen() {
   );
 
   const handleAddBook = () => {
-    console.log("👉 Bouton Ajouter cliqué !");
+    router.push("/add-book");
   };
 
   return (
