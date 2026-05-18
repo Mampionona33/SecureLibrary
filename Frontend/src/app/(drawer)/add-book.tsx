@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { BookFormData, bookSchema } from "@/schemas/book-schema";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
+import api from "@/services/api";
 
 export default function AddBookScreen() {
   const {
