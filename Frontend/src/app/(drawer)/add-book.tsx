@@ -20,23 +20,30 @@ export default function AddBookScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
     defaultValues: {
       title: "",
       category: "",
       author: "",
+      isbn: "",
       year: "",
       pdfPath: "",
       coverImage: "",
       description: "",
+      status: "active",
     },
   });
 
   const onSubmit = async (data: BookFormData) => {
     try {
-      const response = await api.post("/library/", data);
+      // Convert year string to number for the backend IntegerField
+      const payload = {
+        ...data,
+        year: data.year ? parseInt(data.year, 10) : null,
+      };
+      const response = await api.post("/library/", payload);
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");
     } catch (error: any) {

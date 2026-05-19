@@ -13,6 +13,10 @@ export default function AppLayout() {
       <Drawer>
         <Drawer.Screen name="home" options={{ title: "Accueil" }} />
         <Drawer.Screen name="explore" options={{ title: "Explorer" }} />
+        <Drawer.Screen
+          name="add-book"
+          options={{ title: "Ajouter un livre" }}
+        />
         <Drawer.Screen name="settings" options={{ title: "Paramètres" }} />
         {/* ✅ Ajout du bouton Déconnexion */}
         <Drawer.Screen name="logout" options={{ title: "Déconnexion" }} />

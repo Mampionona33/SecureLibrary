@@ -16,6 +16,7 @@ export const bookSchema = z.object({
     .string()
     .max(13, "L'ISBN ne peut pas dépasser 13 caractères")
     .optional(),
+  status: z.enum(["active", "archived"]),
   pdfPath: z.string().min(1, "Veuillez sélectionner un fichier PDF"),
   coverImage: z.string().optional(),
 });

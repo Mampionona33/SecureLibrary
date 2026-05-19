@@ -10,6 +10,13 @@ class Book(models.Model):
     year = models.IntegerField(null=True, blank=True)
     description = models.TextField(blank=True, null=True)
     isbn = models.CharField(max_length=13, unique=True, blank=True, null=True)
+    
+    STATUS_CHOICES = [
+        ("active", "Active"),
+        ("archived", "Archived"),
+    ]
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="active")
+
     added_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='books')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

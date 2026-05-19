@@ -5,6 +5,7 @@ import {
   TextInput,
   Button,
   StyleSheet,
+  ActivityIndicator,
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -20,7 +21,7 @@ export default function RegisterScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
@@ -130,7 +131,15 @@ export default function RegisterScreen() {
         <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
       )}
 
-      <Button title="S'inscrire" onPress={handleSubmit(onSubmit)} />
+      {isSubmitting ? (
+        <ActivityIndicator
+          size="large"
+          color="#5A5A40"
+          style={{ marginVertical: 10 }}
+        />
+      ) : (
+        <Button title="S'inscrire" onPress={handleSubmit(onSubmit)} />
+      )}
 
       {message ? <Text style={{ textAlign: "center" }}>{message}</Text> : null}
 
