@@ -9,29 +9,32 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { register } from "@/services/auth";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { RegisterFormData, registerSchema } from "@/schemas/auth-schema";
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleRegister = async () => {
-    if (password !== confirmPassword) {
-      setMessage("Les mots de passe ne correspondent pas ❌");
-      return;
-    }
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      first_name: "",
+      last_name: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+    },
+  });
 
+  const onSubmit = async (data: RegisterFormData) => {
     try {
-      await register({
-        email,
-        password,
-        first_name: firstName,
-        last_name: lastName,
-      });
+      await register(data);
       setMessage("Inscription réussie ✅");
       router.replace("/(auth)/login");
     } catch (err) {
@@ -43,42 +46,91 @@ export default function RegisterScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Créer un compte</Text>
 
-      <TextInput
-        placeholder="Prénom"
-        style={styles.input}
-        value={firstName}
-        onChangeText={setFirstName}
+      <Controller
+        control={control}
+        name="first_name"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Prénom"
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
       />
-      <TextInput
-        placeholder="Nom"
-        style={styles.input}
-        value={lastName}
-        onChangeText={setLastName}
-      />
-      <TextInput
-        placeholder="Email"
-        keyboardType="email-address"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
-      />
-      <TextInput
-        placeholder="Mot de passe"
-        secureTextEntry
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TextInput
-        placeholder="Confirmer Mot de passe"
-        secureTextEntry
-        style={styles.input}
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-      />
+      {errors.first_name && (
+        <Text style={styles.errorText}>{errors.first_name.message}</Text>
+      )}
 
-      <Button title="S'inscrire" onPress={handleRegister} />
+      <Controller
+        control={control}
+        name="last_name"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Nom"
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+      {errors.last_name && (
+        <Text style={styles.errorText}>{errors.last_name.message}</Text>
+      )}
+
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Email"
+            keyboardType="email-address"
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+            autoCapitalize="none"
+          />
+        )}
+      />
+      {errors.email && (
+        <Text style={styles.errorText}>{errors.email.message}</Text>
+      )}
+
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Mot de passe"
+            secureTextEntry
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+      {errors.password && (
+        <Text style={styles.errorText}>{errors.password.message}</Text>
+      )}
+
+      <Controller
+        control={control}
+        name="confirmPassword"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Confirmer Mot de passe"
+            secureTextEntry
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
+      />
+      {errors.confirmPassword && (
+        <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
+      )}
+
+      <Button title="S'inscrire" onPress={handleSubmit(onSubmit)} />
 
       {message ? <Text style={{ textAlign: "center" }}>{message}</Text> : null}
 
@@ -111,4 +163,5 @@ const styles = StyleSheet.create({
     color: "#5A5A40",
     fontWeight: "600",
   },
+  errorText: { color: "red", fontSize: 12, marginBottom: 10, marginLeft: 5 },
 });
