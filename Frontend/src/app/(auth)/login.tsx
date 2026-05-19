@@ -6,6 +6,7 @@ import {
   Button,
   StyleSheet,
   TouchableOpacity,
+  ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { login } from "@/services/auth";
@@ -21,7 +22,7 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -82,7 +83,15 @@ export default function LoginScreen() {
         <Text style={styles.errorText}>{errors.password.message}</Text>
       )}
 
-      <Button title="Se connecter" onPress={handleSubmit(onSubmit)} />
+      {isSubmitting ? (
+        <ActivityIndicator
+          size="large"
+          color="#5A5A40"
+          style={{ marginVertical: 10 }}
+        />
+      ) : (
+        <Button title="Se connecter" onPress={handleSubmit(onSubmit)} />
+      )}
 
       {message ? (
         <Text style={{ textAlign: "center", marginTop: 10 }}>{message}</Text>
