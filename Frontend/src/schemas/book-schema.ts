@@ -1,22 +1,23 @@
 import { z } from "zod";
 
-// Schéma Zod
 export const bookSchema = z.object({
-  title: z.string().min(1, "Titre obligatoire"),
-  category: z.string().min(1, "Catégorie obligatoire"),
-  author: z.string().min(1, "Auteur obligatoire"),
+  title: z.string().min(1, "Le titre est requis"),
+  category: z.string().min(1, "La catégorie est requise"),
+  author: z.string().min(1, "L'auteur est requis"),
   year: z
     .string()
-    .regex(/^\d{4}$/, "Année sur 4 chiffres")
-    .refine((val) => {
-      const num = parseInt(val, 10);
-      const currentYear = new Date().getFullYear();
-      return num >= 1500 && num <= currentYear;
-    }, "Année invalide"),
-  pdfPath: z.string().optional(),
+    .min(1, "L'année est requise")
+    .regex(/^\d{4}$/, "L'année doit être au format YYYY"),
+  description: z
+    .string()
+    .max(500, "La description ne peut pas dépasser 500 caractères")
+    .optional(),
+  isbn: z
+    .string()
+    .max(13, "L'ISBN ne peut pas dépasser 13 caractères")
+    .optional(),
+  pdfPath: z.string().min(1, "Veuillez sélectionner un fichier PDF"),
   coverImage: z.string().optional(),
-  description: z.string().optional(),
 });
 
-// Type dérivé automatiquement
 export type BookFormData = z.infer<typeof bookSchema>;

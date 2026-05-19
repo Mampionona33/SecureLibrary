@@ -36,7 +36,7 @@ export default function AddBookScreen() {
 
   const onSubmit = async (data: BookFormData) => {
     try {
-      const response = await api.post("/books", data); // ✅ endpoint à adapter
+      const response = await api.post("/library/", data);
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");
     } catch (error: any) {
@@ -146,6 +146,9 @@ export default function AddBookScreen() {
             />
           )}
         />
+        {errors.description && (
+          <Text style={styles.error}>{errors.description.message}</Text>
+        )}
 
         {/* PDF Upload (placeholder) */}
         <Controller
@@ -163,6 +166,9 @@ export default function AddBookScreen() {
             </TouchableOpacity>
           )}
         />
+        {errors.pdfPath && (
+          <Text style={styles.error}>{errors.pdfPath.message}</Text>
+        )}
 
         {/* Image couverture */}
         <Controller
