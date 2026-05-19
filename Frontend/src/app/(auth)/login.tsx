@@ -8,19 +8,31 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
-import axios from "axios";
 import { login } from "@/services/auth";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { LoginFormData, loginSchema } from "@/schemas/auth-schema";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
-  const handleLogin = async () => {
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = async (data: LoginFormData) => {
     try {
-      const tokens = await login(email, password);
+      const tokens = await login(data.email, data.password);
       await AsyncStorage.setItem("accessToken", tokens.access);
       await AsyncStorage.setItem("refreshToken", tokens.refresh);
 
@@ -35,25 +47,46 @@ export default function LoginScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Connexion</Text>
 
-      <TextInput
-        placeholder="Email"
-        keyboardType="email-address"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize="none"
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Email"
+            keyboardType="email-address"
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+            autoCapitalize="none"
+          />
+        )}
       />
-      <TextInput
-        placeholder="Mot de passe"
-        secureTextEntry
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
+      {errors.email && (
+        <Text style={styles.errorText}>{errors.email.message}</Text>
+      )}
+
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onChange, value } }) => (
+          <TextInput
+            placeholder="Mot de passe"
+            secureTextEntry
+            style={styles.input}
+            value={value}
+            onChangeText={onChange}
+          />
+        )}
       />
+      {errors.password && (
+        <Text style={styles.errorText}>{errors.password.message}</Text>
+      )}
 
-      <Button title="Se connecter" onPress={handleLogin} />
+      <Button title="Se connecter" onPress={handleSubmit(onSubmit)} />
 
-      {message ? <Text style={{ textAlign: "center" }}>{message}</Text> : null}
+      {message ? (
+        <Text style={{ textAlign: "center", marginTop: 10 }}>{message}</Text>
+      ) : null}
 
       <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
         <Text style={styles.link}>Pas encore de compte ? S'inscrire</Text>
@@ -89,4 +122,5 @@ const styles = StyleSheet.create({
     color: "#5A5A40",
     fontWeight: "600",
   },
+  errorText: { color: "red", fontSize: 12, marginBottom: 10, marginLeft: 5 },
 });
