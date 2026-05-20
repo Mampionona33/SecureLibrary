@@ -14,6 +14,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { LoginFormData, loginSchema } from "@/schemas/auth-schema";
+import { PasswordInput } from "@/components/password-input";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -69,22 +70,12 @@ export default function LoginScreen() {
         <Text style={styles.errorText}>{errors.email.message}</Text>
       )}
 
-      <Controller
+      <PasswordInput
         control={control}
         name="password"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            placeholder="Mot de passe"
-            secureTextEntry
-            style={styles.input}
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
+        errors={errors}
+        placeholder="Mot de passe"
       />
-      {errors.password && (
-        <Text style={styles.errorText}>{errors.password.message}</Text>
-      )}
 
       {isSubmitting ? (
         <ActivityIndicator

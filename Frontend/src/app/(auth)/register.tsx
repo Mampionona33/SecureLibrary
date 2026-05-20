@@ -13,6 +13,7 @@ import { register } from "@/services/auth";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RegisterFormData, registerSchema } from "@/schemas/auth-schema";
+import { PasswordInput } from "@/components/password-input";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -97,39 +98,19 @@ export default function RegisterScreen() {
         <Text style={styles.errorText}>{errors.email.message}</Text>
       )}
 
-      <Controller
+      <PasswordInput
         control={control}
         name="password"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            placeholder="Mot de passe"
-            secureTextEntry
-            style={styles.input}
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
+        errors={errors}
+        placeholder="Mot de passe"
       />
-      {errors.password && (
-        <Text style={styles.errorText}>{errors.password.message}</Text>
-      )}
 
-      <Controller
+      <PasswordInput
         control={control}
         name="confirmPassword"
-        render={({ field: { onChange, value } }) => (
-          <TextInput
-            placeholder="Confirmer Mot de passe"
-            secureTextEntry
-            style={styles.input}
-            value={value}
-            onChangeText={onChange}
-          />
-        )}
+        errors={errors}
+        placeholder="Confirmer le mot de passe"
       />
-      {errors.confirmPassword && (
-        <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>
-      )}
 
       {isSubmitting ? (
         <ActivityIndicator
