@@ -22,6 +22,7 @@ export default function LoginScreen() {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -41,6 +42,8 @@ export default function LoginScreen() {
       router.replace("/(drawer)/home");
     } catch (err) {
       setMessage("Email ou mot de passe invalide ❌");
+    } finally {
+      reset();
     }
   };
 
