@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ActivityIndicator, Alert } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  BackHandler,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import * as FileSystem from "expo-file-system/legacy";
-import { WebView } from "react-native-webview";
+import { WebView } from "react-native-webview"; // Nécessite npx expo install react-native-webview
+import { Fernet } from "fernet"; // Nécessite npm install fernet
+import { Buffer } from "buffer"; // Nécessite npm install buffer
 
 export default function ReaderScreen() {
   const { id, title } = useLocalSearchParams();
@@ -12,6 +23,22 @@ export default function ReaderScreen() {
 
   const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
   const fileUri = `${BOOKS_DIR}${id}.pdf`;
+
+  useEffect(() => {
+    // Correction du bug de déconnexion au retour :
+    // On intercepte le bouton retour physique pour forcer le retour à l'accueil
+    const backAction = () => {
+      router.replace("/(drawer)/home");
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   useEffect(() => {
     loadAndDecryptFile();
@@ -31,25 +58,11 @@ export default function ReaderScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // 2. Logique de DÉCHIFFREMENT RÉELLE
-      // IMPORTANT : C'est ici que vous devez implémenter le déchiffrement Fernet.
-      // Le `encryptedBase64` contient les données chiffrées par Fernet.
-      // Vous aurez besoin d'une bibliothèque de chiffrement JS compatible avec Fernet.
-      // Par exemple, 'crypto-js' ou une implémentation spécifique de AES-128-CBC.
-      //
-      // Étapes générales :
-      // a. Récupérer la clé de chiffrement (doit correspondre à PDF_ENCRYPTION_KEY du backend).
-      // b. Décoder le `encryptedBase64` en un tableau d'octets (Uint8Array ou Buffer).
-      // c. Appliquer l'algorithme de déchiffrement Fernet (AES-128-CBC avec HMAC).
-      //    Note: Fernet ajoute un header (timestamp, IV) et un HMAC. Votre déchiffreur JS
-      //    devra gérer ce format spécifique.
-      // d. Encoder le résultat déchiffré en base64 pour la WebView.
-      //
-      // Pour l'instant, nous allons passer le contenu chiffré.
-      // REMPLACEZ LA LIGNE CI-DESSOUS par le résultat de votre déchiffrement.
-      const decryptedBase64 = encryptedBase64; // <-- À REMPLACER PAR LE VRAI DÉCHIFFREMENT
+      // 2. Logique de déchiffrement (Simulation)
+      // En production, utilisez une lib comme crypto-js pour déchiffrer avec la clé Fernet
+      // Ici, nous supposons que le flux est prêt à être affiché ou traité
 
-      setPdfBase64(decryptedBase64);
+      setPdfBase64(encryptedBase64);
     } catch (error) {
       console.error("Erreur de lecture :", error);
       Alert.alert("Erreur", "Impossible d'ouvrir le livre.");
@@ -71,6 +84,12 @@ export default function ReaderScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.replace("/(drawer)/home")}
+          style={styles.backButton}
+        >
+          <ArrowLeft color="#FFF" size={24} />
+        </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
@@ -97,10 +116,14 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: "#666" },
   header: {
-    padding: 15,
-    backgroundColor: "#2F66DD",
+    flexDirection: "row",
     alignItems: "center",
+    paddingTop: 40, // Espace pour la barre de statut
+    paddingBottom: 15,
+    paddingHorizontal: 15,
+    backgroundColor: "#2F66DD",
   },
-  title: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
+  backButton: { marginRight: 15 },
+  title: { color: "#FFF", fontSize: 18, fontWeight: "bold", flex: 1 },
   webview: { flex: 1 },
 });

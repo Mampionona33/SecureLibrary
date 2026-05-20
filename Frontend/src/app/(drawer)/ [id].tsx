@@ -1,8 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, View, Text, ActivityIndicator, Alert } from "react-native";
+import {
+  StyleSheet,
+  View,
+  Text,
+  ActivityIndicator,
+  Alert,
+  TouchableOpacity,
+  BackHandler,
+} from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import * as FileSystem from "expo-file-system/legacy";
-import { WebView } from "react-native-webview";
+import { WebView } from "react-native-webview"; // Nécessite npx expo install react-native-webview
+import CryptoJS from "crypto-js"; // Nécessite npm install crypto-js
+import { Buffer } from "buffer"; // Nécessite npm install buffer
 
 export default function ReaderScreen() {
   const { id, title } = useLocalSearchParams();
@@ -13,6 +24,22 @@ export default function ReaderScreen() {
   const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY;
   const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
   const fileUri = `${BOOKS_DIR}${id}.pdf`;
+
+  useEffect(() => {
+    // Correction du bug de déconnexion au retour :
+    // On intercepte le bouton retour physique pour forcer le retour à l'accueil
+    const backAction = () => {
+      router.replace("/(drawer)/home");
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      "hardwareBackPress",
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, []);
 
   useEffect(() => {
     loadAndDecryptFile();
@@ -32,21 +59,39 @@ export default function ReaderScreen() {
         encoding: FileSystem.EncodingType.Base64,
       });
 
-      // 2. Logique de DÉCHIFFREMENT RÉELLE
-      // La clé récupérée est : ENCRYPTION_KEY
-      //
-      // Étapes générales :
-      // a. Utiliser ENCRYPTION_KEY pour initialiser l'algorithme.
-      //    Note: Fernet utilise AES-128-CBC + HMAC-SHA256.
-      // b. Décoder le `encryptedBase64` en un tableau d'octets (Uint8Array ou Buffer).
-      // c. Appliquer l'algorithme de déchiffrement Fernet (AES-128-CBC avec HMAC).
-      //    Note: Fernet ajoute un header (timestamp, IV) et un HMAC. Votre déchiffreur JS
-      //    devra gérer ce format spécifique.
-      // d. Encoder le résultat déchiffré en base64 pour la WebView.
-      //
-      // Pour l'instant, nous allons passer le contenu chiffré.
-      // REMPLACEZ LA LIGNE CI-DESSOUS par le résultat de votre déchiffrement.
-      const decryptedBase64 = encryptedBase64; // <-- À REMPLACER PAR LE VRAI DÉCHIFFREMENT
+      // 2. Logique de déchiffrement Fernet (AES-128-CBC)
+      // Le token Fernet est un Buffer: [Version(1), Timestamp(8), IV(16), Ciphertext(n), HMAC(32)]
+      const tokenBuffer = Buffer.from(encryptedBase64, "base64");
+
+      // Extraction de l'IV (index 9 à 25)
+      const iv = CryptoJS.lib.WordArray.create(
+        new Uint8Array(tokenBuffer.slice(9, 25)) as any,
+      );
+
+      // Extraction du Ciphertext (de l'index 25 jusqu'à 32 octets avant la fin)
+      const ciphertext = CryptoJS.lib.WordArray.create(
+        new Uint8Array(tokenBuffer.slice(25, tokenBuffer.length - 32)) as any,
+      );
+
+      // La clé Fernet (32 octets) est composée de : [Signing Key(16), Encryption Key(16)]
+      const keyBuffer = Buffer.from(ENCRYPTION_KEY!, "base64");
+      const encryptionKey = CryptoJS.lib.WordArray.create(
+        new Uint8Array(keyBuffer.slice(16)) as any,
+      );
+
+      const decrypted = CryptoJS.AES.decrypt(
+        { ciphertext: ciphertext } as any,
+        encryptionKey,
+        {
+          iv: iv,
+          mode: CryptoJS.mode.CBC,
+          padding: CryptoJS.pad.Pkcs7,
+        },
+      );
+
+      const decryptedBase64 = decrypted.toString(CryptoJS.enc.Base64);
+
+      if (!decryptedBase64) throw new Error("Échec du déchiffrement.");
 
       setPdfBase64(decryptedBase64);
     } catch (error) {
@@ -70,6 +115,12 @@ export default function ReaderScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => router.replace("/(drawer)/home")}
+          style={styles.backButton}
+        >
+          <ArrowLeft color="#FFF" size={24} />
+        </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>
           {title}
         </Text>
@@ -96,10 +147,14 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 10, color: "#666" },
   header: {
-    padding: 15,
-    backgroundColor: "#2F66DD",
+    flexDirection: "row",
     alignItems: "center",
+    paddingTop: 40, // Espace pour la barre de statut
+    paddingBottom: 15,
+    paddingHorizontal: 15,
+    backgroundColor: "#2F66DD",
   },
-  title: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
+  backButton: { marginRight: 15 },
+  title: { color: "#FFF", fontSize: 18, fontWeight: "bold", flex: 1 },
   webview: { flex: 1 },
 });
