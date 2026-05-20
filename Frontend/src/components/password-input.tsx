@@ -7,25 +7,31 @@ import {
   TouchableOpacity,
   TextInputProps,
 } from "react-native";
-import { Controller, Control, FieldErrors } from "react-hook-form";
+import {
+  Controller,
+  Control,
+  FieldErrors,
+  FieldValues,
+  FieldPath,
+} from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react-native";
 
-interface PasswordInputProps extends TextInputProps {
-  control: Control<any>;
-  name: string;
-  errors: FieldErrors;
+interface PasswordInputProps<T extends FieldValues> extends TextInputProps {
+  control: Control<T>;
+  name: FieldPath<T>;
+  errors: FieldErrors<T>;
   placeholder?: string;
 }
 
-export const PasswordInput: React.FC<PasswordInputProps> = ({
+export const PasswordInput = <T extends FieldValues>({
   control,
   name,
   errors,
   placeholder = "Mot de passe",
   ...rest
-}) => {
+}: PasswordInputProps<T>) => {
   const [showPassword, setShowPassword] = useState(false);
-  const error = errors[name];
+  const error = errors[name as any];
 
   return (
     <View style={styles.container}>
