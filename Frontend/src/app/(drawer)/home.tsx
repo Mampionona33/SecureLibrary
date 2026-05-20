@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -8,59 +8,118 @@ import {
   Image,
   TouchableOpacity,
   StatusBar,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, Plus } from "lucide-react-native";
+import { Search, Plus, Download, CheckCircle } from "lucide-react-native";
 import BookActions from "@/components/book-actions";
 import { useRouter } from "expo-router";
+import * as FileSystem from "expo-file-system";
+import api from "@/services/api";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CATEGORIES = ["Tous", "Développement", "Cuisine", "Sport", "IT"];
 
-const BOOKS_DATA = [
-  {
-    id: "1",
-    category: "Développement",
-    title: "Introduction à React Native",
-    author: "Josh Evans",
-    image:
-      "https://images.unsplash.com/photo-1544947950-fa07a98d237f?q=80&w=200&auto=format&fit=crop",
-    bgColor: "#E2ECE9",
-  },
-  {
-    id: "2",
-    category: "Cuisine",
-    title: "Recettes faciles",
-    author: "Yusuf Nugraha",
-    image:
-      "https://images.unsplash.com/photo-1532012197267-da84d127e765?q=80&w=200&auto=format&fit=crop",
-    bgColor: "#FCEAEB",
-  },
-  {
-    id: "3",
-    category: "Sport",
-    title: "Fitness débutant",
-    author: "Paranggeni",
-    image:
-      "https://images.unsplash.com/photo-1512820790803-83ca734da794?q=80&w=200&auto=format&fit=crop",
-    bgColor: "#E8E7FA",
-  },
-  {
-    id: "4",
-    category: "IT",
-    title: "Sécurité réseau",
-    author: "Anggit Yuniar",
-    image:
-      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=200&auto=format&fit=crop",
-    bgColor: "#FCEAEB",
-  },
-];
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  category: string;
+  cover_image: string | null;
+  pdf_file: string | null;
+  bgColor?: string;
+}
 
 export default function HomeScreen() {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [localBooks, setLocalBooks] = useState<string[]>([]);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [activeCategory, setActiveCategory] = useState("Tous");
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
-  const filteredBooks = BOOKS_DATA.filter((book) => {
+  const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
+
+  const ensureDirectoryExists = async () => {
+    const dirInfo = await FileSystem.getInfoAsync(BOOKS_DIR);
+    if (!dirInfo.exists) {
+      await FileSystem.makeDirectoryAsync(BOOKS_DIR, { intermediates: true });
+    }
+  };
+
+  const checkLocalFiles = async () => {
+    try {
+      const files = await FileSystem.readDirectoryAsync(BOOKS_DIR);
+      setLocalBooks(files.map((f) => f.replace(".pdf", "")));
+    } catch (e) {
+      console.log("Erreur lecture fichiers locaux", e);
+    }
+  };
+
+  const fetchBooks = async (isRefreshing = false) => {
+    if (!isRefreshing) setLoading(true);
+    try {
+      const response = await api.get("/library/");
+      setBooks(response.data);
+      await checkLocalFiles();
+    } catch (error) {
+      console.error("Erreur lors du chargement des livres :", error);
+      Alert.alert("Erreur", "Impossible de charger la bibliothèque.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    ensureDirectoryExists();
+    fetchBooks();
+  }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchBooks(true);
+  }, []);
+
+  const downloadBook = async (book: Book) => {
+    if (!book.pdf_file) {
+      Alert.alert("Erreur", "Ce livre n'a pas de fichier associé.");
+      return;
+    }
+
+    setDownloadingId(book.id);
+    const fileUri = `${BOOKS_DIR}${book.id}.pdf`;
+    const token = await AsyncStorage.getItem("accessToken");
+
+    try {
+      const downloadRes = await FileSystem.downloadAsync(
+        book.pdf_file,
+        fileUri,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      );
+
+      if (downloadRes.status === 200) {
+        setLocalBooks((prev) => [...prev, book.id]);
+        Alert.alert(
+          "Succès",
+          `${book.title} est maintenant disponible hors ligne.`,
+        );
+      }
+    } catch (error) {
+      console.error("Erreur téléchargement :", error);
+      Alert.alert("Erreur", "Le téléchargement a échoué.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  const filteredBooks = books.filter((book) => {
     const matchSearch = book.title
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
@@ -109,22 +168,68 @@ export default function HomeScreen() {
     </View>
   );
 
-  const renderBookItem = ({ item }: { item: (typeof BOOKS_DATA)[number] }) => (
-    <TouchableOpacity style={styles.bookRow} activeOpacity={0.7}>
-      <View style={[styles.imageWrapper, { backgroundColor: item.bgColor }]}>
-        <Image source={{ uri: item.image }} style={styles.bookCover} />
+  const renderBookItem = ({ item }: { item: Book }) => {
+    const isDownloaded = localBooks.includes(item.id);
+    const isDownloading = downloadingId === item.id;
+
+    return (
+      <View style={styles.bookRow}>
+        <View style={styles.bookMainContent}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() =>
+              isDownloaded
+                ? Alert.alert("Lecture", "Ouverture sécurisée du livre...")
+                : null
+            }
+          >
+            <View
+              style={[
+                styles.imageWrapper,
+                { backgroundColor: item.bgColor || "#E2ECE9" },
+              ]}
+            >
+              <Image
+                source={{
+                  uri: item.cover_image || "https://via.placeholder.com/150",
+                }}
+                style={styles.bookCover}
+              />
+            </View>
+          </TouchableOpacity>
+          <View style={styles.bookInfo}>
+            <Text style={styles.bookCategory}>{item.category}</Text>
+            <Text style={styles.bookTitle} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={styles.bookAuthor}>{item.author}</Text>
+
+            <View style={styles.statusContainer}>
+              {isDownloaded ? (
+                <View style={styles.statusBadge}>
+                  <CheckCircle color="#4CAF50" size={14} />
+                  <Text style={styles.statusText}>Local</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.downloadIcon}
+                  onPress={() => downloadBook(item)}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <ActivityIndicator size="small" color="#2F66DD" />
+                  ) : (
+                    <Download color="#2F66DD" size={20} />
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        </View>
+        <BookActions />
       </View>
-      <View style={styles.bookInfo}>
-        <Text style={styles.bookCategory}>{item.category}</Text>
-        <Text style={styles.bookTitle} numberOfLines={1}>
-          {item.title}
-        </Text>
-        <Text style={styles.bookAuthor}>{item.author}</Text>
-      </View>
-      {/* ✅ Menu contextuel */}
-      <BookActions />
-    </TouchableOpacity>
-  );
+    );
+  };
 
   const handleAddBook = () => {
     router.push("/add-book");
@@ -133,14 +238,29 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#2F66DD" />
-      <FlatList
-        data={filteredBooks}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBookItem}
-        ListHeaderComponent={renderHeader}
-        contentContainerStyle={styles.listContent}
-        style={styles.mainContainer}
-      />
+      {loading && !refreshing ? (
+        <ActivityIndicator
+          size="large"
+          color="#FFF"
+          style={{ marginTop: 20 }}
+        />
+      ) : (
+        <FlatList
+          data={filteredBooks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBookItem}
+          ListHeaderComponent={renderHeader}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FFF"
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          style={styles.mainContainer}
+        />
+      )}
 
       {/* ✅ Bouton flottant Ajouter */}
       <TouchableOpacity style={styles.addButton} onPress={handleAddBook}>
@@ -202,6 +322,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#F8F9FA",
   },
+  bookMainContent: { flex: 1, flexDirection: "row", alignItems: "center" },
   imageWrapper: {
     width: 90,
     height: 105,
@@ -220,6 +341,15 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   bookAuthor: { fontSize: 14, color: "#A5A6AE" },
+  statusContainer: { marginTop: 5 },
+  statusBadge: { flexDirection: "row", alignItems: "center" },
+  statusText: {
+    fontSize: 12,
+    color: "#4CAF50",
+    marginLeft: 5,
+    fontWeight: "600",
+  },
+  downloadIcon: { alignSelf: "flex-start", paddingVertical: 5 },
   addButton: {
     position: "absolute",
     bottom: 20,
