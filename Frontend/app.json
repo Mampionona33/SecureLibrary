@@ -8,7 +8,10 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "extra": {
-      "backendUrl": "http://10.0.2.2:8000/api"
+      "backendUrl": "http://localhost:8000/api"
+      // "emulatorUrl": "http://10.0.2.2:8000/api",
+      // "webUrl": "http://localhost:8000/api"
+      // "backendUrl": "http://192.168.201.29:8000/api" // Pour appareil physique sans `adb reverse` (assurez-vous que le pare-feu PC autorise le port 8000)
     },
     "ios": {
       "icon": "./assets/expo.icon"

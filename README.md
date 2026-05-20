@@ -125,3 +125,62 @@ Backend/
 - Configurer JWT pour l’authentification sécurisée.
 - Configurer CORS pour autoriser les requêtes du frontend Expo.
 - Configurer static/media pour gérer les fichiers statiques et médias.
+
+### Connexion au Backend (Développement Mobile)
+
+Pour que votre application Frontend puisse communiquer avec l'API Django, configurez l'URL dans `Frontend/app.json` (`extra.backendUrl`).
+
+#### 1. Mode Émulateur Android
+
+L'émulateur utilise une adresse IP spécifique pour accéder à votre PC (l'hôte).
+
+- **URL :** `http://10.0.2.2:8000/api`
+- **Action :** Aucune commande spéciale requise.
+
+#### 2. Appareil Physique (USB - Recommandé)
+
+C'est la méthode la plus stable pour éviter les problèmes de pare-feu et de Wi-Fi.
+
+- **URL :** `http://localhost:8000/api`
+- **Action :** Exécutez la redirection de port suivante :
+  ```bash
+  adb reverse tcp:8000 tcp:8000
+  ```
+
+#### 3. Appareil Physique (Wi-Fi)
+
+Utile si vous ne pouvez pas utiliser de câble. Le téléphone et le PC doivent être sur le **même réseau**.
+
+- **URL :** `http://<VOTRE_IP_PC>:8000/api` (ex: `192.168.201.29`)
+- **Action :** Assurez-vous que le pare-feu de votre PC autorise les connexions entrantes sur le port 8000.
+
+#### 4. Mode Web (Navigateur)
+
+Si vous lancez Expo dans votre navigateur.
+
+- **URL :** `http://localhost:8000/api`
+
+---
+
+### Rappels Backend (Django)
+
+1. **Lancement du serveur :** Pour les modes Physiques (USB/Wi-Fi), lancez Django avec :
+
+   ```bash
+   python manage.py runserver 0.0.0.0:8000
+   ```
+
+2. **Configuration `ALLOWED_HOSTS` :**
+   Dans `Backend/core/settings.py`, vérifiez que les hôtes sont autorisés :
+
+   ```python
+   ALLOWED_HOSTS = ["localhost", "127.0.0.1", "10.0.2.2", "192.168.201.29"]
+   ```
+
+3. **Sécurité (api.tsx) :**
+   L'application utilise un fallback automatique si la config `app.json` est manquante :
+   ```typescript
+   const baseURL =
+     Constants.expoConfig?.extra?.backendUrl ||
+     "http://192.168.201.29:8000/api";
+   ```

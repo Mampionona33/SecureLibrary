@@ -30,6 +30,7 @@ ALLOWED_HOSTS = [
     "127.0.0.1",
     "0.0.0.0",
     "10.0.2.2",
+    "192.168.201.29", # Ajoutez l'adresse IP de votre PC ici
 ]
 
 
