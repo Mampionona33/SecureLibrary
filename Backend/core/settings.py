@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Charger le fichier .env
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,18 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-&fk*uf84l6=d5j6rd#eqbjsrgqt@-m+r8e$hn-no0xq!(@18t6'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "0.0.0.0",
-    "10.0.2.2",
-    "192.168.201.29", # Ajoutez l'adresse IP de votre PC ici
-]
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')
 
 
 # Application definition
@@ -145,4 +143,4 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 # Clé de chiffrement (À générer avec Fernet.generate_key())
-PDF_ENCRYPTION_KEY = b'uXb5Z7_L6O9zT_X9_U9O9zT_X9_U9O9zT_X9_U9O9zT='
+PDF_ENCRYPTION_KEY = os.getenv('PDF_ENCRYPTION_KEY').encode()

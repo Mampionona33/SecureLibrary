@@ -10,6 +10,7 @@ export default function ReaderScreen() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
+  const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY;
   const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
   const fileUri = `${BOOKS_DIR}${id}.pdf`;
 
@@ -32,13 +33,11 @@ export default function ReaderScreen() {
       });
 
       // 2. Logique de DÉCHIFFREMENT RÉELLE
-      // IMPORTANT : C'est ici que vous devez implémenter le déchiffrement Fernet.
-      // Le `encryptedBase64` contient les données chiffrées par Fernet.
-      // Vous aurez besoin d'une bibliothèque de chiffrement JS compatible avec Fernet.
-      // Par exemple, 'crypto-js' ou une implémentation spécifique de AES-128-CBC.
+      // La clé récupérée est : ENCRYPTION_KEY
       //
       // Étapes générales :
-      // a. Récupérer la clé de chiffrement (doit correspondre à PDF_ENCRYPTION_KEY du backend).
+      // a. Utiliser ENCRYPTION_KEY pour initialiser l'algorithme.
+      //    Note: Fernet utilise AES-128-CBC + HMAC-SHA256.
       // b. Décoder le `encryptedBase64` en un tableau d'octets (Uint8Array ou Buffer).
       // c. Appliquer l'algorithme de déchiffrement Fernet (AES-128-CBC avec HMAC).
       //    Note: Fernet ajoute un header (timestamp, IV) et un HMAC. Votre déchiffreur JS
