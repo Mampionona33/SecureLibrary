@@ -38,12 +38,35 @@ export default function AddBookScreen() {
 
   const onSubmit = async (data: BookFormData) => {
     try {
-      // Convert year string to number for the backend IntegerField
-      const payload = {
-        ...data,
-        year: data.year ? parseInt(data.year, 10) : null,
-      };
-      const response = await api.post("/library/", payload);
+      const formData = new FormData();
+      formData.append("title", data.title);
+      formData.append("category", data.category);
+      formData.append("author", data.author);
+      formData.append("year", data.year);
+      formData.append("description", data.description || "");
+      formData.append("isbn", data.isbn || "");
+      formData.append("status", data.status);
+
+      if (data.pdfPath) {
+        formData.append("pdf_file", {
+          uri: data.pdfPath,
+          name: "book.pdf",
+          type: "application/pdf",
+        } as any);
+      }
+
+      if (data.coverImage) {
+        formData.append("cover_image", {
+          uri: data.coverImage,
+          name: "cover.jpg",
+          type: "image/jpeg",
+        } as any);
+      }
+
+      const response = await api.post("/library/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");
     } catch (error: any) {

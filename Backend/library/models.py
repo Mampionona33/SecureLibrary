@@ -11,6 +11,9 @@ class Book(models.Model):
     description = models.TextField(blank=True, null=True)
     isbn = models.CharField(max_length=13, unique=True, blank=True, null=True)
     
+    pdf_file = models.FileField(upload_to='books/pdfs/', null=True, blank=True)
+    cover_image = models.ImageField(upload_to='books/covers/', null=True, blank=True)
+
     STATUS_CHOICES = [
         ("active", "Active"),
         ("archived", "Archived"),
