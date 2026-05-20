@@ -20,6 +20,7 @@ export default function AddBookScreen() {
   const {
     control,
     handleSubmit,
+    reset,
     formState: { errors, isSubmitting },
   } = useForm<BookFormData>({
     resolver: zodResolver(bookSchema),
@@ -69,6 +70,7 @@ export default function AddBookScreen() {
 
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");
+      reset();
     } catch (error: any) {
       console.error("❌ Erreur lors de l'ajout du livre :", error.message);
       alert("Impossible d'ajouter le livre. Vérifie l'API.");
