@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
   RefreshControl,
+  ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Plus, Download, CheckCircle } from "lucide-react-native";
@@ -175,6 +176,23 @@ export default function HomeScreen() {
     </View>
   );
 
+  const renderEmptyState = () => (
+    <ImageBackground
+      source={require("../../../assets/images/no_book_found.png")}
+      style={styles.emptyBackground}
+    >
+      <View style={styles.emptyOverlay}>
+        <Text style={styles.emptyText}>
+          Oups ! Votre étagère est déserte... 🌵
+        </Text>
+        <Text style={styles.emptySubText}>
+          Aucun livre n'a été trouvé ici. C'est peut-être le moment idéal pour
+          en ajouter un nouveau trésor !
+        </Text>
+      </View>
+    </ImageBackground>
+  );
+
   const renderBookItem = ({ item }: { item: Book }) => {
     const isDownloaded = localBooks.includes(item.id);
     const isDownloading = downloadingId === item.id;
@@ -274,6 +292,7 @@ export default function HomeScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderBookItem}
           ListHeaderComponent={renderHeader}
+          ListEmptyComponent={renderEmptyState}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -385,5 +404,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     elevation: 5,
+  },
+  emptyBackground: {
+    flex: 1,
+    height: 450,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 20,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  emptyOverlay: {
+    backgroundColor: "rgba(255, 255, 255, 0.85)",
+    padding: 25,
+    marginHorizontal: 20,
+    borderRadius: 15,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#1E2432",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  emptySubText: {
+    fontSize: 16,
+    color: "#9A9A9A",
+    textAlign: "center",
+    lineHeight: 22,
   },
 });
