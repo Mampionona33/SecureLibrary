@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Plus, Download, CheckCircle } from "lucide-react-native";
 import BookActions from "@/components/book-actions";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import api from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -95,9 +95,16 @@ export default function HomeScreen() {
     const fileUri = `${BOOKS_DIR}${book.id}.pdf`;
     const token = await AsyncStorage.getItem("accessToken");
 
+    // Gestion des URLs relatives (si le backend ne renvoie pas l'URL complète)
+    let downloadUrl = book.pdf_file;
+    if (downloadUrl && downloadUrl.startsWith("/")) {
+      const serverUrl = api.defaults.baseURL?.split("/api")[0];
+      downloadUrl = `${serverUrl}${downloadUrl}`;
+    }
+
     try {
       const downloadRes = await FileSystem.downloadAsync(
-        book.pdf_file,
+        downloadUrl!,
         fileUri,
         {
           headers: { Authorization: `Bearer ${token}` },
@@ -177,11 +184,19 @@ export default function HomeScreen() {
         <View style={styles.bookMainContent}>
           <TouchableOpacity
             activeOpacity={0.7}
-            onPress={() =>
-              isDownloaded
-                ? Alert.alert("Lecture", "Ouverture sécurisée du livre...")
-                : null
-            }
+            onPress={() => {
+              if (isDownloaded) {
+                router.push({
+                  pathname: "/(drawer)/[id]",
+                  params: { id: item.id, title: item.title },
+                });
+              } else {
+                Alert.alert(
+                  "Information",
+                  "Veuillez télécharger le livre pour le lire.",
+                );
+              }
+            }}
           >
             <View
               style={[
@@ -205,24 +220,33 @@ export default function HomeScreen() {
             <Text style={styles.bookAuthor}>{item.author}</Text>
 
             <View style={styles.statusContainer}>
-              {isDownloaded ? (
-                <View style={styles.statusBadge}>
-                  <CheckCircle color="#4CAF50" size={14} />
-                  <Text style={styles.statusText}>Local</Text>
-                </View>
-              ) : (
-                <TouchableOpacity
-                  style={styles.downloadIcon}
-                  onPress={() => downloadBook(item)}
-                  disabled={isDownloading}
-                >
-                  {isDownloading ? (
-                    <ActivityIndicator size="small" color="#2F66DD" />
-                  ) : (
-                    <Download color="#2F66DD" size={20} />
-                  )}
-                </TouchableOpacity>
-              )}
+              <TouchableOpacity
+                style={styles.downloadIcon}
+                onPress={() => {
+                  if (isDownloaded) {
+                    router.push({
+                      pathname: "/(drawer)/[id]",
+                      params: { id: item.id, title: item.title },
+                    });
+                  } else {
+                    downloadBook(item);
+                  }
+                }}
+                disabled={isDownloading}
+              >
+                {isDownloading ? (
+                  <ActivityIndicator size="small" color="#2F66DD" />
+                ) : isDownloaded ? (
+                  <View style={styles.statusBadge}>
+                    <CheckCircle color="#2F66DD" size={16} />
+                    <Text style={[styles.statusText, { color: "#2F66DD" }]}>
+                      Lire
+                    </Text>
+                  </View>
+                ) : (
+                  <Download color="#2F66DD" size={20} />
+                )}
+              </TouchableOpacity>
             </View>
           </View>
         </View>
