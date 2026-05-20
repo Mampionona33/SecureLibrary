@@ -14,7 +14,13 @@ import {
   ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, Plus, Download, CheckCircle } from "lucide-react-native";
+import {
+  Search,
+  Plus,
+  Download,
+  CheckCircle,
+  BookOpen,
+} from "lucide-react-native";
 import BookActions from "@/components/book-actions";
 import { useRouter } from "expo-router";
 import * as FileSystem from "expo-file-system/legacy";
@@ -22,6 +28,7 @@ import api from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const CATEGORIES = ["Tous", "Développement", "Cuisine", "Sport", "IT"];
+import { useFocusEffect } from "@react-navigation/native";
 
 interface Book {
   id: string;
@@ -76,10 +83,12 @@ export default function HomeScreen() {
     }
   };
 
-  useEffect(() => {
-    ensureDirectoryExists();
-    fetchBooks();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      ensureDirectoryExists();
+      fetchBooks();
+    }, []),
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -240,7 +249,7 @@ export default function HomeScreen() {
             <View style={styles.statusContainer}>
               <TouchableOpacity
                 style={styles.downloadIcon}
-                onPress={() => {
+                onPress={async () => {
                   if (isDownloaded) {
                     router.push({
                       pathname: "/(drawer)/[id]",
@@ -257,7 +266,10 @@ export default function HomeScreen() {
                 ) : isDownloaded ? (
                   <View style={styles.statusBadge}>
                     <CheckCircle color="#2F66DD" size={16} />
-                    <Text style={[styles.statusText, { color: "#2F66DD" }]}>
+                    <Text
+                      style={[styles.statusText, { color: "#2F66DD" }]}
+                      onPress={() => {}}
+                    >
                       Lire
                     </Text>
                   </View>
