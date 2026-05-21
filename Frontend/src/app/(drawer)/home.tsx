@@ -185,6 +185,37 @@ export default function HomeScreen() {
     </View>
   );
 
+  const deleteBookFromDisk = async (bookId: string, bookTitle: string) => {
+    const fileUri = `${BOOKS_DIR}${bookId}.pdf`;
+    try {
+      await FileSystem.deleteAsync(fileUri, { idempotent: true });
+      setLocalBooks((prev) => prev.filter((id) => id !== bookId));
+      Alert.alert(
+        "Succès",
+        `La version locale de "${bookTitle}" a été supprimée.`,
+      );
+    } catch (error) {
+      console.error("Erreur suppression disque :", error);
+      Alert.alert("Erreur", "Impossible de supprimer le fichier local.");
+    }
+  };
+
+  const deleteBookFromServer = async (bookId: string, bookTitle: string) => {
+    try {
+      await api.delete(`/library/${bookId}/`);
+      setBooks((prev) => prev.filter((b) => b.id !== bookId));
+      // On le retire aussi de l'état local s'il y était pour mettre à jour l'UI
+      setLocalBooks((prev) => prev.filter((id) => id !== bookId));
+      Alert.alert(
+        "Succès",
+        `Le livre "${bookTitle}" a été supprimé du serveur.`,
+      );
+    } catch (error) {
+      console.error("Erreur suppression serveur :", error);
+      Alert.alert("Erreur", "Échec de la suppression sur le serveur.");
+    }
+  };
+
   const renderEmptyState = () => (
     <ImageBackground
       source={require("../../../assets/images/no_book_found.png")}
@@ -280,7 +311,11 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
-        <BookActions />
+        <BookActions
+          isDownloaded={isDownloaded}
+          onDeleteFromDisk={() => deleteBookFromDisk(item.id, item.title)}
+          onDeleteFromServer={() => deleteBookFromServer(item.id, item.title)}
+        />
       </View>
     );
   };

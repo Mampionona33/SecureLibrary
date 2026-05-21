@@ -1,8 +1,25 @@
 import React, { useState } from "react";
-import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  Modal,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+} from "react-native";
 import { MoreVertical } from "lucide-react-native";
 
-export default function BookActions() {
+interface BookActionsProps {
+  onDeleteFromServer: () => void;
+  onDeleteFromDisk: () => void;
+  isDownloaded: boolean;
+}
+
+export default function BookActions({
+  onDeleteFromServer,
+  onDeleteFromDisk,
+  isDownloaded,
+}: BookActionsProps) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -38,12 +55,46 @@ export default function BookActions() {
             <TouchableOpacity
               style={styles.menuItem}
               onPress={() => {
-                console.log("🗑️ Delete");
                 setVisible(false);
+                Alert.alert(
+                  "Supprimer du serveur",
+                  "Attention : cette action supprimera définitivement le livre de la bibliothèque pour TOUS les utilisateurs.",
+                  [
+                    { text: "Annuler", style: "cancel" },
+                    {
+                      text: "Supprimer",
+                      style: "destructive",
+                      onPress: onDeleteFromServer,
+                    },
+                  ],
+                );
               }}
             >
-              <Text style={styles.menuText}>Supprimer</Text>
+              <Text style={[styles.menuText, { color: "red" }]}>Supprimer</Text>
             </TouchableOpacity>
+
+            {isDownloaded && (
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setVisible(false);
+                  Alert.alert(
+                    "Libérer de l'espace",
+                    "Voulez-vous supprimer le fichier local ? Le livre restera disponible sur le serveur.",
+                    [
+                      { text: "Annuler", style: "cancel" },
+                      {
+                        text: "Supprimer du disque",
+                        style: "destructive",
+                        onPress: onDeleteFromDisk,
+                      },
+                    ],
+                  );
+                }}
+              >
+                <Text style={styles.menuText}>Supprimer du disque</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={styles.menuItem}
