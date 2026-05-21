@@ -245,7 +245,7 @@ export default function HomeScreen() {
             onPress={() => {
               if (isDownloaded) {
                 router.push({
-                  pathname: "/(drawer)/[id]",
+                  pathname: "/(drawer)/reader/[id]",
                   params: { id: item.id, title: item.title },
                 });
               } else {
@@ -283,7 +283,7 @@ export default function HomeScreen() {
                 onPress={async () => {
                   if (isDownloaded) {
                     router.push({
-                      pathname: "/(drawer)/[id]",
+                      pathname: "/(drawer)/reader/[id]",
                       params: { id: item.id, title: item.title },
                     });
                   } else {

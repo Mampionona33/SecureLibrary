@@ -20,6 +20,11 @@ export default function AppLayout() {
         <Drawer.Screen name="settings" options={{ title: "Paramètres" }} />
         {/* ✅ Ajout du bouton Déconnexion */}
         <Drawer.Screen name="logout" options={{ title: "Déconnexion" }} />
+        {/* ✅ Masquage du lecteur dans le menu latéral */}
+        <Drawer.Screen
+          name="reader/[id]"
+          options={{ title: "Lecteur", drawerItemStyle: { display: "none" } }}
+        />
       </Drawer>
     </ThemeProvider>
   );
