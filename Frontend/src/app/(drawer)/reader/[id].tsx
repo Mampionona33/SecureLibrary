@@ -15,51 +15,108 @@ import { WebView } from "react-native-webview";
 import CryptoJS from "crypto-js";
 import { Buffer } from "buffer";
 
-function decryptFernet(
-  encryptedBase64: string,
-  fernetKeyBase64: string,
-): string {
-  console.log("🔑 decryptFernet: Début du processus avec la clé du token.");
-  // 1. Décoder le token Fernet (base64 → bytes)
-  const tokenBytes = Buffer.from(encryptedBase64, "base64");
+// Convertir un Buffer en WordArray correctement
+function bufferToWordArray(buf: Buffer) {
+  const words = [];
 
-  // 2. Extraire IV (octets 9 à 25)
-  const ivBytes = tokenBytes.slice(9, 25);
-
-  // 3. Extraire ciphertext (25 → longueur - 32)
-  const ciphertextBytes = tokenBytes.slice(25, tokenBytes.length - 32);
-
-  // 4. Découper la clé Fernet (32 octets)
-  const fullKey = Buffer.from(fernetKeyBase64, "base64");
-  const aesKeyBytes = fullKey.slice(16); // seconde moitié = clé AES
-
-  // 5. Convertir en WordArray pour crypto-js
-  const aesKey = CryptoJS.lib.WordArray.create(aesKeyBytes as any);
-  const iv = CryptoJS.lib.WordArray.create(ivBytes as any);
-  const ciphertext = CryptoJS.lib.WordArray.create(ciphertextBytes as any);
-
-  // 6. Déchiffrement AES-CBC + PKCS7
-  const decrypted = CryptoJS.AES.decrypt({ ciphertext } as any, aesKey, {
-    iv,
-    mode: CryptoJS.mode.CBC,
-    padding: CryptoJS.pad.Pkcs7,
-  });
-
-  // 7. Résultat en base64 pour WebView
-  const result = decrypted.toString(CryptoJS.enc.Base64);
-
-  // Vérification de validité (Le Base64 d'un PDF commence par 'JVBERi')
-  if (!result.startsWith("JVBERi")) {
-    console.warn(
-      "⚠️ Le déchiffrement semble avoir réussi mais le header PDF est absent.",
-    );
+  for (let i = 0; i < buf.length; i++) {
+    words[(i / 4) | 0] |= buf[i] << (24 - 8 * (i % 4));
   }
 
-  console.log(
-    "✅ decryptFernet: Déchiffrement terminé. Taille :",
-    result.length,
-  );
-  return result;
+  return CryptoJS.lib.WordArray.create(words, buf.length);
+}
+
+function base64UrlToBuffer(base64url: string) {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+
+  const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+
+  return Buffer.from(base64 + padding, "base64");
+}
+
+export function decryptFernet(token: string, key: string): string {
+  function base64UrlToBuffer(base64url: string) {
+    const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+
+    const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+
+    return Buffer.from(base64 + padding, "base64");
+  }
+
+  function bufferToWordArray(buf: Buffer) {
+    const words: number[] = [];
+
+    for (let i = 0; i < buf.length; i++) {
+      words[(i / 4) | 0] |= buf[i] << (24 - 8 * (i % 4));
+    }
+
+    return CryptoJS.lib.WordArray.create(words, buf.length);
+  }
+
+  try {
+    // TOKEN FERNET → bytes
+    const tokenBytes = base64UrlToBuffer(token.trim());
+
+    console.log("📦 Token bytes:", tokenBytes.length);
+
+    // Fernet structure:
+    // version (1)
+    // timestamp (8)
+    // IV (16)
+    // ciphertext (n)
+    // HMAC (32)
+
+    const ivBytes = tokenBytes.slice(9, 25);
+
+    const ciphertextBytes = tokenBytes.slice(25, tokenBytes.length - 32);
+
+    // CLÉ FERNET
+    const fullKey = base64UrlToBuffer(key.trim());
+
+    console.log("🔑 Full key length:", fullKey.length);
+
+    // 16 derniers octets = AES key
+    const aesKeyBytes = fullKey.slice(16);
+
+    console.log("🔐 AES key length:", aesKeyBytes.length);
+
+    // conversion CryptoJS
+    const aesKey = bufferToWordArray(aesKeyBytes);
+
+    const iv = bufferToWordArray(ivBytes);
+
+    const ciphertext = bufferToWordArray(ciphertextBytes);
+
+    // AES-128-CBC
+    const decrypted = CryptoJS.AES.decrypt({ ciphertext } as any, aesKey, {
+      iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7,
+    });
+
+    // bytes réels
+    const hex = CryptoJS.enc.Hex.stringify(decrypted);
+
+    const pdfBytes = Buffer.from(hex, "hex");
+
+    // PDF → base64
+    const pdfBase64 = pdfBytes.toString("base64");
+
+    console.log("📄 PDF header:", pdfBase64.substring(0, 20));
+
+    // PDF valide commence par:
+    // JVBERi0
+
+    if (!pdfBase64.startsWith("JVBERi")) {
+      throw new Error("PDF invalide après déchiffrement");
+    }
+
+    return pdfBase64;
+  } catch (err: any) {
+    console.error("❌ decryptFernet:", err.message);
+
+    throw err;
+  }
 }
 
 export default function ReaderScreen() {
@@ -98,8 +155,8 @@ export default function ReaderScreen() {
       }
 
       console.log("📦 loadAndDecryptFile: Lecture du fichier chiffré...");
-      const encryptedBase64 = await FileSystem.readAsStringAsync(fileUri, {
-        encoding: FileSystem.EncodingType.Base64,
+      const encryptedToken = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.UTF8,
       });
 
       if (!ENCRYPTION_KEY) {
@@ -109,7 +166,7 @@ export default function ReaderScreen() {
       }
       console.log("🔑 Clé chargée depuis .env :", ENCRYPTION_KEY);
 
-      const decryptedBase64 = decryptFernet(encryptedBase64, ENCRYPTION_KEY);
+      const decryptedBase64 = decryptFernet(encryptedToken, ENCRYPTION_KEY);
 
       if (!decryptedBase64 || decryptedBase64.length < 100) {
         throw new Error("Le déchiffrement a produit un résultat invalide.");
@@ -117,6 +174,7 @@ export default function ReaderScreen() {
 
       setPdfBase64(decryptedBase64);
     } catch (error: any) {
+      // Capture l'erreur avec un type explicite
       console.error("❌ Erreur de lecture/déchiffrement :", error.message);
       Alert.alert("Erreur de sécurité", "Impossible de déchiffrer le livre.");
       router.replace("/(drawer)/home");

@@ -1,13 +1,10 @@
 from cryptography.fernet import Fernet
 from django.conf import settings
 
-def get_fernet():
-    return Fernet(settings.PDF_ENCRYPTION_KEY)
+fernet = Fernet(settings.PDF_ENCRYPTION_KEY)
 
-def encrypt_data(data):
-    f = get_fernet()
-    return f.encrypt(data)
+def encrypt_data(data: bytes) -> bytes:
+    return fernet.encrypt(data)
 
-def decrypt_data(data):
-    f = get_fernet()
-    return f.decrypt(data)
+def decrypt_data(data: bytes) -> bytes:
+    return fernet.decrypt(data)
