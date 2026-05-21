@@ -47,8 +47,16 @@ function decryptFernet(
 
   // 7. Résultat en base64 pour WebView
   const result = decrypted.toString(CryptoJS.enc.Base64);
+
+  // Vérification de validité (Le Base64 d'un PDF commence par 'JVBERi')
+  if (!result.startsWith("JVBERi")) {
+    console.warn(
+      "⚠️ Le déchiffrement semble avoir réussi mais le header PDF est absent.",
+    );
+  }
+
   console.log(
-    "✅ decryptFernet: Déchiffrement réussi. Taille base64 :",
+    "✅ decryptFernet: Déchiffrement terminé. Taille :",
     result.length,
   );
   return result;
@@ -141,13 +149,19 @@ export default function ReaderScreen() {
       </View>
       <WebView
         originWhitelist={["*", "data:"]}
+        javaScriptEnabled={true}
+        domStorageEnabled={true}
+        allowFileAccess={true}
         scalesPageToFit={true}
+        mixedContentMode="always"
         source={{
           html: `
             <!DOCTYPE html>
             <html style="margin:0;padding:0;height:100%;width:100%;">
-              <body style="margin:0;padding:0;height:100%;width:100%;background-color:#525659;">
-                <embed src="data:application/pdf;base64,${pdfBase64}" type="application/pdf" width="100%" height="100%" />
+              <body style="margin:0;padding:0;height:100%;width:100%;background-color:#525659;display:flex;justify-content:center;align-items:center;">
+                <object data="data:application/pdf;base64,${pdfBase64}" type="application/pdf" width="100%" height="100%">
+                  <embed src="data:application/pdf;base64,${pdfBase64}" type="application/pdf" />
+                </object>
               </body>
             </html>
           `,
