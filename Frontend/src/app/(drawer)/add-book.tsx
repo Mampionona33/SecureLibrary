@@ -69,24 +69,31 @@ export default function AddBookScreen() {
 
       // 🔒 Cryptage du PDF
       if (data.pdfPath) {
-        // Lire le fichier PDF en base64 (legacy API)
         const base64Data = await FileSystem.readAsStringAsync(data.pdfPath, {
           encoding: FileSystem.EncodingType.Base64,
         });
 
-        // 🔐 Chiffrement Fernet avec la clé
         const encryptedToken = await encryptFernet(base64Data, ENCRYPTION_KEY);
 
-        // Envoi au backend
+        // Sauvegarder le contenu chiffré dans un fichier temporaire pour l'upload
+        const encPath = `${FileSystem.cacheDirectory}book.enc`;
+        await FileSystem.writeAsStringAsync(encPath, encryptedToken, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+
         formData.append("pdf_file", {
-          uri: data.pdfPath,
+          uri: encPath,
           name: "book.enc",
           type: "application/octet-stream",
         } as any);
-
-        // Si ton backend attend le contenu chiffré directement :
-        // formData.append("encrypted_pdf", encryptedToken);
       }
+
+      // Gestion correcte des champs optionnels pour éviter les erreurs 400 (ISBN unique)
+      if (data.isbn && data.isbn.trim() !== "") {
+        formData.append("isbn", data.isbn);
+      }
+
+      if (data.description) formData.append("description", data.description);
 
       if (data.coverImage) {
         formData.append("cover_image", {
@@ -96,9 +103,8 @@ export default function AddBookScreen() {
         } as any);
       }
 
-      const response = await api.post("/library/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
+      // Note : On retire le header "Content-Type" manuel pour laisser Axios gérer la boundary
+      const response = await api.post("/library/", formData);
 
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");
