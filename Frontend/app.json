@@ -8,7 +8,8 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "extra": {
-      "backendUrl": "http://localhost:8000/api"
+      "backendUrl": "http://10.0.2.2:8000/api"
+      // "backendUrl": "http://localhost:8000/api"
     },
     "ios": {
       "icon": "./assets/expo.icon"

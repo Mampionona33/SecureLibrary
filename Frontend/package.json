@@ -42,7 +42,7 @@
     "expo-web-browser": "~55.0.16",
     "fernet": "^0.3.3",
     "install": "^0.13.0",
-    "lucide-react": "^1.16.0",
+    "lucide-react": "^1.17.0",
     "lucide-react-native": "^1.17.0",
     "moti": "^0.30.0",
     "react": "19.2.0",
