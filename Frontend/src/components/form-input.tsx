@@ -7,59 +7,55 @@ import {
   TouchableOpacity,
   TextInputProps,
 } from "react-native";
-import {
-  Controller,
-  Control,
-  FieldErrors,
-  FieldValues,
-  FieldPath,
-} from "react-hook-form";
+import { Controller, Control, FieldValues, FieldPath } from "react-hook-form";
 import { Eye, EyeOff } from "lucide-react-native";
 
 interface FormInputProps<T extends FieldValues> extends TextInputProps {
   control: Control<T>;
   name: FieldPath<T>;
-  errors: FieldErrors<T>;
-  placeholder: string;
+  icon?: React.ReactNode;
   isPassword?: boolean;
 }
 
-export const FormInput = <T extends FieldValues>({
+export function FormInput<T extends FieldValues>({
   control,
   name,
-  errors,
-  placeholder,
+  icon,
   isPassword = false,
+  multiline = false,
   ...rest
-}: FormInputProps<T>) => {
+}: FormInputProps<T>) {
   const [showPassword, setShowPassword] = useState(false);
-  const error = errors[name as any];
 
   return (
-    <View style={styles.container}>
-      <Controller
-        control={control}
-        name={name}
-        render={({ field: { onChange, value } }) => (
+    <Controller
+      control={control}
+      name={name}
+      render={({ field: { onChange, value }, fieldState: { error } }) => (
+        <View style={styles.container}>
           <View
             style={[
               styles.inputWrapper,
-              error ? styles.inputError : styles.inputBorder,
+              multiline && styles.multilineWrapper,
+              error && styles.inputError,
             ]}
           >
+            {icon && <View style={styles.icon}>{icon}</View>}
+
             <TextInput
-              style={styles.textInput}
-              placeholder={placeholder}
-              secureTextEntry={isPassword && !showPassword}
-              value={value}
+              style={[styles.input, multiline && styles.multilineInput]}
+              value={value?.toString() ?? ""}
               onChangeText={onChange}
               placeholderTextColor="#999"
+              secureTextEntry={isPassword && !showPassword}
+              multiline={multiline}
               {...rest}
             />
+
             {isPassword && (
               <TouchableOpacity
-                onPress={() => setShowPassword(!showPassword)}
-                style={styles.eyeIcon}
+                onPress={() => setShowPassword((prev) => !prev)}
+                style={styles.eyeButton}
               >
                 {showPassword ? (
                   <EyeOff color="#5A5A40" size={20} />
@@ -69,32 +65,62 @@ export const FormInput = <T extends FieldValues>({
               </TouchableOpacity>
             )}
           </View>
-        )}
-      />
-      {error && <Text style={styles.errorText}>{error.message as string}</Text>}
-    </View>
+
+          {error && <Text style={styles.errorText}>{error.message}</Text>}
+        </View>
+      )}
+    />
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     marginBottom: 12,
   },
+
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: "#F3F6FF",
+    borderRadius: 12,
+    paddingHorizontal: 12,
     borderWidth: 1,
-    borderRadius: 8,
-    backgroundColor: "#fff",
+    borderColor: "#E0E5F0",
   },
-  inputBorder: { borderColor: "#ccc" },
-  inputError: { borderColor: "red" },
-  textInput: {
+
+  multilineWrapper: {
+    alignItems: "flex-start",
+    paddingTop: 10,
+  },
+
+  inputError: {
+    borderColor: "#FF4D4F",
+  },
+
+  icon: {
+    marginRight: 10,
+  },
+
+  input: {
     flex: 1,
-    padding: 12,
+    height: 48,
     fontSize: 16,
-    color: "#333",
+    color: "#1E2432",
   },
-  eyeIcon: { padding: 10 },
-  errorText: { color: "red", fontSize: 12, marginTop: 4, marginLeft: 4 },
+
+  multilineInput: {
+    height: 80,
+    textAlignVertical: "top",
+  },
+
+  eyeButton: {
+    paddingLeft: 8,
+  },
+
+  errorText: {
+    color: "#FF4D4F",
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
 });

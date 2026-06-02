@@ -3,7 +3,6 @@ import React from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
   ScrollView,
@@ -32,6 +31,7 @@ import * as ImagePicker from "expo-image-picker";
 import api from "@/services/api";
 import { encryptFernet } from "@/services/crypto";
 import * as FileSystem from "expo-file-system/legacy";
+import { FormInput } from "@/components/form-input";
 
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
 
@@ -75,8 +75,8 @@ export default function AddBookScreen() {
 
         const encryptedToken = await encryptFernet(base64Data, ENCRYPTION_KEY);
 
-        // Sauvegarder le contenu chiffré dans un fichier temporaire pour l'upload
         const encPath = `${FileSystem.cacheDirectory}book.enc`;
+
         await FileSystem.writeAsStringAsync(encPath, encryptedToken, {
           encoding: FileSystem.EncodingType.UTF8,
         });
@@ -88,12 +88,13 @@ export default function AddBookScreen() {
         } as any);
       }
 
-      // Gestion correcte des champs optionnels pour éviter les erreurs 400 (ISBN unique)
       if (data.isbn && data.isbn.trim() !== "") {
         formData.append("isbn", data.isbn);
       }
 
-      if (data.description) formData.append("description", data.description);
+      if (data.description) {
+        formData.append("description", data.description);
+      }
 
       if (data.coverImage) {
         formData.append("cover_image", {
@@ -103,7 +104,6 @@ export default function AddBookScreen() {
         } as any);
       }
 
-      // Note : On retire le header "Content-Type" manuel pour laisser Axios gérer la boundary
       const response = await api.post("/library/", formData);
 
       console.log("📚 Livre enregistré :", response.data);
@@ -137,7 +137,10 @@ export default function AddBookScreen() {
       aspect: [3, 4],
       quality: 0.8,
     });
-    if (!res.canceled) onChange(res.assets[0].uri);
+
+    if (!res.canceled) {
+      onChange(res.assets[0].uri);
+    }
   }
 
   return (
@@ -152,98 +155,47 @@ export default function AddBookScreen() {
             Ajoutez un nouveau livre à votre bibliothèque sécurisée.
           </Text>
 
+          {/* ===================== DÉTAILS PRINCIPAUX ===================== */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Détails Principaux</Text>
 
-            <View style={styles.inputWrapper}>
-              <BookOpen color="#2F66DD" size={18} style={styles.inputIcon} />
-              <Controller
-                control={control}
-                name="title"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Titre du livre"
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-            </View>
-            {errors.title && (
-              <Text style={styles.error}>{errors.title.message}</Text>
-            )}
+            <FormInput
+              control={control}
+              name="title"
+              placeholder="Titre du livre"
+              icon={<BookOpen color="#2F66DD" size={18} />}
+            />
 
-            <View style={styles.inputWrapper}>
-              <User color="#2F66DD" size={18} style={styles.inputIcon} />
-              <Controller
-                control={control}
-                name="author"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Auteur"
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-            </View>
-            {errors.author && (
-              <Text style={styles.error}>{errors.author.message}</Text>
-            )}
+            <FormInput
+              control={control}
+              name="author"
+              placeholder="Auteur"
+              icon={<User color="#2F66DD" size={18} />}
+            />
 
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
-                <View style={styles.inputWrapper}>
-                  <Tag color="#2F66DD" size={18} style={styles.inputIcon} />
-                  <Controller
-                    control={control}
-                    name="category"
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Catégorie"
-                        value={value}
-                        onChangeText={onChange}
-                      />
-                    )}
-                  />
-                </View>
-                {errors.category && (
-                  <Text style={styles.error}>{errors.category.message}</Text>
-                )}
+                <FormInput
+                  control={control}
+                  name="category"
+                  placeholder="Catégorie"
+                  icon={<Tag color="#2F66DD" size={18} />}
+                />
               </View>
+
               <View style={{ flex: 0.6 }}>
-                <View style={styles.inputWrapper}>
-                  <Calendar
-                    color="#2F66DD"
-                    size={18}
-                    style={styles.inputIcon}
-                  />
-                  <Controller
-                    control={control}
-                    name="year"
-                    render={({ field: { onChange, value } }) => (
-                      <TextInput
-                        style={styles.input}
-                        placeholder="Année"
-                        keyboardType="numeric"
-                        value={value}
-                        onChangeText={(text) =>
-                          onChange(text.replace(/[^0-9]/g, ""))
-                        }
-                      />
-                    )}
-                  />
-                </View>
-                {errors.year && (
-                  <Text style={styles.error}>{errors.year.message}</Text>
-                )}
+                <FormInput
+                  control={control}
+                  name="year"
+                  placeholder="Année"
+                  keyboardType="numeric"
+                  icon={<Calendar color="#2F66DD" size={18} />}
+                />
               </View>
             </View>
           </View>
 
+          {/* ===================== FICHIERS ===================== */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Fichiers & Médias</Text>
 
@@ -304,80 +256,51 @@ export default function AddBookScreen() {
                 )}
               />
             </View>
-            {errors.pdfPath && (
-              <Text style={[styles.error, { marginTop: -8, marginBottom: 12 }]}>
-                {errors.pdfPath.message}
-              </Text>
-            )}
 
             <Controller
               control={control}
               name="coverImage"
-              render={({ field: { value } }) =>
-                value ? (
-                  <View style={styles.previewContainer}>
-                    <Image
-                      source={{ uri: value }}
-                      style={styles.previewImage}
-                    />
-                    <Text style={styles.previewLabel}>
-                      Aperçu de la couverture
-                    </Text>
-                  </View>
-                ) : (
-                  <></>
-                )
-              }
+              render={({ field: { value } }) => (
+                <View>
+                  {value ? (
+                    <View style={styles.previewContainer}>
+                      <Image
+                        source={{ uri: value }}
+                        style={styles.previewImage}
+                      />
+                      <Text style={styles.previewLabel}>
+                        Aperçu de la couverture
+                      </Text>
+                    </View>
+                  ) : (
+                    <View />
+                  )}
+                </View>
+              )}
             />
           </View>
 
+          {/* ===================== SUPPLÉMENTAIRE ===================== */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Informations Supplémentaires</Text>
-            <View style={styles.inputWrapper}>
-              <Hash color="#2F66DD" size={18} style={styles.inputIcon} />
-              <Controller
-                control={control}
-                name="isbn"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={styles.input}
-                    placeholder="ISBN (Optionnel)"
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-            </View>
-            <View
-              style={[
-                styles.inputWrapper,
-                { alignItems: "flex-start", paddingTop: 10 },
-              ]}
-            >
-              <AlignLeft
-                color="#2F66DD"
-                size={18}
-                style={[styles.inputIcon, { marginTop: 4 }]}
-              />
-              <Controller
-                control={control}
-                name="description"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    style={[
-                      styles.input,
-                      { height: 80, textAlignVertical: "top" },
-                    ]}
-                    placeholder="Description du livre..."
-                    multiline
-                    value={value}
-                    onChangeText={onChange}
-                  />
-                )}
-              />
-            </View>
+
+            <FormInput
+              control={control}
+              name="isbn"
+              placeholder="ISBN (Optionnel)"
+              icon={<Hash color="#2F66DD" size={18} />}
+            />
+
+            <FormInput
+              control={control}
+              name="description"
+              placeholder="Description du livre..."
+              multiline
+              icon={<AlignLeft color="#2F66DD" size={18} />}
+            />
           </View>
         </ScrollView>
+
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.saveButton}
@@ -433,24 +356,7 @@ const styles = StyleSheet.create({
     borderLeftColor: "#2F66DD",
     paddingLeft: 10,
   },
-  inputWrapper: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F6FF",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#E0E5F0",
-  },
-  inputIcon: { marginRight: 10 },
   row: { flexDirection: "row" },
-  input: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: "#1E2432",
-  },
   fileRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -515,5 +421,4 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginLeft: 10,
   },
-  error: { color: "red", marginBottom: 10 },
 });
