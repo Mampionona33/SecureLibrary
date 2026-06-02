@@ -184,3 +184,10 @@ Si vous lancez Expo dans votre navigateur.
      Constants.expoConfig?.extra?.backendUrl ||
      "http://192.168.201.29:8000/api";
    ```
+
+4 .**run android emulator**
+
+```bash
+cd "C:\Users\Mampionona\AppData\Local\Android\Sdk\emulator"
+.\emulator.exe -avd Medium_Phone
+```
