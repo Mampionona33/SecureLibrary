@@ -33,6 +33,7 @@ import { encryptFernet } from "@/services/crypto";
 import * as FileSystem from "expo-file-system/legacy";
 import { FormInput } from "@/components/form-input";
 import { UploadButton } from "@/components/upload-button";
+import { deleteEncryptedPdf, encryptPdf } from "@/utils/pdf-crypto";
 
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
 
@@ -60,34 +61,12 @@ export default function AddBookScreen() {
   const onSubmit = async (data: BookFormData) => {
     try {
       const formData = new FormData();
+
       formData.append("title", data.title);
       formData.append("category", data.category);
       formData.append("author", data.author);
       formData.append("year", data.year);
-      formData.append("description", data.description || "");
-      formData.append("isbn", data.isbn || "");
       formData.append("status", data.status);
-
-      // 🔒 Cryptage du PDF
-      if (data.pdfPath) {
-        const base64Data = await FileSystem.readAsStringAsync(data.pdfPath, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-
-        const encryptedToken = await encryptFernet(base64Data, ENCRYPTION_KEY);
-
-        const encPath = `${FileSystem.cacheDirectory}book.enc`;
-
-        await FileSystem.writeAsStringAsync(encPath, encryptedToken, {
-          encoding: FileSystem.EncodingType.UTF8,
-        });
-
-        formData.append("pdf_file", {
-          uri: encPath,
-          name: "book.enc",
-          type: "application/octet-stream",
-        } as any);
-      }
 
       if (data.isbn && data.isbn.trim() !== "") {
         formData.append("isbn", data.isbn);
@@ -95,6 +74,19 @@ export default function AddBookScreen() {
 
       if (data.description) {
         formData.append("description", data.description);
+      }
+
+      let encPath: string | null = null;
+
+      // 🔒 Cryptage du PDF
+      if (data.pdfPath) {
+        encPath = await encryptPdf(data.pdfPath);
+
+        formData.append("pdf_file", {
+          uri: encPath,
+          name: "book.enc",
+          type: "application/octet-stream",
+        } as any);
       }
 
       if (data.coverImage) {
@@ -106,6 +98,11 @@ export default function AddBookScreen() {
       }
 
       const response = await api.post("/library/", formData);
+
+      // 🧹 cleanup uniquement si le fichier a été créé
+      if (encPath) {
+        await deleteEncryptedPdf(encPath);
+      }
 
       console.log("📚 Livre enregistré :", response.data);
       alert("Livre ajouté avec succès !");

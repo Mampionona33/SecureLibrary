@@ -188,6 +188,7 @@ Si vous lancez Expo dans votre navigateur.
 4 .**run android emulator**
 
 ```bash
+# ouvrir l'emulateur
 cd "C:\Users\Mampionona\AppData\Local\Android\Sdk\emulator"
 .\emulator.exe -avd Medium_Phone
 ```
