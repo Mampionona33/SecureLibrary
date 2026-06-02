@@ -32,6 +32,7 @@ import api from "@/services/api";
 import { encryptFernet } from "@/services/crypto";
 import * as FileSystem from "expo-file-system/legacy";
 import { FormInput } from "@/components/form-input";
+import { UploadButton } from "@/components/upload-button";
 
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
 
@@ -204,27 +205,13 @@ export default function AddBookScreen() {
                 control={control}
                 name="pdfPath"
                 render={({ field: { onChange, value } }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.uploadButton,
-                      value ? styles.uploadActive : null,
-                    ]}
+                  <UploadButton
+                    value={value}
+                    label="Fichier PDF"
+                    activeLabel="PDF prêt"
+                    Icon={File}
                     onPress={() => pickDocument(onChange)}
-                  >
-                    {value ? (
-                      <CheckCircle2 color="#FFF" size={20} />
-                    ) : (
-                      <File color="#2F66DD" size={20} />
-                    )}
-                    <Text
-                      style={[
-                        styles.uploadText,
-                        value ? { color: "#FFF" } : null,
-                      ]}
-                    >
-                      {value ? "PDF Prêt" : "Fichier PDF"}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 )}
               />
 
@@ -232,27 +219,13 @@ export default function AddBookScreen() {
                 control={control}
                 name="coverImage"
                 render={({ field: { onChange, value } }) => (
-                  <TouchableOpacity
-                    style={[
-                      styles.uploadButton,
-                      value ? styles.uploadActive : null,
-                    ]}
+                  <UploadButton
+                    value={value}
+                    label="Couverture"
+                    activeLabel="Image OK"
+                    Icon={ImageIcon}
                     onPress={() => pickImage(onChange)}
-                  >
-                    {value ? (
-                      <CheckCircle2 color="#FFF" size={20} />
-                    ) : (
-                      <ImageIcon color="#2F66DD" size={20} />
-                    )}
-                    <Text
-                      style={[
-                        styles.uploadText,
-                        value ? { color: "#FFF" } : null,
-                      ]}
-                    >
-                      {value ? "Image OK" : "Couverture"}
-                    </Text>
-                  </TouchableOpacity>
+                  />
                 )}
               />
             </View>
