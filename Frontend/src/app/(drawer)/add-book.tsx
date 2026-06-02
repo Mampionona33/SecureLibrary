@@ -23,6 +23,7 @@ import {
   AlignLeft,
   CheckCircle2,
 } from "lucide-react-native";
+import { ActivityIndicator } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookFormData, bookSchema } from "@/schemas/book-schema";
@@ -38,6 +39,7 @@ import { deleteEncryptedPdf, encryptPdf } from "@/utils/pdf-crypto";
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
 
 export default function AddBookScreen() {
+  const [loading, setLoading] = React.useState(false);
   const {
     control,
     handleSubmit,
@@ -60,6 +62,9 @@ export default function AddBookScreen() {
 
   const onSubmit = async (data: BookFormData) => {
     console.log("🔥 SUBMIT TRIGGERED", data);
+
+    setLoading(true); // 🟡 START LOADING
+
     try {
       const formData = new FormData();
 
@@ -69,7 +74,7 @@ export default function AddBookScreen() {
       formData.append("year", data.year);
       formData.append("status", data.status);
 
-      if (data.isbn && data.isbn.trim() !== "") {
+      if (data.isbn?.trim()) {
         formData.append("isbn", data.isbn);
       }
 
@@ -79,7 +84,6 @@ export default function AddBookScreen() {
 
       let encPath: string | null = null;
 
-      // 🔒 Cryptage du PDF
       if (data.pdfPath) {
         encPath = await encryptPdf(data.pdfPath);
 
@@ -98,19 +102,25 @@ export default function AddBookScreen() {
         } as any);
       }
 
-      const response = await api.post("/library/", formData);
+      const response = await api.post("/library/", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
 
-      // 🧹 cleanup uniquement si le fichier a été créé
       if (encPath) {
         await deleteEncryptedPdf(encPath);
       }
 
       console.log("📚 Livre enregistré :", response.data);
+
       alert("Livre ajouté avec succès !");
       reset();
     } catch (error: any) {
       console.error("❌ Erreur lors de l'ajout du livre :", error.message);
       alert("Impossible d'ajouter le livre. Vérifie l'API.");
+    } finally {
+      setLoading(false); // 🔴 STOP LOADING
     }
   };
 
@@ -274,12 +284,20 @@ export default function AddBookScreen() {
 
         <View style={styles.footer}>
           <TouchableOpacity
-            style={styles.saveButton}
+            style={[styles.saveButton, loading && { opacity: 0.7 }]}
             onPress={handleSubmit(onSubmit)}
             activeOpacity={0.8}
+            disabled={loading}
           >
-            <Save color="#FFF" size={22} />
-            <Text style={styles.saveText}>Finaliser l'enregistrement</Text>
+            {loading ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Save color="#FFF" size={22} />
+            )}
+
+            <Text style={styles.saveText}>
+              {loading ? "Chargement..." : "Finaliser l'enregistrement"}
+            </Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
