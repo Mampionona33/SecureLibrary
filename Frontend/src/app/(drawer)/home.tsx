@@ -70,9 +70,16 @@ export default function HomeScreen() {
 
   const fetchBooks = async (isRefreshing = false) => {
     if (!isRefreshing) setLoading(true);
+
     try {
       const response = await api.get("/library/");
-      setBooks(response.data);
+
+      const data = response.data;
+
+      const booksArray = Array.isArray(data) ? data : data.results || [];
+
+      setBooks(booksArray);
+
       await checkLocalFiles();
     } catch (error) {
       console.error("Erreur lors du chargement des livres :", error);

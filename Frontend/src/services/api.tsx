@@ -7,30 +7,39 @@ const baseURL =
 
 const api = axios.create({
   baseURL,
-  timeout: 5000,
+  timeout: 30000, // ⚠️ important pour upload fichiers
 });
 
-// Intercepteur pour ajouter le token
+// 🔐 JWT interceptor
 api.interceptors.request.use(async (config) => {
   const token = await AsyncStorage.getItem("accessToken");
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+
+  // ❌ IMPORTANT: ne jamais override Content-Type pour FormData
+  if (!(config.data instanceof FormData)) {
+    config.headers["Content-Type"] = "application/json";
+  } else {
+    delete config.headers["Content-Type"];
+  }
+
   return config;
 });
 
-// Intercepteur pour logger les réponses
+// 🔍 logs utiles
 api.interceptors.response.use(
   (response) => {
-    console.log("✅ Réponse API réussie :", response.config.url, response.data);
+    console.log("✅ API:", response.config.url);
     return response;
   },
   (error) => {
-    console.error(
-      "❌ Erreur API :",
-      error.config.url,
-      error.response?.data || error.message,
-    );
+    console.log("❌ API ERROR:");
+    console.log("URL:", error.config?.url);
+    console.log("MSG:", error.message);
+    console.log("DATA:", error.response?.data);
+
     return Promise.reject(error);
   },
 );

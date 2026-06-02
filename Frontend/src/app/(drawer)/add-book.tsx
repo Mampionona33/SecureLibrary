@@ -59,6 +59,7 @@ export default function AddBookScreen() {
   });
 
   const onSubmit = async (data: BookFormData) => {
+    console.log("🔥 SUBMIT TRIGGERED", data);
     try {
       const formData = new FormData();
 

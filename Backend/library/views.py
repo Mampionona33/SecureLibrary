@@ -1,14 +1,23 @@
 from rest_framework import viewsets, permissions
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework.parsers import MultiPartParser, FormParser
+
 from .models import Book
 from .serializers import BookSerializer
 
+
 class BookViewSet(viewsets.ModelViewSet):
-    queryset = Book.objects.all().order_by('-created_at')
     serializer_class = BookSerializer
     authentication_classes = [JWTAuthentication]
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+    permission_classes = [permissions.IsAuthenticated]
+
+    parser_classes = [MultiPartParser, FormParser]
+
+    queryset = Book.objects.all().order_by('-created_at')
+
+    def get_queryset(self):
+        # 🔒 bibliothèque privée : chaque user voit uniquement ses livres
+        return Book.objects.filter(added_by=self.request.user).order_by('-created_at')
 
     def perform_create(self, serializer):
-        # Automatically set the added_by field to the current user
         serializer.save(added_by=self.request.user)

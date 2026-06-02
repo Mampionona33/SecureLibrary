@@ -140,7 +140,7 @@ CORS_ALLOW_ALL_ORIGINS = True # Autorise le téléphone à communiquer avec le P
 
 # Configuration des fichiers médias (PDF et Images)
 MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+MEDIA_ROOT = BASE_DIR / 'media'
 
 # Clé de chiffrement (À générer avec Fernet.generate_key())
 PDF_ENCRYPTION_KEY = os.getenv('PDF_ENCRYPTION_KEY').encode()
