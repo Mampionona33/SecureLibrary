@@ -65,63 +65,75 @@ export default function AddBookScreen() {
 
     setLoading(true); // 🟡 START LOADING
 
-    try {
-      const formData = new FormData();
+    console.log("🌍 TEST BACKEND...");
 
-      formData.append("title", data.title);
-      formData.append("category", data.category);
-      formData.append("author", data.author);
-      formData.append("year", data.year);
-      formData.append("status", data.status);
+    const response = await api.post("/library/", {
+      title: data.title,
+      category: data.category,
+      author: data.author,
+      year: data.year,
+      status: data.status,
+      isbn: data.isbn,
+      description: data.description,
+    });
 
-      if (data.isbn?.trim()) {
-        formData.append("isbn", data.isbn);
-      }
+    // try {
+    //   const formData = new FormData();
 
-      if (data.description) {
-        formData.append("description", data.description);
-      }
+    //   formData.append("title", data.title);
+    //   formData.append("category", data.category);
+    //   formData.append("author", data.author);
+    //   formData.append("year", data.year);
+    //   formData.append("status", data.status);
 
-      let encPath: string | null = null;
+    //   if (data.isbn?.trim()) {
+    //     formData.append("isbn", data.isbn);
+    //   }
 
-      if (data.pdfPath) {
-        encPath = await encryptPdf(data.pdfPath);
+    //   if (data.description) {
+    //     formData.append("description", data.description);
+    //   }
 
-        formData.append("pdf_file", {
-          uri: encPath,
-          name: "book.enc",
-          type: "application/octet-stream",
-        } as any);
-      }
+    //   let encPath: string | null = null;
 
-      if (data.coverImage) {
-        formData.append("cover_image", {
-          uri: data.coverImage,
-          name: "cover.jpg",
-          type: "image/jpeg",
-        } as any);
-      }
+    //   // if (data.pdfPath) {
+    //   //   encPath = await encryptPdf(data.pdfPath);
 
-      const response = await api.post("/library/", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
+    //   //   formData.append("pdf_file", {
+    //   //     uri: encPath,
+    //   //     name: "book.enc",
+    //   //     type: "application/octet-stream",
+    //   //   } as any);
+    //   // }
 
-      if (encPath) {
-        await deleteEncryptedPdf(encPath);
-      }
+    //   // if (data.coverImage) {
+    //   //   formData.append("cover_image", {
+    //   //     uri: data.coverImage,
+    //   //     name: "cover.jpg",
+    //   //     type: "image/jpeg",
+    //   //   } as any);
+    //   // }
 
-      console.log("📚 Livre enregistré :", response.data);
+    //   const response = await api.post("/library/", formData, {
+    //     headers: {
+    //       "Content-Type": "multipart/form-data",
+    //     },
+    //   });
 
-      alert("Livre ajouté avec succès !");
-      reset();
-    } catch (error: any) {
-      console.error("❌ Erreur lors de l'ajout du livre :", error.message);
-      alert("Impossible d'ajouter le livre. Vérifie l'API.");
-    } finally {
-      setLoading(false); // 🔴 STOP LOADING
-    }
+    //   if (encPath) {
+    //     await deleteEncryptedPdf(encPath);
+    //   }
+
+    //   console.log("📚 Livre enregistré :", response.data);
+
+    //   alert("Livre ajouté avec succès !");
+    //   reset();
+    // } catch (error: any) {
+    //   console.error("❌ Erreur lors de l'ajout du livre :", error.message);
+    //   alert("Impossible d'ajouter le livre. Vérifie l'API.");
+    // } finally {
+    //   setLoading(false); // 🔴 STOP LOADING
+    // }
   };
 
   async function pickDocument(onChange: (uri: string) => void) {
