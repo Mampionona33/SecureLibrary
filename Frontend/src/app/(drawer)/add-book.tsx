@@ -11,6 +11,7 @@ import {
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   File,
   Image as ImageIcon,
@@ -97,28 +98,75 @@ export default function AddBookScreen() {
   const onSubmit = async (data: BookFormData) => {
     try {
       setLoading(true);
-
       console.log("🔥 SUBMIT DATA:", data);
 
-      const payload = {
-        title: data.title,
-        category: data.category,
-        author: data.author,
-        year: Number(data.year),
-        status: data.status,
-        isbn: data.isbn?.trim() || null,
-        description: data.description || null,
-      };
+      const formData = new FormData();
 
-      const response = await api.post("/library/", payload);
+      // Champs texte
+      formData.append("title", data.title);
+      formData.append("author", data.author);
+      formData.append("category", data.category);
+      formData.append("year", String(Number(data.year)));
+      formData.append("status", data.status);
+      formData.append("isbn", data.isbn ?? "");
+      formData.append("description", data.description ?? "");
 
-      console.log("📚 CREATED:", response.data);
+      // PDF → doit s’appeler "pdf_file"
+      if (data.pdfPath) {
+        const pdfName = data.pdfPath.split("/").pop() || "document.pdf";
+        formData.append("pdf_file", {
+          uri: data.pdfPath,
+          name: pdfName,
+          type: "application/pdf",
+        } as any);
+      }
+
+      // Image → doit s’appeler "cover_image"
+      if (data.coverImage) {
+        const imageName = data.coverImage.split("/").pop() || "cover.jpg";
+        const imageType = imageName.endsWith(".png")
+          ? "image/png"
+          : "image/jpeg";
+        formData.append("cover_image", {
+          uri: data.coverImage,
+          name: imageName,
+          type: imageType,
+        } as any);
+      }
+
+      console.log(
+        "🚀 Envoi de la requête à :",
+        `${api.defaults.baseURL}/library/`,
+      );
+
+      const token = await AsyncStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error(
+          "Token d'authentification manquant. Veuillez vous reconnecter.",
+        );
+      }
+
+      const response = await fetch(`${api.defaults.baseURL}/library/`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Erreur Serveur: ${response.status} - ${errorText}`);
+      }
+
+      const responseData = await response.json();
+      console.log("📚 SERVEUR RESPONSE:", responseData);
 
       reset();
       alert("Livre ajouté avec succès !");
     } catch (error: any) {
-      console.log("❌ ERROR:", error.response?.data || error.message);
-      alert("Erreur lors de l'ajout du livre");
+      console.log("❌ ERROR:", error.message || error);
+      alert(`Erreur lors de l'ajout du livre : ${error.message}`);
     } finally {
       setLoading(false);
     }
