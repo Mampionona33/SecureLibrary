@@ -72,17 +72,30 @@ export default function HomeScreen() {
     if (!isRefreshing) setLoading(true);
 
     try {
-      const response = await api.get("/library/");
+      console.log("🔄 Début de la récupération des livres...");
 
+      const response = await api.get("/library/");
       const data = response.data;
 
+      // 🔍 LOG 1 : Afficher la réponse brute exacte du serveur
+      console.log("📥 DONNÉES BRUTES DU BACKEND :");
+      console.log(JSON.stringify(data, null, 2));
+
       const booksArray = Array.isArray(data) ? data : data.results || [];
+
+      // 🔍 LOG 2 : Afficher le tableau final utilisé par l'application
+      console.log(`📚 NOMBRE DE LIVRES EXTRAITS : ${booksArray.length}`);
+      console.log("📝 LISTE DES LIVRES POUR L'AFFICHAGE :");
+      console.log(JSON.stringify(booksArray, null, 2));
 
       setBooks(booksArray);
 
       await checkLocalFiles();
-    } catch (error) {
-      console.error("Erreur lors du chargement des livres :", error);
+    } catch (error: any) {
+      // 🔍 LOG 3 : Afficher l'erreur détaillée en cas d'échec
+      console.error("❌ ERREUR LORS DU CHARGEMENT :");
+      console.error(error.response?.data || error.message);
+
       Alert.alert("Erreur", "Impossible de charger la bibliothèque.");
     } finally {
       setLoading(false);
