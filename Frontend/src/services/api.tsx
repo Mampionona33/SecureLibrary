@@ -16,27 +16,21 @@ console.log("🌍 API URL =", baseURL);
 // ==========================
 api.interceptors.request.use(
   async (config) => {
-    try {
-      const token = await AsyncStorage.getItem("accessToken");
+    const token = await AsyncStorage.getItem("accessToken");
+    config.headers = config.headers || {};
 
-      config.headers = config.headers || {};
-
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-
-      // Ne pas forcer Content-Type sur FormData
-      if (!(config.data instanceof FormData)) {
-        config.headers["Content-Type"] = "application/json";
-      } else {
-        delete config.headers["Content-Type"];
-      }
-
-      return config;
-    } catch (error) {
-      console.error("❌ Request interceptor error:", error);
-      return Promise.reject(error);
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Ne pas forcer Content-Type sur FormData
+    if (!(config.data instanceof FormData)) {
+      config.headers["Content-Type"] = "application/json";
+    } else {
+      delete config.headers["Content-Type"];
+    }
+
+    return config;
   },
   (error) => Promise.reject(error),
 );
@@ -49,34 +43,36 @@ api.interceptors.response.use(
     console.log(
       `✅ ${response.config.method?.toUpperCase()} ${response.config.url}`,
     );
-
     return response;
   },
   async (error) => {
     const status = error.response?.status;
-    const url = error.config?.url;
 
-    console.log("❌ API ERROR");
-    console.log("URL:", url);
-    console.log("STATUS:", status);
-    console.log("MESSAGE:", error.message);
-    console.log("DATA:", error.response?.data);
-
-    // JWT expiré ou invalide
     if (status === 401) {
-      console.log("🔒 Session expirée");
+      console.log("🔒 Token expiré, tentative de refresh...");
 
-      await AsyncStorage.removeItem("accessToken");
+      const refreshToken = await AsyncStorage.getItem("refreshToken");
+      if (refreshToken) {
+        try {
+          const res = await axios.post(`${baseURL}/token/refresh/`, {
+            refresh: refreshToken,
+          });
 
-      /**
-       * Ici tu peux :
-       * - rediriger vers Login
-       * - vider le store utilisateur
-       * - afficher une notification
-       */
+          const newAccessToken = res.data.access;
+          await AsyncStorage.setItem("accessToken", newAccessToken);
 
-      // Exemple:
-      // router.replace("/login");
+          // Réessayer la requête originale avec le nouveau token
+          error.config.headers.Authorization = `Bearer ${newAccessToken}`;
+          return api.request(error.config);
+        } catch (refreshError) {
+          console.log("❌ Refresh échoué, déconnexion...");
+          await AsyncStorage.removeItem("accessToken");
+          await AsyncStorage.removeItem("refreshToken");
+          // router.replace("/login");
+        }
+      } else {
+        console.log("❌ Pas de refreshToken disponible");
+      }
     }
 
     return Promise.reject(error);
