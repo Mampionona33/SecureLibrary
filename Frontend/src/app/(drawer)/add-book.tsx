@@ -88,10 +88,8 @@ export default function AddBookScreen() {
     });
 
     if (!res.canceled && res.assets?.length) {
-      const uri = decodeURIComponent(res.assets[0].uri);
-
+      const uri = res.assets[0].uri;
       console.log("🖼️ IMAGE sélectionnée :", uri);
-
       onChange(uri);
     }
   }
@@ -215,23 +213,26 @@ export default function AddBookScreen() {
             <Controller
               control={control}
               name="coverImage"
-              render={({ field: { value } }) => (
-                <View>
-                  {value ? (
-                    <View style={styles.previewContainer}>
-                      <Image
-                        source={{ uri: value }}
-                        style={styles.previewImage}
-                      />
-                      <Text style={styles.previewLabel}>
-                        Aperçu de la couverture
-                      </Text>
-                    </View>
-                  ) : (
-                    <View />
-                  )}
-                </View>
-              )}
+              render={({ field: { value } }) => {
+                console.log("🔍 Aperçu coverImage:", value);
+                return (
+                  <View>
+                    {value ? (
+                      <View style={styles.previewContainer}>
+                        <Image
+                          source={{ uri: value }}
+                          style={styles.previewImage}
+                        />
+                        <Text style={styles.previewLabel}>
+                          Aperçu de la couverture
+                        </Text>
+                      </View>
+                    ) : (
+                      <View />
+                    )}
+                  </View>
+                );
+              }}
             />
           </View>
 
