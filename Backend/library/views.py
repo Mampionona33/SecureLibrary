@@ -24,5 +24,5 @@ class BookViewSet(viewsets.ModelViewSet):
         serializer.save(added_by=self.request.user)
 
     def create(self, request, *args, **kwargs):
-        print("🔥 CREATE CALLED")
+        print("RAW DATA:", request.body)
         return super().create(request, *args, **kwargs)
