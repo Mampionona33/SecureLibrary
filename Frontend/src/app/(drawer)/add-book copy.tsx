@@ -28,12 +28,12 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BookFormData, bookSchema } from "@/schemas/book-schema";
 import * as DocumentPicker from "expo-document-picker";
-import * as ImagePicker from "expo-image-picker";
 import api from "@/services/api";
 import { encryptFernet } from "@/services/crypto";
 import * as FileSystem from "expo-file-system/legacy";
 import { FormInput } from "@/components/form-input";
 import { UploadButton } from "@/components/upload-button";
+import * as ImagePicker from "expo-image-picker";
 import { deleteEncryptedPdf, encryptPdf } from "@/utils/pdf-crypto";
 
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
@@ -60,10 +60,80 @@ export default function AddBookScreen() {
     },
   });
 
+  const onSubmit = async (data: BookFormData) => {
+    try {
+      setLoading(true);
+
+      console.log("🔥 SUBMIT DATA:", data);
+
+      const formData = new FormData();
+
+      // 🧠 helper pour éviter les bugs d'encodage Expo
+      const normalizeUri = (uri: string) => decodeURIComponent(uri);
+
+      // 📚 TEXT FIELDS
+      formData.append("title", data.title);
+      formData.append("category", data.category);
+      formData.append("author", data.author);
+      formData.append("year", String(Number(data.year)));
+      formData.append("status", data.status);
+
+      if (data.isbn?.trim()) {
+        formData.append("isbn", data.isbn);
+      }
+
+      if (data.description?.trim()) {
+        formData.append("description", data.description);
+      }
+
+      // 🔒 PDF FILE
+      if (data.pdfPath) {
+        const pdfUri = normalizeUri(data.pdfPath);
+
+        console.log("📄 PDF URI UPLOAD:", pdfUri);
+
+        formData.append("pdf_file", {
+          uri: pdfUri,
+          name: "book.pdf",
+          type: "application/pdf",
+        } as any);
+      }
+
+      // 🖼️ IMAGE FILE
+      if (data.coverImage) {
+        const imageUri = normalizeUri(data.coverImage);
+
+        console.log("🖼️ IMAGE URI UPLOAD:", imageUri);
+
+        formData.append("cover_image", {
+          uri: imageUri,
+          name: "cover.jpg",
+          type: "image/jpeg",
+        } as any);
+      }
+
+      // 🚀 REQUEST (IMPORTANT: PAS DE Content-Type manuel)
+      const response = await api.post("/library/", formData);
+
+      console.log("📚 CREATED SUCCESS:", response.data);
+
+      reset();
+      alert("Livre ajouté avec succès !");
+    } catch (error: any) {
+      console.log("❌ ERROR RESPONSE:", error.response?.data);
+      console.log("❌ ERROR MESSAGE:", error.message);
+
+      alert("Erreur lors de l'ajout du livre");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   async function pickDocument(onChange: (uri: string) => void) {
     const result = await DocumentPicker.getDocumentAsync({
       type: "application/pdf",
       copyToCacheDirectory: true,
+      multiple: false,
     });
 
     if (!result.canceled && result.assets?.length) {
@@ -89,42 +159,9 @@ export default function AddBookScreen() {
 
     if (!res.canceled && res.assets?.length) {
       const uri = decodeURIComponent(res.assets[0].uri);
-
-      console.log("🖼️ IMAGE sélectionnée :", uri);
-
       onChange(uri);
     }
   }
-
-  const onSubmit = async (data: BookFormData) => {
-    try {
-      setLoading(true);
-
-      console.log("🔥 SUBMIT DATA:", data);
-
-      const payload = {
-        title: data.title,
-        category: data.category,
-        author: data.author,
-        year: Number(data.year),
-        status: data.status,
-        isbn: data.isbn?.trim() || null,
-        description: data.description || null,
-      };
-
-      const response = await api.post("/library/", payload);
-
-      console.log("📚 CREATED:", response.data);
-
-      reset();
-      alert("Livre ajouté avec succès !");
-    } catch (error: any) {
-      console.log("❌ ERROR:", error.response?.data || error.message);
-      alert("Erreur lors de l'ajout du livre");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
