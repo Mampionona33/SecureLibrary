@@ -36,6 +36,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { FormInput } from "@/components/form-input";
 import { UploadButton } from "@/components/upload-button";
 import { deleteEncryptedPdf, encryptPdf } from "@/utils/pdf-crypto";
+import { apiFetch } from "@/services/apiFetch";
 
 const ENCRYPTION_KEY = process.env.EXPO_PUBLIC_PDF_ENCRYPTION_KEY!;
 
@@ -134,23 +135,10 @@ export default function AddBookScreen() {
         } as any);
       }
 
-      console.log(
-        "🚀 Envoi de la requête à :",
-        `${api.defaults.baseURL}/library/`,
-      );
+      console.log("🚀 Envoi de la requête à :", "/library/");
 
-      const token = await AsyncStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error(
-          "Token d'authentification manquant. Veuillez vous reconnecter.",
-        );
-      }
-
-      const response = await fetch(`${api.defaults.baseURL}/library/`, {
+      const response = await apiFetch("/library/", {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
         body: formData,
       });
 
