@@ -8,9 +8,8 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "extra": {
-      "backendUrl": "http://192.168.202.219:8000/api" // Pour LDPlayer
-      // "backendUrl": "http://localhost:8000/api" // Pour LDPlayer
-      // "backendUrl": "http://10.0.2.2:8000/api" // Pour Android Studio Emulator
+      "backendUrl": "http://localhost:8000/api"
+      // "backendUrl": "http://192.168.202.219:8000/api"
     },
     "ios": {
       "icon": "./assets/expo.icon"
@@ -61,7 +60,8 @@
         }
       ],
       "expo-font",
-      "expo-image"
+      "expo-image",
+      "expo-sharing"
     ],
     "experiments": {
       "typedRoutes": true,
