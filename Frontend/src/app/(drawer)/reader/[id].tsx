@@ -9,21 +9,19 @@ import {
   BackHandler,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowLeft, FileText, Eye, AlertCircle } from "lucide-react-native";
-// ✅ Alignement stratégique de l'import pour garantir le même accès disque que home.tsx
-import * as FileSystem from "expo-file-system/legacy";
+import { ArrowLeft, FileText, Eye } from "lucide-react-native";
+import * as FileSystem from "expo-file-system";
 import * as Sharing from "expo-sharing";
 
 export default function ReaderScreen() {
   const { id, title } = useLocalSearchParams();
   const [loading, setLoading] = useState(true);
-  const [errorStatus, setErrorStatus] = useState<string | null>(null);
   const router = useRouter();
 
-  // 📂 Dossier persistant identique à celui de home.tsx
-  const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
+  // 📂 Accès au dossier document où HomeScreen télécharge le fichier
+  const BOOKS_DIR = `${FileSystem.documentDirectory}books/`;
 
-  // ✅ Évite de monter un chemin "undefined.pdf" au premier rendu asynchrone
+  // ✅ Garde pour éviter de construire une URI "null.pdf" lors de l'initialisation de la route
   const fileUri = id ? `${BOOKS_DIR}${id}.pdf` : null;
 
   useEffect(() => {
@@ -38,122 +36,114 @@ export default function ReaderScreen() {
     return () => backHandler.remove();
   }, []);
 
-  // ✅ On ne lance la vérification que lorsque l'ID du livre est réellement hydraté par Expo
   useEffect(() => {
     if (id) {
       checkAndOpenPdf();
-    } else {
-      console.log(
-        "⏳ En attente de la résolution des paramètres par Expo Router...",
-      );
     }
   }, [id]);
 
   const checkAndOpenPdf = async () => {
-    if (!fileUri) return;
+    if (!id || !fileUri) return;
 
     try {
       setLoading(true);
-      setErrorStatus(null);
-      console.log("🔍 Évaluation de l'URI locale du PDF :", fileUri);
 
-      // 1. Vérification asynchrone de la présence physique du document
+      // 1. Vérification de l'existence du fichier
       const fileInfo = await FileSystem.getInfoAsync(fileUri);
-
       if (!fileInfo.exists) {
-        console.warn("⚠️ Fichier introuvable localement :", fileUri);
         Alert.alert(
           "Fichier introuvable",
-          "Le livre n'est pas encore téléchargé ou a été supprimé.",
-          [
-            {
-              text: "Retour à l'accueil",
-              onPress: () => router.replace("/(drawer)/home"),
-            },
-          ],
+          "Le livre n'a pas pu être trouvé en local. Recommencez le téléchargement.",
         );
+        router.replace("/(drawer)/home");
         return;
       }
 
-      console.log("📄 Document PDF local validé !");
+      console.log("📄 Accès au PDF local :", fileInfo.uri);
 
-      // ✅ Une fois l'intégrité du document validée, on cache le chargement
+      // ✅ Arrêt du loader global avant de déclencher l'ouverture
       setLoading(false);
 
-      // 2. Déclenchement automatique et sécurisé du lecteur système (après un infime délai de rendu du layout)
-      setTimeout(async () => {
-        try {
-          await openPdfWithSharing();
-        } catch (shareErr) {
-          console.error("❌ Échec de l'ouverture automatique :", shareErr);
-        }
-      }, 400);
+      // 2. Tenter l'ouverture automatique après un léger délai CPU
+      setTimeout(() => {
+        openPdfWithSharing(fileInfo.uri);
+      }, 300);
     } catch (error: any) {
-      console.error(
-        "❌ Erreur critique lors de l'accès au fichier :",
-        error.message,
-      );
-      setErrorStatus(error.message);
-      Alert.alert(
-        "Erreur technique",
-        "Impossible de charger correctement ce livre de la bibliothèque.",
-        [{ text: "OK", onPress: () => router.replace("/(drawer)/home") }],
-      );
-    } finally {
-      // ✅ Le bloc finally garantit que le chargement s'arrêtera peu importe le cas de figure !
+      console.error("❌ Erreur accès :", error.message);
       setLoading(false);
+      Alert.alert("Erreur", "Impossible d'accéder au fichier local.");
+      router.replace("/(drawer)/home");
     }
   };
 
-  const openPdfWithSharing = async () => {
-    if (!fileUri) return;
+  const openPdfWithSharing = async (targetUri?: string) => {
+    let uriToShare = targetUri;
+
+    // Si aucune URI n'est transmise, on la résout dynamiquement de manière sécurisée
+    if (!uriToShare) {
+      if (!fileUri) return;
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        if (fileInfo.exists) {
+          uriToShare = fileInfo.uri;
+        } else {
+          Alert.alert(
+            "Erreur",
+            "La version locale de ce livre est introuvable.",
+          );
+          return;
+        }
+      } catch (err) {
+        Alert.alert("Erreur", "Impossible de lire le fichier local.");
+        return;
+      }
+    }
 
     try {
       const isAvailable = await Sharing.isAvailableAsync();
       if (!isAvailable) {
         Alert.alert(
-          "Incompatibilité",
-          "L'ouverture asynchrone sécurisée de fichiers locaux n'est pas supportée sur cet appareil.",
+          "Indisponible",
+          "L'ouverture automatique ou le partage de fichiers n'est pas supporté sur votre appareil.",
         );
         return;
       }
 
-      console.log(
-        "📤 Partage/Ouverture du document via expo-sharing :",
-        fileUri,
-      );
+      console.log("📤 Invocation de expo-sharing pour :", uriToShare);
 
-      await Sharing.shareAsync(fileUri, {
+      // Partage / Ouverture du fichier en transmettant l'URI native validée
+      await Sharing.shareAsync(uriToShare, {
         mimeType: "application/pdf",
-        dialogTitle: `Lecture de : ${title || "Mon Livre"}`,
+        dialogTitle: `${title}`,
         UTI: "com.adobe.pdf",
       });
     } catch (error: any) {
-      console.error("❌ Erreur pendant le partage :", error.message);
-      Alert.alert(
-        "Lecteur introuvable",
-        "Aucune application de lecture PDF n'a pu prendre en charge ce document.",
-        [{ text: "OK" }],
-      );
+      console.error("❌ Erreur expo-sharing :", error.message);
     }
   };
 
-  // 🌀 Spinner de chargement propre avec sous-titre rassurant
+  if (!id) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2F66DD" />
+        <Text style={styles.loadingText}>
+          Attente des informations de navigation...
+        </Text>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2F66DD" />
-        <Text style={styles.loadingText}>Vérification du fichier...</Text>
-        <Text style={styles.subLoadingText}>
-          Lecture sécurisée du disque physique
-        </Text>
+        <Text style={styles.loadingText}>Vérification du fichier local...</Text>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Barre d'en-tête (Navigation) */}
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => router.replace("/(drawer)/home")}
@@ -162,41 +152,36 @@ export default function ReaderScreen() {
           <ArrowLeft color="#FFF" size={24} />
         </TouchableOpacity>
         <Text style={styles.title} numberOfLines={1}>
-          {title || "Lecteur sécurisé"}
+          {title}
         </Text>
       </View>
 
-      {/* Contenu principal de secours si la boîte système est fermée ou ignorée */}
       <View style={styles.content}>
         <View style={styles.card}>
           <FileText size={80} color="#2F66DD" style={styles.fileIcon} />
 
-          <Text style={styles.bookTitleText}>{title || "Sans Titre"}</Text>
+          <Text style={styles.bookTitleText}>{title}</Text>
           <Text style={styles.statusText}>
-            Ce document est cryptographié et disponible hors-ligne localement.
+            Votre livre est enregistré hors-ligne en toute sécurité sur votre
+            stockage local.
           </Text>
 
-          {errorStatus && (
-            <View style={styles.errorContainer}>
-              <AlertCircle size={16} color="#E53E3E" />
-              <Text style={styles.errorText}>Status: {errorStatus}</Text>
-            </View>
-          )}
-
-          {/* Bouton pour réactiver le lecteur externe si besoin */}
+          {/* Bouton pour ré-invoquer le lecteur système manuellement ou si l'auto-ouverture a été bloquée */}
           <TouchableOpacity
             style={styles.openButton}
-            onPress={openPdfWithSharing}
+            onPress={() => openPdfWithSharing()}
           >
             <Eye size={20} color="#FFF" style={styles.buttonIcon} />
-            <Text style={styles.openButtonText}>Consulter le document</Text>
+            <Text style={styles.openButtonText}>
+              Ouvrir dans le lecteur PDF
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.backLink}
             onPress={() => router.replace("/(drawer)/home")}
           >
-            <Text style={styles.backLinkText}>Retourner à l'étagère</Text>
+            <Text style={styles.backLinkText}>Retourner à la bibliothèque</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -211,15 +196,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#FFF",
-    padding: 20,
   },
-  loadingText: {
-    marginTop: 12,
-    color: "#1E2432",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  subLoadingText: { marginTop: 4, color: "#9A9A9A", fontSize: 12 },
+  loadingText: { marginTop: 10, color: "#666", fontSize: 15 },
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -262,21 +240,7 @@ const styles = StyleSheet.create({
     color: "#9A9A9A",
     textAlign: "center",
     lineHeight: 20,
-    marginBottom: 20,
-  },
-  errorContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF5F5",
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 15,
-    gap: 6,
-  },
-  errorText: {
-    fontSize: 12,
-    color: "#C53030",
-    fontWeight: "500",
+    marginBottom: 25,
   },
   openButton: {
     flexDirection: "row",

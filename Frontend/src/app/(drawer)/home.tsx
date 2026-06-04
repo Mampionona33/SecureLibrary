@@ -50,7 +50,8 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
-  const BOOKS_DIR = `${FileSystem.documentDirectory}encrypted_books/`;
+  // ✅ Dossier local simplifié et harmonisé (stocké définitivement dans DocumentDirectory)
+  const BOOKS_DIR = `${FileSystem.documentDirectory}books/`;
 
   const ensureDirectoryExists = async () => {
     const dirInfo = await FileSystem.getInfoAsync(BOOKS_DIR);
@@ -213,7 +214,6 @@ export default function HomeScreen() {
     try {
       await api.delete(`/library/${bookId}/`);
       setBooks((prev) => prev.filter((b) => b.id !== bookId));
-      // On le retire aussi de l'état local s'il y était pour mettre à jour l'UI
       setLocalBooks((prev) => prev.filter((id) => id !== bookId));
       Alert.alert(
         "Succès",
@@ -306,10 +306,7 @@ export default function HomeScreen() {
                 ) : isDownloaded ? (
                   <View style={styles.statusBadge}>
                     <CheckCircle color="#2F66DD" size={16} />
-                    <Text
-                      style={[styles.statusText, { color: "#2F66DD" }]}
-                      onPress={() => {}}
-                    >
+                    <Text style={[styles.statusText, { color: "#2F66DD" }]}>
                       Lire
                     </Text>
                   </View>
