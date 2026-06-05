@@ -8,7 +8,7 @@
     "scheme": "frontend",
     "userInterfaceStyle": "automatic",
     "extra": {
-      "backendUrl": "http://localhost:8000/api",
+      "backendUrl": "http://10.52.139.62:8000/api",
       "router": {},
       "eas": {
         "projectId": "502fbbea-1e81-497b-bd89-487a7f2ec46e"
