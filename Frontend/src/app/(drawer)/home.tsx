@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useCallback } from "react";
 import {
   StyleSheet,
   Text,
@@ -14,21 +14,20 @@ import {
   ImageBackground,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import {
-  Search,
-  Plus,
-  Download,
-  CheckCircle,
-  BookOpen,
-} from "lucide-react-native";
+import { Search, Plus, Download, CheckCircle } from "lucide-react-native";
 import BookActions from "@/components/book-actions";
 import { useRouter } from "expo-router";
-import * as FileSystem from "expo-file-system/legacy";
+
+// Import de la NOUVELLE API pour la gestion locale ultra-rapide
+import { File, Directory, Paths } from "expo-file-system";
+// Import ciblé de l'API Legacy UNIQUEMENT pour la requête réseau (téléchargement)
+import * as FileSystemLegacy from "expo-file-system/legacy";
+
 import api from "@/services/api";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useFocusEffect } from "@react-navigation/native";
 
 const CATEGORIES = ["Tous", "Développement", "Cuisine", "Sport", "IT"];
-import { useFocusEffect } from "@react-navigation/native";
 
 interface Book {
   id: string;
@@ -50,20 +49,26 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
 
-  // ✅ Dossier local simplifié et harmonisé (stocké définitivement dans DocumentDirectory)
-  const BOOKS_DIR = `${FileSystem.documentDirectory}books/`;
+  // Objet Directory moderne
+  const BOOKS_DIR = new Directory(Paths.document, "books");
 
-  const ensureDirectoryExists = async () => {
-    const dirInfo = await FileSystem.getInfoAsync(BOOKS_DIR);
-    if (!dirInfo.exists) {
-      await FileSystem.makeDirectoryAsync(BOOKS_DIR, { intermediates: true });
+  const ensureDirectoryExists = () => {
+    // Vérification et création synchrones (Nouvelle API)
+    if (!BOOKS_DIR.exists) {
+      BOOKS_DIR.create();
     }
   };
 
-  const checkLocalFiles = async () => {
+  const checkLocalFiles = (currentBooks: Book[]) => {
     try {
-      const files = await FileSystem.readDirectoryAsync(BOOKS_DIR);
-      setLocalBooks(files.map((f) => f.replace(".pdf", "")));
+      if (!BOOKS_DIR.exists) return;
+
+      // Vérification synchrone instantanée avec .exists
+      const downloadedIds = currentBooks
+        .filter((book) => new File(BOOKS_DIR, `${book.id}.pdf`).exists)
+        .map((book) => book.id);
+
+      setLocalBooks(downloadedIds);
     } catch (e) {
       console.log("Erreur lecture fichiers locaux", e);
     }
@@ -73,17 +78,14 @@ export default function HomeScreen() {
     if (!isRefreshing) setLoading(true);
 
     try {
-      const token = await AsyncStorage.getItem("accessToken");
-      const refresh = await AsyncStorage.getItem("refreshToken");
-      console.log("🔑 accessToken =", token);
-      console.log("🔑 refreshToken =", refresh);
-
       const response = await api.get("/library/");
-      setBooks(response.data);
-      await checkLocalFiles();
+      const fetchedBooks = response.data;
+      setBooks(fetchedBooks);
+
+      checkLocalFiles(fetchedBooks);
     } catch (error: any) {
       console.error(
-        "❌ ERREUR LORS DU CHARGEMENT :",
+        "ERREUR LORS DU CHARGEMENT :",
         error.response?.data || error.message,
       );
       Alert.alert("Erreur", "Impossible de charger la bibliothèque.");
@@ -112,10 +114,11 @@ export default function HomeScreen() {
     }
 
     setDownloadingId(book.id);
-    const fileUri = `${BOOKS_DIR}${book.id}.pdf`;
+
+    // Création de l'objet File moderne
+    const bookFile = new File(BOOKS_DIR, `${book.id}.pdf`);
     const token = await AsyncStorage.getItem("accessToken");
 
-    // Gestion des URLs relatives (si le backend ne renvoie pas l'URL complète)
     let downloadUrl = book.pdf_file;
     if (downloadUrl && downloadUrl.startsWith("/")) {
       const serverUrl = api.defaults.baseURL?.split("/api")[0];
@@ -123,21 +126,16 @@ export default function HomeScreen() {
     }
 
     try {
-      const downloadRes = await FileSystem.downloadAsync(
-        downloadUrl!,
-        fileUri,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      );
+      // Utilisation de l'outil réseau (Legacy) en lui passant le chemin (URI) du fichier moderne
+      await FileSystemLegacy.downloadAsync(downloadUrl!, bookFile.uri, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-      if (downloadRes.status === 200) {
-        setLocalBooks((prev) => [...prev, book.id]);
-        Alert.alert(
-          "Succès",
-          `${book.title} est maintenant disponible hors ligne.`,
-        );
-      }
+      setLocalBooks((prev) => [...prev, book.id]);
+      Alert.alert(
+        "Succès",
+        `${book.title} est maintenant disponible hors ligne.`,
+      );
     } catch (error) {
       console.error("Erreur téléchargement :", error);
       Alert.alert("Erreur", "Le téléchargement a échoué.");
@@ -156,37 +154,37 @@ export default function HomeScreen() {
   });
 
   const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <View style={styles.categoriesContainer}>
+    <View style={homeStyles.headerContainer}>
+      <View style={homeStyles.categoriesContainer}>
         {CATEGORIES.map((cat) => {
           const isActive = cat === activeCategory;
           return (
             <TouchableOpacity
               key={cat}
               onPress={() => setActiveCategory(cat)}
-              style={styles.categoryTab}
+              style={homeStyles.categoryTab}
             >
               <Text
                 style={[
-                  styles.categoryText,
-                  isActive && styles.activeCategoryText,
+                  homeStyles.categoryText,
+                  isActive && homeStyles.activeCategoryText,
                 ]}
               >
                 {cat}
               </Text>
-              {isActive && <View style={styles.activeIndicator} />}
+              {isActive && <View style={homeStyles.activeIndicator} />}
             </TouchableOpacity>
           );
         })}
       </View>
 
-      <View style={styles.whiteCardHeader}>
-        <View style={styles.searchBarContainer}>
-          <Search color="#B0B0C0" size={20} style={styles.searchIcon} />
+      <View style={homeStyles.whiteCardHeader}>
+        <View style={homeStyles.searchBarContainer}>
+          <Search color="#B0B0C0" size={20} style={homeStyles.searchIcon} />
           <TextInput
             placeholder="Rechercher un livre..."
             placeholderTextColor="#B0B0C0"
-            style={styles.searchInput}
+            style={homeStyles.searchInput}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -196,9 +194,11 @@ export default function HomeScreen() {
   );
 
   const deleteBookFromDisk = async (bookId: string, bookTitle: string) => {
-    const fileUri = `${BOOKS_DIR}${bookId}.pdf`;
+    const bookFile = new File(BOOKS_DIR, `${bookId}.pdf`);
     try {
-      await FileSystem.deleteAsync(fileUri, { idempotent: true });
+      if (bookFile.exists) {
+        bookFile.delete(); // Suppression synchrone de la nouvelle API
+      }
       setLocalBooks((prev) => prev.filter((id) => id !== bookId));
       Alert.alert(
         "Succès",
@@ -215,6 +215,12 @@ export default function HomeScreen() {
       await api.delete(`/library/${bookId}/`);
       setBooks((prev) => prev.filter((b) => b.id !== bookId));
       setLocalBooks((prev) => prev.filter((id) => id !== bookId));
+
+      const bookFile = new File(BOOKS_DIR, `${bookId}.pdf`);
+      if (bookFile.exists) {
+        bookFile.delete();
+      }
+
       Alert.alert(
         "Succès",
         `Le livre "${bookTitle}" a été supprimé du serveur.`,
@@ -228,13 +234,13 @@ export default function HomeScreen() {
   const renderEmptyState = () => (
     <ImageBackground
       source={require("../../../assets/images/no_book_found.png")}
-      style={styles.emptyBackground}
+      style={homeStyles.emptyBackground}
     >
-      <View style={styles.emptyOverlay}>
-        <Text style={styles.emptyText}>
+      <View style={homeStyles.emptyOverlay}>
+        <Text style={homeStyles.emptyText}>
           Oups ! Votre étagère est déserte... 🌵
         </Text>
-        <Text style={styles.emptySubText}>
+        <Text style={homeStyles.emptySubText}>
           Aucun livre n'a été trouvé ici. C'est peut-être le moment idéal pour
           en ajouter un nouveau trésor !
         </Text>
@@ -247,8 +253,8 @@ export default function HomeScreen() {
     const isDownloading = downloadingId === item.id;
 
     return (
-      <View style={styles.bookRow}>
-        <View style={styles.bookMainContent}>
+      <View style={homeStyles.bookRow}>
+        <View style={homeStyles.bookMainContent}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => {
@@ -267,7 +273,7 @@ export default function HomeScreen() {
           >
             <View
               style={[
-                styles.imageWrapper,
+                homeStyles.imageWrapper,
                 { backgroundColor: item.bgColor || "#E2ECE9" },
               ]}
             >
@@ -275,20 +281,20 @@ export default function HomeScreen() {
                 source={{
                   uri: item.cover_image || "https://via.placeholder.com/150",
                 }}
-                style={styles.bookCover}
+                style={homeStyles.bookCover}
               />
             </View>
           </TouchableOpacity>
-          <View style={styles.bookInfo}>
-            <Text style={styles.bookCategory}>{item.category}</Text>
-            <Text style={styles.bookTitle} numberOfLines={1}>
+          <View style={homeStyles.bookInfo}>
+            <Text style={homeStyles.bookCategory}>{item.category}</Text>
+            <Text style={homeStyles.bookTitle} numberOfLines={1}>
               {item.title}
             </Text>
-            <Text style={styles.bookAuthor}>{item.author}</Text>
+            <Text style={homeStyles.bookAuthor}>{item.author}</Text>
 
-            <View style={styles.statusContainer}>
+            <View style={homeStyles.statusContainer}>
               <TouchableOpacity
-                style={styles.downloadIcon}
+                style={homeStyles.downloadIcon}
                 onPress={async () => {
                   if (isDownloaded) {
                     router.push({
@@ -304,9 +310,9 @@ export default function HomeScreen() {
                 {isDownloading ? (
                   <ActivityIndicator size="small" color="#2F66DD" />
                 ) : isDownloaded ? (
-                  <View style={styles.statusBadge}>
+                  <View style={homeStyles.statusBadge}>
                     <CheckCircle color="#2F66DD" size={16} />
-                    <Text style={[styles.statusText, { color: "#2F66DD" }]}>
+                    <Text style={[homeStyles.statusText, { color: "#2F66DD" }]}>
                       Lire
                     </Text>
                   </View>
@@ -331,7 +337,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={homeStyles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="#2F66DD" />
       {loading && !refreshing ? (
         <ActivityIndicator
@@ -353,20 +359,19 @@ export default function HomeScreen() {
               tintColor="#FFF"
             />
           }
-          contentContainerStyle={styles.listContent}
-          style={styles.mainContainer}
+          contentContainerStyle={homeStyles.listContent}
+          style={homeStyles.mainContainer}
         />
       )}
 
-      {/* ✅ Bouton flottant Ajouter */}
-      <TouchableOpacity style={styles.addButton} onPress={handleAddBook}>
+      <TouchableOpacity style={homeStyles.addButton} onPress={handleAddBook}>
         <Plus color="#FFF" size={28} />
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const homeStyles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#2F66DD" },
   mainContainer: { flex: 1, backgroundColor: "#FFF" },
   listContent: { backgroundColor: "#FFF", paddingBottom: 80 },
