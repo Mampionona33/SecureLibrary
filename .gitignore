@@ -24,8 +24,8 @@ yarn-error.*
 .env*.local
 *.tsbuildinfo
 app-example
-/ios
-/android
+*/ios
+*/android
 
 # Backend (Django / Python)
 venv/
