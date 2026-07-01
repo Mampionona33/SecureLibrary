@@ -1,49 +1,71 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
-# Frontend (Expo / React Native)
-*/node_modules/
-node_modules/
-.expo/
-.expo-packager-cache/
-.expo-developer-tools/
-dist/
-web-build/
-expo-env.d.ts
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-.metro-health-check*
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-.DS_Store
-*.pem
-.env*.local
-*.tsbuildinfo
-app-example
-*/ios
-*/android
+# --- Frontend (React Native CLI / Expo) ---
+Frontend/node_modules/
+Frontend/dist/
+Frontend/web-build/
+Frontend/expo-env.d.ts
 
-# Backend (Django / Python)
-venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-*.sqlite3
-db.sqlite3
-*/migrations/__pycache__/
-*/migrations/*.py
-*.log
-media/
-staticfiles/
-*.pot
-*.mo
+# Expo specific
+Frontend/.expo/
+Frontend/.expo-packager-cache/
+Frontend/.expo-developer-tools/
 
-# Tests / Coverage
+# Metro bundler cache
+Frontend/.metro/
+Frontend/.rncache/
+Frontend/.metro-health-check*
+
+# Android
+Frontend/android/.gradle/
+Frontend/android/app/build/
+Frontend/android/build/
+Frontend/*.iml
+Frontend/*.jks
+Frontend/*.keystore
+Frontend/local.properties
+
+# iOS
+Frontend/ios/build/
+Frontend/ios/DerivedData/
+Frontend/ios/Pods/
+Frontend/*.pbxuser
+Frontend/*.mode1v3
+Frontend/*.mode2v3
+Frontend/*.perspectivev3
+Frontend/xcuserdata/
+
+# Keys & certificates
+Frontend/*.orig.*
+Frontend/*.p8
+Frontend/*.p12
+Frontend/*.pem
+Frontend/*.key
+Frontend/*.mobileprovision
+
+# Logs
+Frontend/npm-debug.log*
+Frontend/yarn-debug.log*
+Frontend/yarn-error.log*
+
+# Misc frontend
+Frontend/.DS_Store
+Frontend/*.tsbuildinfo
+Frontend/app-example
+
+# --- Backend (Django / Python) ---
+Backend/venv/
+Backend/__pycache__/
+Backend/*.py[cod]
+Backend/*.sqlite3
+Backend/db.sqlite3
+Backend/migrations/__pycache__/
+Backend/migrations/*.py
+Backend/*.log
+Backend/media/
+Backend/staticfiles/
+Backend/*.pot
+Backend/*.mo
+
+# --- Tests / Coverage ---
 coverage/
 .coverage
 htmlcov/
@@ -52,13 +74,13 @@ junit.xml
 .tox/
 .mypy_cache/
 
-# IDE / OS
+# --- IDE / OS ---
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
 
-# Divers
+# --- Divers ---
 *.swp
 *.swo
 *.bak
