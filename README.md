@@ -61,6 +61,15 @@ Projet mobile développé avec [React Native CLI](https://reactnative.dev/) et b
 
 ---
 
+### 🛠 Dépannage rapide
+
+- Réinitialiser Gradle (utile si la build échoue ou après modification des fichiers Gradle) :
+  ```bash
+  cd android
+  ./gradlew clean        # Linux/Mac
+  .\gradlew clean        # Windows
+  ```
+
 ## ⚙️ Backend – Django
 
 ### Installation et lancement
