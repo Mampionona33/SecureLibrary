@@ -1,194 +1,170 @@
-# Welcome to your Expo app 👋
+# 📱 React Native CLI + Django Backend
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Projet mobile développé avec [React Native CLI](https://reactnative.dev/) et backend [Django REST Framework](https://www.django-rest-framework.org/).
 
-## Get started
+---
 
-1. Install dependencies
+## 🚀 Frontend – React Native CLI
+
+### Installation et lancement
+
+1. Installer les dépendances :
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. Démarrer Metro bundler :
 
    ```bash
-   npx expo start
+   npx react-native start
    ```
 
-In the output, you'll find options to open the app in a
+3. Lancer l’application sur Android :
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   ```bash
+   npx react-native run-android
+   ```
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+   ⚡ Pour une compilation rapide :
 
-## Get a fresh project
+   ```bash
+   npx react-native run-android --active-arch-only
+   ```
 
-When you're ready, run:
+4. Lancer sur iOS (Mac uniquement) :
+   ```bash
+   npx react-native run-ios
+   ```
 
-```bash
-npm run reset-project
-```
+### Autres commandes utiles
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- Nettoyer et réinstaller :
 
-### Other setup steps
+  ```bash
+  rm -rf node_modules
+  npm install
+  ```
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+- Générer APK :
 
-## Learn more
+  ```bash
+  cd android
+  ./gradlew assembleDebug
+  ./gradlew assembleRelease
+  ```
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Spécifier un device :
+  ```bash
+  npx react-native run-android --deviceId emulator-5554
+  ```
 
 ---
 
-# Backend – Django ⚙️
+## ⚙️ Backend – Django
 
-Ce projet utilise [Django](https://www.djangoproject.com/) et [Django REST Framework](https://www.django-rest-framework.org/) pour fournir une API sécurisée.
+### Installation et lancement
 
-## Get started
-
-1. Créer et activer l’environnement virtuel
+1. Créer et activer l’environnement virtuel :
 
    ```bash
    cd Backend
    python -m venv venv
    source venv/bin/activate   # Linux/Mac
-   .\venv\Scripts\activate    # Windows PowerShell
+   .\venv\Scripts\activate    # Windows
    ```
 
-2. Installer les dépendances
+2. Installer les dépendances :
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Appliquer les migrations
+3. Appliquer les migrations :
 
    ```bash
    python manage.py migrate
    ```
 
-4. Créer un superutilisateur (admin)
+4. Créer un superutilisateur :
 
    ```bash
    python manage.py createsuperuser
    ```
 
-5. Démarrer le serveur
-
+5. Démarrer le serveur :
    ```bash
-   python manage.py runserver
-   # ou
    python manage.py runserver 0.0.0.0:8000
-
    ```
 
-Par défaut, le serveur est accessible sur :
+Par défaut :
 
-- `http://127.0.0.1:8000/` [(127.0.0.1 in Bing)](https://www.bing.com/search?q="http%3A%2F%2F127.0.0.1%3A8000%2F") → API principale
-- `http://127.0.0.1:8000/admin/` [(127.0.0.1 in Bing)](https://www.bing.com/search?q="http%3A%2F%2F127.0.0.1%3A8000%2Fadmin%2F") → interface d’administration
+- API → `http://127.0.0.1:8000/`
+- Admin → `http://127.0.0.1:8000/admin/`
 
 ---
 
-## Structure recommandée
+## 📂 Structure recommandée
 
 ```
 Backend/
  ├── manage.py
- ├── core/          ← projet Django (settings, urls, wsgi, asgi)
- ├── library/       ← app pour gérer les livres
- ├── users/         ← app pour gérer les comptes
- └── payments/      ← app pour gérer les paiements
+ ├── core/          ← settings, urls, wsgi, asgi
+ ├── library/       ← gestion des livres
+ ├── users/         ← gestion des comptes
+ └── payments/      ← gestion des paiements
 ```
 
 ---
 
-## Other setup steps
+## 🔗 Connexion Frontend ↔ Backend
 
-- Configurer DRF pour exposer des endpoints REST.
-- Configurer JWT pour l’authentification sécurisée.
-- Configurer CORS pour autoriser les requêtes du frontend Expo.
-- Configurer static/media pour gérer les fichiers statiques et médias.
+Configurer l’URL API dans le frontend (`api.tsx` ou config).
 
-### Connexion au Backend (Développement Mobile)
-
-Pour que votre application Frontend puisse communiquer avec l'API Django, configurez l'URL dans `Frontend/app.json` (`extra.backendUrl`).
-
-#### 1. Mode Émulateur Android
-
-L'émulateur utilise une adresse IP spécifique pour accéder à votre PC (l'hôte).
-
-- **URL :** `http://10.0.2.2:8000/api`
-- **Action :** Aucune commande spéciale requise.
-
-#### 2. Appareil Physique (USB - Recommandé)
-
-C'est la méthode la plus stable pour éviter les problèmes de pare-feu et de Wi-Fi.
-
-- **URL :** `http://localhost:8000/api`
-- **Action :** Exécutez la redirection de port suivante :
+- **Émulateur Android** : `http://10.0.2.2:8000/api`
+- **Appareil physique USB** :
   ```bash
   adb reverse tcp:8000 tcp:8000
   ```
-
-#### 3. Appareil Physique (Wi-Fi)
-
-Utile si vous ne pouvez pas utiliser de câble. Le téléphone et le PC doivent être sur le **même réseau**.
-
-- **URL :** `http://<VOTRE_IP_PC>:8000/api` (ex: `192.168.201.29`)
-- **Action :** Assurez-vous que le pare-feu de votre PC autorise les connexions entrantes sur le port 8000.
-
-#### 4. Mode Web (Navigateur)
-
-Si vous lancez Expo dans votre navigateur.
-
-- **URL :** `http://localhost:8000/api`
+  URL → `http://localhost:8000/api`
+- **Appareil physique Wi-Fi** : `http://<IP_PC>:8000/api` (ex: `192.168.201.29`)
+- **Mode Web** : `http://localhost:8000/api`
 
 ---
 
-### Rappels Backend (Django)
+## 🔒 Rappels Backend
 
-1. **Lancement du serveur :** Pour les modes Physiques (USB/Wi-Fi), lancez Django avec :
+- Lancer Django avec :
 
-   ```bash
-   python manage.py runserver 0.0.0.0:8000
-   ```
+  ```bash
+  python manage.py runserver 0.0.0.0:8000
+  ```
 
-2. **Configuration `ALLOWED_HOSTS` :**
-   Dans `Backend/core/settings.py`, vérifiez que les hôtes sont autorisés :
+- Configurer `ALLOWED_HOSTS` :
 
-   ```python
-   ALLOWED_HOSTS = ["localhost", "127.0.0.1", "10.0.2.2", "192.168.201.29"]
-   ```
+  ```python
+  ALLOWED_HOSTS = ["localhost", "127.0.0.1", "10.0.2.2", "192.168.201.29"]
+  ```
 
-3. **Sécurité (api.tsx) :**
-   L'application utilise un fallback automatique si la config `app.json` est manquante :
-   ```typescript
-   const baseURL =
-     Constants.expoConfig?.extra?.backendUrl ||
-     "http://192.168.201.29:8000/api";
-   ```
+- Exemple fallback dans `api.tsx` :
 
-4 .**run android emulator**
+  ```typescript
+  const baseURL = "http://192.168.201.29:8000/api";
+  ```
 
-```bash
-# ouvrir l'emulateur
-cd "C:\Users\Mampionona\AppData\Local\Android\Sdk\emulator"
-.\emulator.exe -avd Medium_Phone
-```
+- Lancer émulateur Android :
+  ```bash
+  cd "$ANDROID_HOME/emulator"
+  ./emulator -avd Medium_Phone
+  ```
+
+---
+
+## 📚 Ressources utiles
+
+- React Native docs [(reactnative.dev in Bing)](https://www.bing.com/search?q="https%3A%2F%2Freactnative.dev%2Fdocs%2Fgetting-started")
+- [Django REST Framework](https://www.django-rest-framework.org/)
+- Android Emulator setup [(developer.android.com in Bing)](https://www.bing.com/search?q="https%3A%2F%2Fdeveloper.android.com%2Fstudio%2Frun%2Femulator")
+- LDPlayer (émulateur Android pour Windows) [(ldplayer.net in Bing)](https://www.bing.com/search?q=LDPlayer_site_officiel)
+
+---
