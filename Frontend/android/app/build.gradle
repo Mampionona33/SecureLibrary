@@ -108,17 +108,12 @@ android {
 }
 
 dependencies {
-    // La version de react-native est gérée par le React Native Gradle Plugin
+    // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // Ajout de React Native Navigation (Wix)
-    implementation "com.github.wix:react-native-navigation:2.0.1998"
-
-    // Choix du moteur JavaScript (Hermes ou JSC)
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
     }
 }
-
