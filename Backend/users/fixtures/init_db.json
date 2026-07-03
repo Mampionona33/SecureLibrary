@@ -1,0 +1,45 @@
+[
+  {
+    "model": "users.user",
+    "pk": 1,
+    "fields": {
+      "first_name": "Alice",
+      "last_name": "Admin",
+      "email": "alice.admin@example.com",
+      "password": "pbkdf2_sha256$600000$abc123$hashedpassword1",
+      "role": "admin",
+      "status": "active",
+      "is_staff": true,
+      "is_superuser": true
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 2,
+    "fields": {
+      "first_name": "Bob",
+      "last_name": "Reader",
+      "email": "bob.reader@example.com",
+      "password": "pbkdf2_sha256$600000$abc123$hashedpassword2",
+      "role": "reader",
+      "status": "pending",
+      "is_staff": false,
+      "is_superuser": false
+    }
+  },
+  {
+    "model": "users.user",
+    "pk": 3,
+    "fields": {
+      "first_name": "Charlie",
+      "last_name": "Writer",
+      "email": "charlie.writer@example.com",
+      "password": "pbkdf2_sha256$600000$abc123$hashedpassword3",
+      "role": "writer",
+      "status": "active",
+      "is_staff": false,
+      "is_superuser": false
+    }
+  }
+]
+
