@@ -4,7 +4,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import LoginScreen from '@screens/Login';
 // import LoginScreen from '@screens/Login/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreen from '@screens/Home';
 import { RootStackParamList } from './types';
 
 // On injecte les types dans le Stack Navigator

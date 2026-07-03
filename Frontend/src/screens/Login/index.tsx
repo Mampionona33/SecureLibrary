@@ -13,26 +13,14 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { authService } from '../services/authService';
+import { authService } from '@services/authService';
 
 // 1. Importations de Valibot et du resolver spécifique
 import { object, string, pipe, minLength, email, InferInput } from 'valibot';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
+import { loginSchema, LoginFormType } from './schema';
 
-// 2. Définition du Schéma Valibot (Utilisation de "pipe" pour combiner les règles)
-const loginSchema = object({
-  email: pipe(
-    string(),
-    minLength(1, "L'email est requis"),
-    email("Le format de l'email est invalide")
-  ),
-  password: pipe(
-    string(),
-    minLength(1, 'Le mot de passe est requis'),
-    minLength(6, 'Le mot de passe doit contenir au moins 6 caractères')
-  ),
-});
 
 // 3. Déduction automatique du type TypeScript avec Valibot
 type LoginFormType = InferInput<typeof loginSchema>;
