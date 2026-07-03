@@ -2,8 +2,8 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ATTENTION: Sur l'émulateur Android, 'localhost' ou '127.0.0.1' pointe vers l'émulateur lui-même.
-// Il faut utiliser '10.0.2.2' pour pointer vers le backend Django de votre ordinateur.
-const BASE_URL = 'http://10.0.2.2:8000';
+// Il faut utiliser '127.0.0.1' pour pointer vers le backend Django de votre ordinateur.
+const BASE_URL = 'http://127.0.0.1:8000';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
