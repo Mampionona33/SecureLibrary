@@ -1,8 +1,14 @@
 import React from 'react';
-import AppNavigator from './src/navigation/AppNavigator';
+import AppNavigator from '@navigation/AppNavigator';
+import { AuthProvider } from '@context/AuthContext';
 
 const App = () => {
-  return <AppNavigator />;
+  return (
+    // Le Provider diffuse l'état de connexion à toute l'application
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
+  );
 };
 
 export default App;
