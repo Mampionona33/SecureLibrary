@@ -1,4 +1,6 @@
 package com.frontend
+import android.os.Bundle
+import com.swmansion.rnscreens.fragment.restoration.RNScreensFragmentFactory
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
@@ -6,6 +8,16 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 
 class MainActivity : ReactActivity() {
+	
+	/**
+	* This avoids crashes related to View state not being persisted across Activity restarts.
+	* Related to React navigation
+	* https://reactnavigation.org/docs/getting-started/?framework=community-cli
+	*/
+	  override fun onCreate(savedInstanceState: Bundle?) {
+    	supportFragmentManager.fragmentFactory = RNScreensFragmentFactory()
+    super.onCreate(savedInstanceState)
+  }
 
   /**
    * Returns the name of the main component registered from JavaScript. This is used to schedule
