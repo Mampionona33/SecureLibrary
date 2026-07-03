@@ -13,47 +13,50 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { authService } from '@services/authService';
 
-// Importation du service d'authentification
-import { authService } from '../services/authService';
+// 1. Importations de Valibot et du resolver spécifique
+import { object, string, pipe, minLength, email, InferInput } from 'valibot';
+import { useForm, Controller } from 'react-hook-form';
+import { valibotResolver } from '@hookform/resolvers/valibot';
+import { loginSchema, LoginFormType } from './schema';
 
-// Typage des props de navigation
+
+// 3. Déduction automatique du type TypeScript avec Valibot
+type LoginFormType = InferInput<typeof loginSchema>;
+
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
 const LoginScreen = ({ navigation }: Props) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Fonction passée en asynchrone pour gérer l'API
-  const handleLogin = async () => {
-    // Vérification basique
-    if (!email || !password) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
+  // 4. Initialisation de React Hook Form avec valibotResolver
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormType>({
+    resolver: valibotResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
+  const onSubmit = async (data: LoginFormType) => {
     setIsLoading(true);
 
     try {
-      // Appel réel à l'API Django (via le service)
-      // Note: Assurez-vous que votre backend attend bien 'email' et non 'username'
-      await authService.login(email, password);
-      
+      await authService.login(data.email, data.password);
       setIsLoading(false);
-      
-      // Si la connexion réussit, on redirige vers l'accueil
       navigation.replace('Home');
-      
     } catch (error: any) {
       setIsLoading(false);
-      
-      // Gestion des erreurs HTTP
       if (error.response?.status === 401) {
-        Alert.alert('Échec de la connexion', 'Identifiants incorrects. Veuillez réessayer.');
+        Alert.alert('Échec', 'Identifiants incorrects. Veuillez réessayer.');
       } else {
-        Alert.alert('Erreur réseau', 'Impossible de se connecter au serveur. Vérifiez votre connexion.');
+        Alert.alert('Erreur', 'Impossible de se connecter au serveur.');
       }
     }
   };
@@ -64,7 +67,6 @@ const LoginScreen = ({ navigation }: Props) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
-        {/* En-tête : Logo et Titre */}
         <View style={styles.headerContainer}>
           <Text style={styles.logoIcon}>📚</Text>
           <Text style={styles.title}>Bibliothèque</Text>
@@ -72,50 +74,64 @@ const LoginScreen = ({ navigation }: Props) => {
           <Text style={styles.subtitle}>Accédez à vos archives protégées</Text>
         </View>
 
-        {/* Formulaire de connexion */}
         <View style={styles.formContainer}>
-
+          
           <Text style={styles.label}>Identifiant ou Email</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="votre@email.com"
-              placeholderTextColor="#9ca3af"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={email}
-              onChangeText={setEmail}
-              editable={!isLoading}
-            />
-          </View>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={[styles.inputContainer, errors.email && styles.inputErrorBorder]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="votre@email.com"
+                  placeholderTextColor="#9ca3af"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  editable={!isLoading}
+                />
+              </View>
+            )}
+          />
+          {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
           <Text style={styles.label}>Mot de passe</Text>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#9ca3af"
-              secureTextEntry={!showPassword}
-              value={password}
-              onChangeText={setPassword}
-              editable={!isLoading}
-            />
-            <TouchableOpacity
-              style={styles.toggleButton}
-              onPress={() => setShowPassword(!showPassword)}
-            >
-              <Text style={styles.toggleText}>{showPassword ? 'Cacher' : 'Voir'}</Text>
-            </TouchableOpacity>
-          </View>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <View style={[styles.inputContainer, errors.password && styles.inputErrorBorder]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="••••••••"
+                  placeholderTextColor="#9ca3af"
+                  secureTextEntry={!showPassword}
+                  onBlur={onBlur}
+                  onChangeText={onChange}
+                  value={value}
+                  editable={!isLoading}
+                />
+                <TouchableOpacity
+                  style={styles.toggleButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                >
+                  <Text style={styles.toggleText}>{showPassword ? 'Cacher' : 'Voir'}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+          {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
 
-          {/* Bouton Principal */}
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-            onPress={handleLogin}
+            onPress={handleSubmit(onSubmit)}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -125,14 +141,12 @@ const LoginScreen = ({ navigation }: Props) => {
             )}
           </TouchableOpacity>
 
-          {/* Optionnel : Ligne de séparation */}
           <View style={styles.dividerContainer}>
             <View style={styles.divider} />
             <Text style={styles.dividerText}>OU</Text>
             <View style={styles.divider} />
           </View>
 
-          {/* Bouton secondaire (Biométrie) */}
           <TouchableOpacity style={styles.biometricButton}>
             <Text style={styles.biometricIcon}>🔒</Text>
             <Text style={styles.biometricText}>Connexion biométrique</Text>
@@ -144,11 +158,10 @@ const LoginScreen = ({ navigation }: Props) => {
   );
 };
 
-// Styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6', 
+    backgroundColor: '#f3f4f6',
   },
   container: {
     flex: 1,
@@ -166,12 +179,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '600',
-    color: '#1f2937', 
+    color: '#1f2937',
   },
   titleHighlight: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#1e3a8a', 
+    color: '#1e3a8a',
     marginBottom: 8,
   },
   subtitle: {
@@ -188,6 +201,7 @@ const styles = StyleSheet.create({
     color: '#374151',
     marginBottom: 6,
     marginLeft: 4,
+    marginTop: 10,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -196,9 +210,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d1d5db',
     borderRadius: 10,
-    marginBottom: 16,
     paddingHorizontal: 14,
     height: 50,
+  },
+  inputErrorBorder: {
+    borderColor: '#ef4444',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
   input: {
     flex: 1,
@@ -216,6 +238,7 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginTop: 8,
     marginBottom: 24,
   },
   forgotPasswordText: {
@@ -224,7 +247,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   loginButton: {
-    backgroundColor: '#1e3a8a', 
+    backgroundColor: '#1e3a8a',
     height: 50,
     borderRadius: 10,
     justifyContent: 'center',
@@ -234,7 +257,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 4,
-    elevation: 3, 
+    elevation: 3,
   },
   loginButtonDisabled: {
     backgroundColor: '#9ca3af',

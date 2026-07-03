@@ -2,8 +2,9 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
-import LoginScreen from '../screens/LoginScreen';
-import HomeScreen from '../screens/HomeScreen';
+import LoginScreen from '@screens/Login';
+// import LoginScreen from '@screens/Login/LoginScreen';
+import HomeScreen from '@screens/Home';
 import { RootStackParamList } from './types';
 
 // On injecte les types dans le Stack Navigator
