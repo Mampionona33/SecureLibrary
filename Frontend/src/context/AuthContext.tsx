@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useState, useContext, useEffect } from 'react';
 
 interface AuthContextType {
@@ -31,11 +30,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Plus tard, ici on appellera axios.post('/api/users/login')
     console.log("Tentative de connexion avec :", email);
-    
-    // Simulation temporaire pour tester ton interface :
-    // setIsAuthenticated(true);
+  
+    // Active la simulation en décommentant cette ligne :
+    setIsAuthenticated(true); 
+  
+    // Tu peux aussi tester le rôle Admin en passant ceci à true si tu veux voir l'AdminStack :
+    // setIsStaff(true);
   };
 
   const logout = async () => {
