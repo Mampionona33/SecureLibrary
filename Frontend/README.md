@@ -1,3 +1,8 @@
+Voici le fichier `README.md` complet et mis à jour. J'ai ajouté une section dédiée **"Step 4: Generate Production Android Build (APK)"** qui détaille les commandes de génération ainsi que le chemin d'accès précis du fichier `.apk` final.
+
+---
+
+```markdown
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
 # Getting Started
@@ -16,6 +21,7 @@ npm start
 
 # OR using Yarn
 yarn start
+
 ```
 
 ## Step 2: Build and run your app
@@ -30,6 +36,7 @@ npm run android
 
 # OR using Yarn
 yarn android
+
 ```
 
 ### iOS
@@ -40,12 +47,14 @@ The first time you create a new project, run the Ruby bundler to install CocoaPo
 
 ```sh
 bundle install
+
 ```
 
 Then, and every time you update your native dependencies, run:
 
 ```sh
 bundle exec pod install
+
 ```
 
 For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
@@ -56,6 +65,7 @@ npm run ios
 
 # OR using Yarn
 yarn ios
+
 ```
 
 If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
@@ -66,21 +76,54 @@ This is one way to run your app — you can also build it directly from Android 
 
 Now that you have successfully run the app, let's make changes!
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
 
 When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+* **Android**: Press the R key twice or select **"Reload"** from the **Dev Menu**, accessed via Ctrl + M (Windows/Linux) or Cmd ⌘ + M (macOS).
+* **iOS**: Press R in iOS Simulator.
+
+## Step 4: Generate Production Android Build (APK)
+
+When you are ready to compile your application into a standalone installation file (`.apk`) for testing or distribution, follow these steps:
+
+### 1. Build the Release APK
+
+Navigate to the `android` directory and run the Gradle bundle command:
+
+```sh
+# Navigate to the android folder
+cd android
+
+# On Windows (Command Prompt / PowerShell)
+gradlew assembleRelease
+
+# On macOS / Linux
+./gradlew assembleRelease
+
+```
+
+### 2. Output File Path
+
+Once the build process finishes successfully, your generated `.apk` file will be located at the following path relative to the **root of your project**:
+
+```text
+android/app/build/outputs/apk/release/app-release.apk
+
+```
+
+> **Note**: If you want to generate a debug version of the APK instead, run `assembleDebug`. The output path will be `android/app/build/outputs/apk/debug/app-debug.apk`.
+
+---
 
 ## Congratulations! :tada:
 
-You've successfully run and modified your React Native App. :partying_face:
+You've successfully run, modified, and built your React Native App. :partying_face:
 
 ### Now what?
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+* If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
+* If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
 
 # Troubleshooting
 
@@ -90,8 +133,11 @@ If you're having issues getting the above steps to work, see the [Troubleshootin
 
 To learn more about React Native, take a look at the following resources:
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+* [React Native Website](https://reactnative.dev) - learn more about React Native.
+* [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
+* [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
+* [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
+* [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+```
+
