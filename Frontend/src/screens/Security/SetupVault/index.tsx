@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
+import { useVault } from '@context/VaultContext';
 
 // Import local (Co-localisation)
 import { setupVaultSchema, SetupVaultFormType } from './schema';
@@ -22,6 +23,7 @@ import { styles } from './styles';
 const SetupVaultScreen = () => {
   // const { setupLocalVault } = useVault();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { setupLocalVault } = useVault();
 
   const {
     control,
@@ -36,24 +38,22 @@ const SetupVaultScreen = () => {
   });
 
   const onSubmit = async (data: SetupVaultFormType) => {
-    // 1. Validation manuelle : Vérifier que les deux PIN correspondent
-    if (data.pin !== data.confirmPin) {
-      Alert.alert('Erreur', 'Les codes PIN ne correspondent pas.');
-      return;
-    }
+    // La validation (data.pin === data.confirmPin) est maintenant gérée automatiquement 
+    // par le resolver Valibot en amont. Le code n'arrive ici que si les PIN sont identiques.
 
     setIsSubmitting(true);
     try {
-      // 2. Appel au contexte pour sauvegarder le PIN (Keychain)
-      // await setupLocalVault(data.pin);
+      // 1. Appel au contexte pour sauvegarder le PIN de manière sécurisée (Keychain natif)
+      await setupLocalVault(data.pin);
       
       console.log('Coffre configuré avec le PIN :', data.pin);
       Alert.alert('Succès', 'Votre coffre local est sécurisé !');
       
       // La navigation vers AuthStack se fera automatiquement 
-      // grâce à AppNavigator qui écoute l'état de useVault()
+      // grâce à AppNavigator qui réagit au changement d'état de useVault()
       
     } catch (error) {
+      console.error("Erreur lors de la configuration du coffre :", error);
       Alert.alert('Erreur', 'Impossible de configurer le coffre local.');
     } finally {
       setIsSubmitting(false);
