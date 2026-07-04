@@ -1,61 +1,66 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authService } from '../services/authService'; // Ajustez l'import si besoin avec @services/authService
+// src/context/AuthContext.tsx
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
-// 1. Définition des types pour TypeScript
 interface AuthContextType {
   isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (email: string, mdp: string) => Promise<void>;
+  isStaff: boolean;
+  isPendingApproval: boolean;
+  isLoadingAuth: boolean;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
-// 2. Création du contexte avec une valeur par défaut
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 3. Création du Provider (celui qui va englober l'application)
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true); // true au démarrage pour vérifier le stockage
+  const [isStaff, setIsStaff] = useState<boolean>(false);
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
+  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
 
-  // Vérification du token au lancement de l'application
+  // Vérifier s'il y a déjà un Token JWT stocké lors de l'ouverture de l'app
   useEffect(() => {
     const checkToken = async () => {
-      try {
-        const token = await AsyncStorage.getItem('accessToken');
-        if (token) {
-          setIsAuthenticated(true);
-        }
-      } catch (error) {
-        console.error("Erreur lors de la lecture du token", error);
-      } finally {
-        setIsLoading(false); // L'application a fini de vérifier
-      }
+      // Pour l'instant, on simule un chargement rapide (1 seconde)
+      setTimeout(() => {
+        setIsLoadingAuth(false);
+      }, 1000);
     };
 
     checkToken();
   }, []);
 
-  // Fonction de connexion globale
-  const login = async (email: string, mdp: string) => {
-    await authService.login(email, mdp);
-    setIsAuthenticated(true); // Met à jour l'état global
+  const login = async (email: string, password: string) => {
+    // Plus tard, ici on appellera axios.post('/api/users/login')
+    console.log("Tentative de connexion avec :", email);
+    
+    // Simulation temporaire pour tester ton interface :
+    // setIsAuthenticated(true);
   };
 
-  // Fonction de déconnexion globale
   const logout = async () => {
-    await authService.logout();
     setIsAuthenticated(false);
+    setIsStaff(false);
+    setIsPendingApproval(false);
+    // Plus tard : supprimer le JWT localement
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        isStaff,
+        isPendingApproval,
+        isLoadingAuth,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// 4. Hook personnalisé pour utiliser le contexte facilement
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
