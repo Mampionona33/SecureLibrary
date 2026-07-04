@@ -1,27 +1,29 @@
-// src/screens/Login/index.tsx
 import React, { useState } from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
+  SafeAreaView,
   ActivityIndicator,
   Alert
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@navigation/types';
+import { RootStackParamList } from '../navigation/types';
+import { authService } from '@services/authService';
 
-// Importations Valibot et React Hook Form
+// 1. Importations de Valibot et du resolver spécifique
+import { object, string, pipe, minLength, email, InferInput } from 'valibot';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
-
-// Importations locales
 import { loginSchema, LoginFormType } from './schema';
-import { useAuth } from '@context/AuthContext';
-import { styles } from './styles'; // <--- L'import des styles isolés
+
+
+// 3. Déduction automatique du type TypeScript avec Valibot
+type LoginFormType = InferInput<typeof loginSchema>;
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
 
@@ -29,8 +31,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login } = useAuth();
-
+  // 4. Initialisation de React Hook Form avec valibotResolver
   const {
     control,
     handleSubmit,
@@ -47,13 +48,15 @@ const LoginScreen = ({ navigation }: Props) => {
     setIsLoading(true);
 
     try {
-      await login(data.email, data.password);
+      await authService.login(data.email, data.password);
+      setIsLoading(false);
+      navigation.replace('Home');
     } catch (error: any) {
       setIsLoading(false);
       if (error.response?.status === 401) {
-        Alert.alert('Échec de la connexion', 'Identifiants incorrects. Veuillez réessayer.');
+        Alert.alert('Échec', 'Identifiants incorrects. Veuillez réessayer.');
       } else {
-        Alert.alert('Erreur', 'Impossible de se connecter au serveur. Vérifiez votre connexion.');
+        Alert.alert('Erreur', 'Impossible de se connecter au serveur.');
       }
     }
   };
@@ -154,5 +157,152 @@ const LoginScreen = ({ navigation }: Props) => {
     </SafeAreaView>
   );
 };
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  headerContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  logoIcon: {
+    fontSize: 48,
+    marginBottom: 10,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#1f2937',
+  },
+  titleHighlight: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#1e3a8a',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  formContainer: {
+    width: '100%',
+  },
+  label: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#374151',
+    marginBottom: 6,
+    marginLeft: 4,
+    marginTop: 10,
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    height: 50,
+  },
+  inputErrorBorder: {
+    borderColor: '#ef4444',
+  },
+  errorText: {
+    color: '#ef4444',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
+  },
+  input: {
+    flex: 1,
+    height: '100%',
+    color: '#111827',
+    fontSize: 16,
+  },
+  toggleButton: {
+    padding: 8,
+  },
+  toggleText: {
+    color: '#1e3a8a',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    color: '#1e3a8a',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  loginButton: {
+    backgroundColor: '#1e3a8a',
+    height: 50,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    shadowColor: '#1e3a8a',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  loginButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  loginButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#d1d5db',
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: '#6b7280',
+    fontSize: 12,
+  },
+  biometricButton: {
+    flexDirection: 'row',
+    height: 50,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#e5e7eb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+  },
+  biometricIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  biometricText: {
+    color: '#374151',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});
 
 export default LoginScreen;
