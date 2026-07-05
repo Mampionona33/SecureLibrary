@@ -3,146 +3,112 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#0f172a', // Fond ardoise foncé (thème sécurité)
   },
   container: {
-    flex: 1,
+    flexGrow: 1, // Permet au ScrollView de centrer le contenu verticalement
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    padding: 24,
   },
   headerContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 32,
   },
   logoIcon: {
-    fontSize: 48,
-    marginBottom: 10,
+    fontSize: 64,
+    marginBottom: 12,
   },
   title: {
     fontSize: 28,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  titleHighlight: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e3a8a',
-    marginBottom: 8,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 15,
+    color: '#94a3b8',
     textAlign: 'center',
+    marginTop: 8,
   },
   formContainer: {
     width: '100%',
   },
   label: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 6,
-    marginLeft: 4,
-    marginTop: 10,
+    fontWeight: '600',
+    color: '#94a3b8',
+    marginBottom: 8,
+    marginTop: 16,
   },
   inputContainer: {
-    flexDirection: 'row',
+    flexDirection: 'row', // Aligne le TextInput et le bouton "Voir" sur la même ligne
     alignItems: 'center',
-    backgroundColor: '#ffffff',
+    backgroundColor: '#1e293b',
     borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 14,
+    borderColor: '#334155',
+    borderRadius: 8,
+    paddingHorizontal: 12,
     height: 50,
   },
+  input: {
+    flex: 1, // Le champ texte prend tout l'espace disponible
+    color: '#ffffff',
+    fontSize: 16,
+    height: '100%',
+  },
   inputErrorBorder: {
-    borderColor: '#ef4444',
+    borderColor: '#ef4444', // Bordure rouge en cas d'erreur
   },
   errorText: {
     color: '#ef4444',
     fontSize: 12,
     marginTop: 4,
-    marginLeft: 4,
-  },
-  input: {
-    flex: 1,
-    height: '100%',
-    color: '#111827',
-    fontSize: 16,
   },
   toggleButton: {
     padding: 8,
   },
   toggleText: {
-    color: '#1e3a8a',
+    color: '#3b82f6', // Bleu pour le bouton Voir/Cacher
     fontSize: 14,
     fontWeight: '600',
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#1e3a8a',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#1e3a8a',
+  // 🟢 STYLE DU BOUTON "SE CONNECTER"
+  submitButton: {
+    backgroundColor: '#3b82f6', // Bleu principal moderne
     height: 50,
-    borderRadius: 10,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#1e3a8a',
-    shadowOffset: { width: 0, height: 4 },
+    marginTop: 24,
+    elevation: 2,
+    shadowColor: '#000',
     shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
   },
-  loginButtonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0,
-    elevation: 0,
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
-  loginButtonText: {
+  submitButtonText: {
     color: '#ffffff',
     fontSize: 16,
     fontWeight: 'bold',
   },
-  dividerContainer: {
+  // 🟢 STYLE DU BLOC "PAS ENCORE DE COMPTE ? S'INSCRIRE"
+  footer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#d1d5db',
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  biometricButton: {
-    flexDirection: 'row',
-    height: 50,
-    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e5e7eb',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    marginTop: 24,
   },
-  biometricIcon: {
-    fontSize: 18,
-    marginRight: 8,
+  footerText: {
+    color: '#94a3b8',
+    fontSize: 14,
   },
-  biometricText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
+  footerLink: {
+    color: '#3b82f6', // Lien en bleu
+    fontSize: 14,
+    fontWeight: 'bold',
+    textDecorationLine: 'underline', // Souligné pour faire "lien"
   },
 });

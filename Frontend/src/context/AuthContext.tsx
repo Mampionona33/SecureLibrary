@@ -27,7 +27,7 @@ const extractErrorMessage = (data: any, fallback: string): string => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isStaff, setIsStaff] = useState<boolean>(false);
-  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false); // Conservé pour la cohérence du type global
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false); 
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
       const tokenResponse = await fetch(`${API_URL}/users/login/`, {
         method: 'POST',
@@ -90,7 +90,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const tokenData = await tokenResponse.json();
 
       if (!tokenResponse.ok) {
-        // 🟢 Si Django refuse à cause du statut "pending", on extrait proprement le message.
+        // 🟢 Si Django refuse (ex: statut "pending"), on extrait proprement le message.
         // L'écran Login.tsx interceptera ce texte pour effectuer la redirection manuelle.
         return {
           success: false,
@@ -108,7 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      // Sécurité additionnelle : Si pour une raison x ou y Django avait laissé passer le login
+      // Sécurité additionnelle au cas où le backend renverrait un profil en attente
       if (userProfile.status === 'pending') {
         return {
           success: false,
