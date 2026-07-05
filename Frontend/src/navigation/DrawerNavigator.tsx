@@ -49,28 +49,28 @@ export const DrawerNavigator = () => {
       }).start();
     }
   };
-
-  return (
+return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
       <View style={styles.container}>
         
-        {/* L'APPLICATION EN ARRIÈRE-PLAN */}
-        {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
+        {/* 1. L'APPLICATION EN ARRIÈRE-PLAN */}
+        <View style={styles.contentArea}>
+          {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
+        </View>
 
-        {/* L'OVERLAY SOMBRE QUAND LE TIROIR EST OUVERT */}
+        {/* 2. L'OVERLAY SOMBRE DE COUVERTURE TOTALE */}
         {isOpen && (
           <TouchableWithoutFeedback onPress={toggleDrawer}>
-            <View style={styles.overlay} />
+            <Animated.View style={styles.overlay} />
           </TouchableWithoutFeedback>
         )}
 
-        {/* LE TIROIR ANIME (DRAWER) */}
+        {/* 3. LE TIROIR ANIMÉ (DRAWER) */}
         <Animated.View style={[styles.drawer, { transform: [{ translateX: animX }] }]}>
           <View style={styles.drawerContent}>
             
             <Text style={styles.menuTitle}>📖 SecureLibrary</Text>
             
-            {/* NAVIGATION DU TIROIR */}
             <TouchableOpacity 
               style={[styles.menuItem, currentView === 'main' && styles.activeItem]} 
               onPress={() => { setCurrentView('main'); toggleDrawer(); }}
@@ -87,7 +87,6 @@ export const DrawerNavigator = () => {
               </TouchableOpacity>
             )}
 
-            {/* BOUTON LOGOUT TOUT EN BAS */}
             <TouchableOpacity style={styles.logoutButton} onPress={async () => await logout()}>
               <Text style={styles.logoutText}>🚪 Déconnexion</Text>
             </TouchableOpacity>
@@ -99,12 +98,24 @@ export const DrawerNavigator = () => {
   );
 };
 
+// 🎨 LES STYLES CORRIGÉS POUR L'OVERLAY
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1,
+    position: 'relative',
+  },
+  contentArea: {
+    flex: 1,
+    zIndex: 1, // L'application est au niveau le plus bas
+  },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    zIndex: 99,
+    zIndex: 10, // L'overlay se met au-dessus de l'application
   },
   drawer: {
     position: 'absolute',
@@ -113,7 +124,7 @@ const styles = StyleSheet.create({
     left: 0,
     width: DRAWER_WIDTH,
     backgroundColor: '#ffffff',
-    zIndex: 100,
+    zIndex: 20, // Le tiroir est tout en haut, au-dessus de l'overlay
     elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.25,
