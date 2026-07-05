@@ -6,7 +6,7 @@ export const authService = {
   login: async (email: string, password: string) => {
     try {
       const response = await apiClient.post('/api/token/', {
-        email: email,       // <--- LA CORRECTION EST ICI (email au lieu de username)
+        email: email,        
         password: password,
       });
 
@@ -21,11 +21,13 @@ export const authService = {
     }
   },
 
-  logout: async () => {
+ logout: async () => {
     try {
-      await AsyncStorage.multiRemove(['accessToken', 'refreshToken']);
+      // Cette commande détruit toutes les données de l'AsyncStorage d'un coup
+      await AsyncStorage.clear();
+      console.log("Stockage entièrement vidé !");
     } catch (error) {
       console.error('Erreur lors de la déconnexion', error);
     }
-  },
+  },
 };

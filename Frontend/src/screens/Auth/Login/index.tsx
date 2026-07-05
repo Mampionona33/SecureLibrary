@@ -4,40 +4,40 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
-import { authService } from '@services/authService';
+import { AuthStackParamList } from '@navigation/types';
 
-// 1. Importations de Valibot et du resolver spécifique
-import { object, string, pipe, minLength, email, InferInput } from 'valibot';
+// React Hook Form & Valibot
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
+
+// Architecture, Contextes et Co-localisation
 import { loginSchema, LoginFormType } from './schema';
+import { styles } from './styles';
+import { useAuth } from '@context/AuthContext';
 
-
-// 3. Déduction automatique du type TypeScript avec Valibot
-type LoginFormType = InferInput<typeof loginSchema>;
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const LoginScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // 4. Initialisation de React Hook Form avec valibotResolver
+  // On consomme la méthode login connectée au backend depuis le contexte global
+  const { login } = useAuth();
+
   const {
     control,
     handleSubmit,
     formState: { errors },
   } = useForm<LoginFormType>({
     resolver: valibotResolver(loginSchema),
+    mode: 'onChange', // Valide les champs en temps réel (UX propre)
     defaultValues: {
       email: '',
       password: '',
@@ -45,19 +45,24 @@ const LoginScreen = ({ navigation }: Props) => {
   });
 
   const onSubmit = async (data: LoginFormType) => {
-    setIsLoading(true);
+    setIsLoading(true); // On active le spinner
 
     try {
-      await authService.login(data.email, data.password);
-      setIsLoading(false);
-      navigation.replace('Home');
-    } catch (error: any) {
-      setIsLoading(false);
-      if (error.response?.status === 401) {
-        Alert.alert('Échec', 'Identifiants incorrects. Veuillez réessayer.');
-      } else {
-        Alert.alert('Erreur', 'Impossible de se connecter au serveur.');
+      const result = await login(data.email, data.password);
+
+      if (!result.success) {
+        // Si le serveur rejette les identifiants, on arrête le chargement et on prévient l'utilisateur
+        setIsLoading(false);
+        Alert.alert('Échec de la connexion', result.message);
       }
+      
+      // CRUCIAL : Si result.success est TRUE, on ne coupe pas "isLoading" et on ne navigue pas manuellement.
+      // Le AuthContext a déjà mis à jour les états globaux. L'AppNavigator va capter le changement
+      // et démonter automatiquement cet écran pour afficher la bonne Stack (MainStack, PendingApproval, etc.).
+
+    } catch (error) {
+      setIsLoading(false);
+      Alert.alert('Erreur', 'Impossible de joindre le serveur de sécurité.');
     }
   };
 
@@ -67,6 +72,7 @@ const LoginScreen = ({ navigation }: Props) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
+        {/* En-tête de la page */}
         <View style={styles.headerContainer}>
           <Text style={styles.logoIcon}>📚</Text>
           <Text style={styles.title}>Bibliothèque</Text>
@@ -74,8 +80,10 @@ const LoginScreen = ({ navigation }: Props) => {
           <Text style={styles.subtitle}>Accédez à vos archives protégées</Text>
         </View>
 
+        {/* Formulaire de saisie */}
         <View style={styles.formContainer}>
           
+          {/* Identifiant / Email */}
           <Text style={styles.label}>Identifiant ou Email</Text>
           <Controller
             control={control}
@@ -98,6 +106,7 @@ const LoginScreen = ({ navigation }: Props) => {
           />
           {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
+          {/* Mot de passe */}
           <Text style={styles.label}>Mot de passe</Text>
           <Controller
             control={control}
@@ -125,10 +134,12 @@ const LoginScreen = ({ navigation }: Props) => {
           />
           {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
+          {/* Mot de passe oublié */}
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
 
+          {/* Bouton de Connexion principale */}
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleSubmit(onSubmit)}
@@ -147,162 +158,27 @@ const LoginScreen = ({ navigation }: Props) => {
             <View style={styles.divider} />
           </View>
 
-          <TouchableOpacity style={styles.biometricButton}>
+          {/* Bouton Biométrie (Placeholder optionnel) */}
+          <TouchableOpacity 
+            style={styles.biometricButton}
+            onPress={() => Alert.alert('Biométrie', 'Veuillez d\'abord configurer votre coffre fort local.')}
+          >
             <Text style={styles.biometricIcon}>🔒</Text>
             <Text style={styles.biometricText}>Connexion biométrique</Text>
           </TouchableOpacity>
+
+          {/* Lien vers l'inscription */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 32 }}>
+            <Text style={{ color: '#6b7280', fontSize: 14 }}>Pas encore de compte ? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={{ color: '#1e3a8a', fontWeight: 'bold', fontSize: 14 }}>S'inscrire</Text>
+            </TouchableOpacity>
+          </View>
 
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  headerContainer: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logoIcon: {
-    fontSize: 48,
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '600',
-    color: '#1f2937',
-  },
-  titleHighlight: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#1e3a8a',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'center',
-  },
-  formContainer: {
-    width: '100%',
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 6,
-    marginLeft: 4,
-    marginTop: 10,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    height: 50,
-  },
-  inputErrorBorder: {
-    borderColor: '#ef4444',
-  },
-  errorText: {
-    color: '#ef4444',
-    fontSize: 12,
-    marginTop: 4,
-    marginLeft: 4,
-  },
-  input: {
-    flex: 1,
-    height: '100%',
-    color: '#111827',
-    fontSize: 16,
-  },
-  toggleButton: {
-    padding: 8,
-  },
-  toggleText: {
-    color: '#1e3a8a',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: 8,
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: '#1e3a8a',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  loginButton: {
-    backgroundColor: '#1e3a8a',
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#1e3a8a',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  loginButtonDisabled: {
-    backgroundColor: '#9ca3af',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  loginButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#d1d5db',
-  },
-  dividerText: {
-    marginHorizontal: 10,
-    color: '#6b7280',
-    fontSize: 12,
-  },
-  biometricButton: {
-    flexDirection: 'row',
-    height: 50,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#e5e7eb',
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-  },
-  biometricIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  biometricText: {
-    color: '#374151',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
 
 export default LoginScreen;
