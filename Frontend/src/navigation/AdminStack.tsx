@@ -1,5 +1,9 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { TouchableOpacity, Text } from 'react-native';
+
+// NOUVEAU : Importation du hook de notre tiroir personnalisé
+import { useCustomDrawer } from './DrawerNavigator';
 
 // Importation des écrans co-localisés Admin
 import AdminDashboardScreen from '../screens/Admin/Dashboard';
@@ -10,6 +14,9 @@ import ManageBooksScreen from '../screens/Admin/ManageBooks';
 const Stack = createNativeStackNavigator();
 
 const AdminStack = () => {
+  // On récupère la fonction d'ouverture/fermeture de notre rideau animé
+  const { toggleDrawer } = useCustomDrawer();
+
   return (
     <Stack.Navigator
       screenOptions={{
@@ -22,7 +29,18 @@ const AdminStack = () => {
       <Stack.Screen 
         name="AdminDashboard" 
         component={AdminDashboardScreen} 
-        options={{ title: 'Console Admin' }}
+        options={{ 
+          title: 'Console Admin',
+          // ☰ Ouvre/ferme notre tiroir léger en pur React Native
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={toggleDrawer}
+              style={{ marginRight: 15 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: 'bold' }}>☰</Text>
+            </TouchableOpacity>
+          ),
+        }}
       />
       <Stack.Screen 
         name="ManageUsers" 

@@ -7,16 +7,14 @@ import { useAuth } from '@context/AuthContext';
 
 import SecurityStack from './SecurityStack';
 import AuthStack from './AuthStack';
-import MainStack from './MainStack';
-import AdminStack from './AdminStack';
+import DrawerNavigator from './DrawerNavigator'; // Import de notre tiroir custom
 
 const RootStack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const { isVaultConfigured, isVaultUnlocked, isLoadingVault } = useVault();
-  const { isAuthenticated, isStaff, isLoadingAuth } = useAuth();
+  const { isAuthenticated, isLoadingAuth } = useAuth();
 
-  // On attend que les vérifications mémoires (Keychain/Tokens) soient finies
   if (isLoadingVault || isLoadingAuth) {
     return null; 
   }
@@ -25,21 +23,19 @@ const AppNavigator = () => {
     <NavigationContainer>
       <RootStack.Navigator screenOptions={{ headerShown: false }}>
         
-        {/* CONDITION 1 : Priorité absolue à la sécurité locale */}
+        {/* CONDITION 1 : Priorité absolue à la sécurité locale (Pas de menu) */}
         {(!isVaultConfigured || !isVaultUnlocked) ? (
           <RootStack.Screen name="SecurityStack" component={SecurityStack} />
         ) 
         
-        /* CONDITION 2 : Le coffre est ouvert, on gère l'accès serveur */
+        /* CONDITION 2 : Le coffre est ouvert, pas encore connecté (Pas de menu) */
         : !isAuthenticated ? (
           <RootStack.Screen name="AuthStack" component={AuthStack} />
         ) 
         
-        /* CONDITION 3 : L'utilisateur est connecté et validé */
-        : isStaff ? (
-          <RootStack.Screen name="AdminStack" component={AdminStack} />
-        ) : (
-          <RootStack.Screen name="MainStack" component={MainStack} />
+        /* CONDITION 3 : Connecté et validé (Menu Tiroir Actif) */
+        : (
+          <RootStack.Screen name="AppDrawer" component={DrawerNavigator} />
         )}
 
       </RootStack.Navigator>
