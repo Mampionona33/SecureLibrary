@@ -9,10 +9,25 @@ import { TokenResponse, UserProfileResponse, AuthContextType } from '../types/au
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// 🟢 Fonction utilitaire : garantit toujours une string, jamais un tableau/objet.
+const extractErrorMessage = (data: any, fallback: string): string => {
+  if (!data || typeof data !== 'object') return fallback;
+
+  const raw = data.detail ?? data[Object.keys(data)[0]];
+
+  if (Array.isArray(raw)) {
+    return typeof raw[0] === 'string' ? raw[0] : fallback;
+  }
+  if (typeof raw === 'string') {
+    return raw;
+  }
+  return fallback;
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isStaff, setIsStaff] = useState<boolean>(false);
-  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false); // Conservé pour la cohérence du type global
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
@@ -20,17 +35,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkPersistedSession = async () => {
       try {
         const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
-        
+
         if (credentials && credentials.password) {
           const token = credentials.password;
           const userProfile = await fetchUserProfile(token);
-          
-          if (userProfile) {
+
+          if (userProfile && userProfile.status !== 'pending') {
             setAuthToken(token);
-            setIsAuthenticated(true);
             setIsStaff(userProfile.role === 'admin' || userProfile.role === 'staff');
             setIsPendingApproval(false);
+            setIsAuthenticated(true);
           } else {
+            // Si le profil n'existe plus ou est repassé en pending entre temps, on nettoie
             await logout();
           }
         }
@@ -46,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchUserProfile = async (token: string): Promise<UserProfileResponse | null> => {
     try {
-      // Utilisation dynamique de la variable d'environnement (avec le slash final pour Django)
       const response = await fetch(`${API_URL}/users/me/`, {
         method: 'GET',
         headers: {
@@ -66,7 +81,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      // Utilisation de l'API_URL issue de ton fichier .env local
       const tokenResponse = await fetch(`${API_URL}/users/login/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -76,9 +90,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const tokenData = await tokenResponse.json();
 
       if (!tokenResponse.ok) {
-        return { 
-          success: false, 
-          message: tokenData.detail || 'Identifiants ou e-mail incorrects.' 
+        // 🟢 Si Django refuse à cause du statut "pending", on extrait proprement le message.
+        // L'écran Login.tsx interceptera ce texte pour effectuer la redirection manuelle.
+        return {
+          success: false,
+          message: extractErrorMessage(tokenData, 'Identifiants ou e-mail incorrects.')
         };
       }
 
@@ -86,12 +102,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userProfile = await fetchUserProfile(tokens.access);
 
       if (!userProfile) {
-        return { 
-          success: false, 
-          message: "Impossible de récupérer votre profil de sécurité." 
+        return {
+          success: false,
+          message: "Impossible de récupérer votre profil de sécurité."
         };
       }
 
+      // Sécurité additionnelle : Si pour une raison x ou y Django avait laissé passer le login
+      if (userProfile.status === 'pending') {
+        return {
+          success: false,
+          message: "Votre compte est en attente de validation par un administrateur."
+        };
+      }
+
+      // Workflow standard pour un utilisateur actif validé
       const isUserAdmin = userProfile.role === 'admin';
       const isUserStaff = userProfile.role === 'staff' || isUserAdmin;
 
@@ -107,9 +132,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     } catch (error) {
       console.error('Erreur réseau lors du flux de login :', error);
-      return { 
-        success: false, 
-        message: 'Le serveur de sécurité est injoignable. Vérifiez votre réseau.' 
+      return {
+        success: false,
+        message: 'Le serveur de sécurité est injoignable. Vérifiez votre réseau.'
       };
     }
   };
@@ -129,14 +154,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      isAuthenticated, 
-      isStaff, 
-      isPendingApproval, 
-      isLoadingAuth, 
+    <AuthContext.Provider value={{
+      isAuthenticated,
+      isStaff,
+      isPendingApproval,
+      isLoadingAuth,
       authToken,
-      login, 
-      logout 
+      login,
+      logout
     }}>
       {children}
     </AuthContext.Provider>

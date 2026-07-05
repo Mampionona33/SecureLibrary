@@ -8,7 +8,7 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView // Ajout du ScrollView pour éviter que le clavier ne cache les champs
+  ScrollView
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -16,6 +16,9 @@ import { AuthStackParamList } from '@navigation/types';
 
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
+
+// Importation sécurisée de la racine de l'API
+import { API_URL } from '@env';
 
 import { registerSchema, RegisterFormType } from './schema';
 import { styles } from './styles';
@@ -45,15 +48,49 @@ const RegisterScreen = ({ navigation }: Props) => {
   const onSubmit = async (data: RegisterFormType) => {
     setIsLoading(true);
     try {
-      console.log('Inscription demandée pour :', data.firstName, data.lastName);
-      
+      // Préparation du payload JSON pour correspondre aux attentes de Django
+      const payload = {
+        username: data.email, // L'email sert d'identifiant unique requis
+        first_name: data.firstName,
+        last_name: data.lastName,
+        email: data.email,
+        password: data.password,
+      };
+
+      const response = await fetch(`${API_URL}/users/register/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        let errorMessage = "Impossible de procéder à l'inscription.";
+        
+        // Extraction dynamique pour éviter les plantages de type ReadableNativeArray
+        if (responseData && typeof responseData === 'object') {
+          const firstKey = Object.keys(responseData)[0];
+          if (firstKey && responseData[firstKey]) {
+            errorMessage = Array.isArray(responseData[firstKey]) 
+              ? responseData[firstKey][0] 
+              : responseData[firstKey];
+          }
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Alerte de succès et redirection vers la page de connexion
       Alert.alert(
         'Succès', 
         'Votre compte a été créé. Un administrateur doit valider votre accès.',
         [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
       );
-    } catch (error) {
-      Alert.alert('Erreur', "Impossible de procéder à l'inscription.");
+
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || "Le serveur de sécurité est injoignable.");
     } finally {
       setIsLoading(false);
     }
