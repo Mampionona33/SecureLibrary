@@ -11,16 +11,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '@navigation/types'; // <-- Typage mis à jour avec la pile Auth
+import { AuthStackParamList } from '@navigation/types';
 
-// Importations React Hook Form & Valibot
+// React Hook Form & Valibot
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
 
-// Importations de notre architecture
+// Architecture, Contextes et Co-localisation
 import { loginSchema, LoginFormType } from './schema';
-import { useAuth } from '@context/AuthContext'; // <-- On utilise le contexte global au lieu du service direct
-import { styles } from './styles'; // Si tu souhaites ré-isoler le style ou garder StyleSheet en bas
+import { styles } from './styles';
+import { useAuth } from '@context/AuthContext';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
@@ -28,7 +28,7 @@ const LoginScreen = ({ navigation }: Props) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // On récupère la méthode de connexion depuis notre contexte centralisé
+  // On consomme la méthode login connectée au backend depuis le contexte global
   const { login } = useAuth();
 
   const {
@@ -37,6 +37,7 @@ const LoginScreen = ({ navigation }: Props) => {
     formState: { errors },
   } = useForm<LoginFormType>({
     resolver: valibotResolver(loginSchema),
+    mode: 'onChange', // Valide les champs en temps réel (UX propre)
     defaultValues: {
       email: '',
       password: '',
@@ -44,24 +45,24 @@ const LoginScreen = ({ navigation }: Props) => {
   });
 
   const onSubmit = async (data: LoginFormType) => {
-    setIsLoading(true);
+    setIsLoading(true); // On active le spinner
 
     try {
-      // On déclenche la connexion. C'est le contexte qui va stocker le token et modifier 
-      // l'état de l'application (isAuthenticated = true)
-      await login(data.email, data.password);
-      
-      // PLUS DE REPLACEMENT MANUEL ICI !
-      // AppNavigator s'occupe de faire basculer l'utilisateur automatiquement.
-      
-    } catch (error: any) {
-      if (error.response?.status === 401) {
-        Alert.alert('Échec', 'Identifiants incorrects. Veuillez réessayer.');
-      } else {
-        Alert.alert('Erreur', 'Impossible de se connecter au serveur.');
+      const result = await login(data.email, data.password);
+
+      if (!result.success) {
+        // Si le serveur rejette les identifiants, on arrête le chargement et on prévient l'utilisateur
+        setIsLoading(false);
+        Alert.alert('Échec de la connexion', result.message);
       }
-    } finally {
+      
+      // CRUCIAL : Si result.success est TRUE, on ne coupe pas "isLoading" et on ne navigue pas manuellement.
+      // Le AuthContext a déjà mis à jour les états globaux. L'AppNavigator va capter le changement
+      // et démonter automatiquement cet écran pour afficher la bonne Stack (MainStack, PendingApproval, etc.).
+
+    } catch (error) {
       setIsLoading(false);
+      Alert.alert('Erreur', 'Impossible de joindre le serveur de sécurité.');
     }
   };
 
@@ -71,6 +72,7 @@ const LoginScreen = ({ navigation }: Props) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
+        {/* En-tête de la page */}
         <View style={styles.headerContainer}>
           <Text style={styles.logoIcon}>📚</Text>
           <Text style={styles.title}>Bibliothèque</Text>
@@ -78,8 +80,10 @@ const LoginScreen = ({ navigation }: Props) => {
           <Text style={styles.subtitle}>Accédez à vos archives protégées</Text>
         </View>
 
+        {/* Formulaire de saisie */}
         <View style={styles.formContainer}>
           
+          {/* Identifiant / Email */}
           <Text style={styles.label}>Identifiant ou Email</Text>
           <Controller
             control={control}
@@ -102,6 +106,7 @@ const LoginScreen = ({ navigation }: Props) => {
           />
           {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
 
+          {/* Mot de passe */}
           <Text style={styles.label}>Mot de passe</Text>
           <Controller
             control={control}
@@ -129,10 +134,12 @@ const LoginScreen = ({ navigation }: Props) => {
           />
           {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
 
+          {/* Mot de passe oublié */}
           <TouchableOpacity style={styles.forgotPassword}>
             <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
           </TouchableOpacity>
 
+          {/* Bouton de Connexion principale */}
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleSubmit(onSubmit)}
@@ -151,16 +158,20 @@ const LoginScreen = ({ navigation }: Props) => {
             <View style={styles.divider} />
           </View>
 
-          <TouchableOpacity style={styles.biometricButton}>
+          {/* Bouton Biométrie (Placeholder optionnel) */}
+          <TouchableOpacity 
+            style={styles.biometricButton}
+            onPress={() => Alert.alert('Biométrie', 'Veuillez d\'abord configurer votre coffre fort local.')}
+          >
             <Text style={styles.biometricIcon}>🔒</Text>
             <Text style={styles.biometricText}>Connexion biométrique</Text>
           </TouchableOpacity>
 
-          {/* Ajout d'un lien vers l'inscription pour utiliser ta pile AuthStack */}
-          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 24 }}>
-            <Text style={{ color: '#6b7280' }}>Pas encore de compte ? </Text>
+          {/* Lien vers l'inscription */}
+          <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 32 }}>
+            <Text style={{ color: '#6b7280', fontSize: 14 }}>Pas encore de compte ? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={{ color: '#1e3a8a', fontWeight: 'bold' }}>S'inscrire</Text>
+              <Text style={{ color: '#1e3a8a', fontWeight: 'bold', fontSize: 14 }}>S'inscrire</Text>
             </TouchableOpacity>
           </View>
 

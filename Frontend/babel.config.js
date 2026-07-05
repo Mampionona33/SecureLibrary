@@ -27,9 +27,21 @@ module.exports = {
           "@screens": "./src/screens",
           "@services": "./src/services",
           "@store": "./src/store",
+          "@types/*": ["src/types/*"],
           "@utils": "./src/utils"
         }
       }
-    ]
+    ],
+    [
+      'module:react-native-dotenv',
+      {
+        moduleName: '@env',
+        path: '.env',
+        blacklist: null,
+        whitelist: null,
+        safe: false,
+        allowUndefined: true,
+      },
+    ],
   ]
 };

@@ -6,12 +6,14 @@ from .views import (
     UserListView,
     UserUpdateView,
     UserDetailView,
-    EmailTokenObtainPairView,   
+    EmailTokenObtainPairView,
+    CurrentUserView, # <-- On importe notre nouvelle vue
 )
 
 urlpatterns = [
     path("", UserListView.as_view(), name="list_users"),
     path("register/", RegisterView.as_view(), name="register"),
+    path("me/", CurrentUserView.as_view(), name="current_user"),  
     path("<uuid:pk>/", UserDetailView.as_view(), name="detail_user"),
     path("<uuid:pk>/delete/", UserDeleteView.as_view(), name="delete_user"),
     path("<uuid:pk>/update/", UserUpdateView.as_view(), name="update_user"),

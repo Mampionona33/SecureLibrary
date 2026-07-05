@@ -4,14 +4,12 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
 
-# 🔹 Serializer pour l'inscription
+# 🔹 Serializer pour l'inscription (inchangé)
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
-        # ⚠️ Ne pas inclure "username" si USERNAME_FIELD = "email"
-        # Ne pas inclure status ici, il est géré automatiquement à "pending"
         fields = ["id", "first_name", "last_name", "email", "password", "role"]
 
     def create(self, validated_data):
@@ -23,7 +21,6 @@ class RegisterSerializer(serializers.ModelSerializer):
             status=validated_data.get("status", "pending"),
             role=validated_data.get("role", "reader")
         )
-        # ⚠️ Promotion automatique si rôle = admin
         if user.role == "admin":
             user.is_staff = True
             user.is_superuser = True
@@ -31,19 +28,26 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
 
-# 🔹 Serializer pour le login par email
+# 🔹 Serializer pour le login par email (ÉPURÉ - APPROCHE A)
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    email = serializers.EmailField()
-
+    # On laisse SimpleJWT gérer dynamiquement le dictionnaire d'attributs
     def validate(self, attrs):
-        email = attrs.get("email")
-        password = attrs.get("password")
+        # On accepte 'email' ou 'username' venant du frontend
+        email_input = attrs.get("email") or attrs.get("username")
+        password_input = attrs.get("password")
 
-        # Authentification par email
-        user = authenticate(email=email, password=password)
+        user = authenticate(email=email_input, password=password_input)
         if not user:
-            raise serializers.ValidationError("Email ou mot de passe invalide")
+            raise serializers.ValidationError({"detail": "Email ou mot de passe invalide"})
 
-        # SimpleJWT utilise 'username' → on injecte l'email
+        # SimpleJWT se base sur le champ d'identification unique
         attrs["username"] = user.email
+        
+        # Retourne UNIQUEMENT {"refresh": "...", "access": "..."}
         return super().validate(attrs)
+
+# 🔹 NOUVEAU : Serializer pour renvoyer le profil sur l'endpoint /me/
+class UserProfileSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ["id", "first_name", "last_name", "email", "role"]
