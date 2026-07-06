@@ -1,0 +1,136 @@
+import { StyleSheet } from 'react-native';
+
+export const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+  },
+  container: {
+    padding: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1f2937',
+  },
+  modeButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  editButton: {
+    backgroundColor: '#2563eb',
+  },
+  cancelButton: {
+    backgroundColor: '#ef4444',
+  },
+  modeButtonText: {
+    color: '#ffffff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 12,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+    marginBottom: 20,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#9ca3af',
+    textTransform: 'uppercase',
+    marginBottom: 6,
+  },
+  value: {
+    fontSize: 16,
+    color: '#1f2937',
+    marginBottom: 18,
+    fontWeight: '500',
+  },
+  valueDisabled: {
+    fontSize: 16,
+    color: '#9ca3af',
+    marginBottom: 18,
+  },
+  valueBadge: {
+    fontSize: 14,
+    color: '#374151',
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 18,
+    textTransform: 'capitalize',
+    overflow: 'hidden',
+  },
+  input: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    color: '#1f2937',
+    marginBottom: 18,
+  },
+  pickerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 18,
+  },
+  pickerButton: {
+    flex: 1,
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+    borderWidth: 1,
+    borderColor: '#transparent',
+  },
+  pickerButtonActive: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#2563eb',
+  },
+  pickerText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontWeight: '500',
+    textTransform: 'capitalize',
+  },
+  pickerTextActive: {
+    color: '#2563eb',
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  saveButtonText: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+});
