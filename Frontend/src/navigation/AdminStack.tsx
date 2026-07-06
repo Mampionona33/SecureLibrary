@@ -9,6 +9,7 @@ import ManageUsersScreen from '../screens/Admin/ManageUsers';
 import ManageCategoriesScreen from '../screens/Admin/ManageCategories';
 import ManageBooksScreen from '../screens/Admin/ManageBooks';
 import UserDetailScreen from '../screens/Admin/UserDetail';
+import UserEditScreen from '../screens/Admin/UserEdit';
 
 const Stack = createNativeStackNavigator();
 
@@ -48,6 +49,11 @@ const AdminStack = () => {
         name="UserDetail" 
         component={UserDetailScreen} 
         options={{ title: 'Détails du membre' }}
+      />
+      <Stack.Screen 
+        name="UserEdit" 
+        component={UserEditScreen} 
+        options={{ title: 'Modifier le membre' }}
       />
       <Stack.Screen 
         name="ManageCategories" 

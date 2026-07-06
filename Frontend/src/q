@@ -1,0 +1,88 @@
+import React from 'react';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { TouchableOpacity, Text } from 'react-native';
+
+import { useCustomDrawer } from './DrawerNavigator';
+
+import AdminDashboardScreen from '@screens/Admin/Dashboard';
+import ManageUsersScreen from '@screens/Admin/ManageUsers';
+import ManageCategoriesScreen from '@screens/Admin/ManageCategories';
+import ManageBooksScreen from '@screens/Admin/ManageBooks';
+import UserDetailScreen from '@screens/Admin/UserDetail';
+import UserEditScreen from '@screens/Admin/UserEdit';
+
+const Stack = createNativeStackNavigator();
+
+const AdminStack = () => {<Stack.Screen 
+  name="UserDetail" 
+  component={UserDetailScreen} 
+  options={{ title: 'Détails du membre' }}
+/>
+{/* 2. AJOUTE CETTE LIGNE : */}
+<Stack.Screen 
+  name="UserEdit" 
+  component={UserEditScreen} 
+  options={{ title: 'Modifier le membre' }}
+/>
+  const { toggleDrawer } = useCustomDrawer();
+
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: true,
+        headerStyle: { backgroundColor: '#1e293b' },
+        headerTintColor: '#ffffff',
+        headerTitleStyle: { fontWeight: 'bold' },
+      }}
+    >
+      <Stack.Screen 
+        name="AdminDashboard" 
+        component={AdminDashboardScreen} 
+        options={{ 
+          title: 'Console Admin',
+          headerLeft: () => (
+            <TouchableOpacity 
+              onPress={toggleDrawer}
+              style={{ marginRight: 15 }}
+            >
+              <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: 'bold' }}>☰</Text>
+            </TouchableOpacity>
+          ),
+        }}
+      />
+      <Stack.Screen 
+        name="ManageUsers" 
+        component={ManageUsersScreen} 
+        options={{ title: 'Validation Utilisateurs' }}
+      />
+      <Stack.Screen 
+        name="UserDetail" 
+        component={UserDetailScreen} 
+        options={{ title: 'Détails du membre' }}
+      />
+      <Stack.Screen 
+        name="ManageCategories" 
+        component={ManageCategoriesScreen} 
+        options={{ title: 'Gestion Catégories' }}
+      />
+      <Stack.Screen 
+        name="ManageBooks" 
+        component={ManageBooksScreen} 
+        options={{ title: 'Gestion des Livres' }}
+      />
+      <Stack.Screen 
+        name="UserDetail" 
+        component={UserDetailScreen} 
+        options={{ title: 'Détails du membre' }}
+      />
+      {/* 2. AJOUTE CETTE LIGNE : */}
+      <Stack.Screen 
+        name="UserEdit" 
+        component={UserEditScreen} 
+        options={{ title: 'Modifier le membre' }}
+      />
+    </Stack.Navigator>
+  );
+};
+
+export default AdminStack;

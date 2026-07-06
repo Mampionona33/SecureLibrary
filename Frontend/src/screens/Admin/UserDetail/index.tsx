@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { userService } from '@services/userService';
 import { UserResponse } from '@types/user';
@@ -9,21 +9,12 @@ const UserDetailScreen = ({ route, navigation }: any) => {
   const { userId } = route.params;
   const [user, setUser] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState<'admin' | 'staff' | 'reader'>('reader');
-  const [status, setStatus] = useState<'active' | 'pending' | 'suspended'>('pending');
+  const [updating, setUpdating] = useState<boolean>(false);
 
   const fetchUserDetails = async () => {
     try {
       const data = await userService.getUserById(userId);
       setUser(data);
-      setFirstName(data.firstName);
-      setLastName(data.lastName);
-      setRole(data.role);
-      setStatus(data.status);
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Impossible de charger les détails.');
       navigation.goBack();
@@ -36,16 +27,18 @@ const UserDetailScreen = ({ route, navigation }: any) => {
     fetchUserDetails();
   }, [userId]);
 
-  const handleSave = async () => {
+  const handleStatusChange = async (newStatus: 'active' | 'pending' | 'suspended') => {
+    if (user?.status === newStatus) return;
+    
     try {
-      setLoading(true);
-      await userService.changeUserStatus(userId, status); 
-      Alert.alert('Succès', 'Le profil a été mis à jour.');
-      setIsEditing(false);
-      fetchUserDetails();
+      setUpdating(true);
+      await userService.changeUserStatus(userId, newStatus);
+      Alert.alert('Succès', `Le statut a été configuré sur : ${newStatus}`);
+      await fetchUserDetails();
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de sauvegarder.');
-      setLoading(false);
+      Alert.alert('Erreur', error.message || 'Impossible de modifier le statut.');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -61,88 +54,46 @@ const UserDetailScreen = ({ route, navigation }: any) => {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>{isEditing ? 'Éditer le membre' : 'Détails du membre'}</Text>
+          <Text style={styles.title}>Fiche Membre</Text>
           <TouchableOpacity
-            style={[styles.modeButton, isEditing ? styles.cancelButton : styles.editButton]}
-            onPress={() => setIsEditing(!isEditing)}
+            style={{ backgroundColor: '#2563eb', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 }}
+            onPress={() => navigation.navigate('UserEdit', { userId })}
           >
-            <Text style={styles.modeButtonText}>{isEditing ? 'Annuler' : 'Modifier'}</Text>
+            <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 14 }}>Éditer</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.card}>
-          <Text style={styles.label}>Prénom</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={firstName}
-              onChangeText={setFirstName}
-              editable={false}
-            />
-          ) : (
-            <Text style={styles.value}>{user?.firstName}</Text>
-          )}
-
-          <Text style={styles.label}>Nom</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={lastName}
-              onChangeText={setLastName}
-              editable={false}
-            />
-          ) : (
-            <Text style={styles.value}>{user?.lastName}</Text>
-          )}
+          <Text style={styles.label}>Prénom / Nom</Text>
+          <Text style={styles.value}>{user?.firstName} {user?.lastName}</Text>
 
           <Text style={styles.label}>Adresse Email</Text>
-          <Text style={styles.valueDisabled}>{user?.email}</Text>
+          <Text style={styles.value}>{user?.email}</Text>
 
-          <Text style={styles.label}>Rôle</Text>
-          {isEditing ? (
-            <View style={styles.pickerRow}>
-              {(['reader', 'staff', 'admin'] as const).map((r) => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.pickerButton, role === r && styles.pickerButtonActive]}
-                  onPress={() => setRole(r)}
-                  disabled={true}
-                >
-                  <Text style={[styles.pickerText, role === r && styles.pickerTextActive]}>{r}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
+          <Text style={styles.label}>Rôle système</Text>
+          <Text style={styles.valueBadge}>{user?.role}</Text>
+
+          <View style={styles.divider} />
+
+          <Text style={styles.label}>Ajuster le statut d'accès</Text>
+          {updating ? (
+            <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 12 }} />
           ) : (
-            <Text style={styles.valueBadge}>{user?.role}</Text>
-          )}
-
-          <Text style={styles.label}>Statut</Text>
-          {isEditing ? (
             <View style={styles.pickerRow}>
               {(['active', 'pending', 'suspended'] as const).map((s) => (
                 <TouchableOpacity
                   key={s}
-                  style={[styles.pickerButton, status === s && styles.pickerButtonActive]}
-                  onPress={() => setStatus(s)}
+                  style={[styles.pickerButton, user?.status === s && styles.pickerButtonActive]}
+                  onPress={() => handleStatusChange(s)}
                 >
-                  <Text style={[styles.pickerText, status === s && styles.pickerTextActive]}>{s}</Text>
+                  <Text style={[styles.pickerText, user?.status === s && styles.pickerTextActive]}>
+                    {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </View>
-          ) : (
-            <Text style={styles.valueBadge}>{user?.status}</Text>
           )}
         </View>
-
-        {isEditing && (
-          <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-            {loading ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Text style={styles.saveButtonText}>Enregistrer les modifications</Text>
-            )}
-          </TouchableOpacity>
-        )}
       </ScrollView>
     </SafeAreaView>
   );
