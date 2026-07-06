@@ -1,183 +1,155 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useAuth } from '../../../context/AuthContext';
+import { userService } from '@services/userService';
+import { UserResponse } from '@types/user';
+import { styles } from './styles';
+import UserRow from '@components/UserRow';
 
-interface DashboardProps {
-  title: string;
-}
+const ManageUsersScreen = ({ navigation }: any) => {
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active' | 'suspended'>('all');
 
-type Props = NativeStackScreenProps<any, any> & DashboardProps;
+  const fetchUsers = async () => {
+    try {
+      const data = await userService.getAllUsers();
+      setUsers(data);
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de récupérer la liste des membres.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
-const DashboardScreen = ({ title, navigation }: Props) => {
-  const { isStaff } = useAuth();
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchUsers();
+  };
+
+  const handleValidateUser = async (userId: string, name: string) => {
+    Alert.alert(
+      'Validation',
+      `Approuver l'accès de ${name} à l'organisation ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Approuver',
+          onPress: async () => {
+            try {
+              await userService.validateUser(userId);
+              Alert.alert('Succès', 'Le membre a été approuvé.');
+              fetchUsers();
+            } catch (error: any) {
+              Alert.alert('Erreur', error.message || 'Impossible d’approuver ce membre.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const filteredUsers = users.filter((user: UserResponse) => {
+    if (activeTab === 'all') return true;
+    return user.status === activeTab;
+  });
+
+  const getCount = (status: 'all' | 'pending' | 'active' | 'suspended') => {
+    if (status === 'all') return users.length;
+    return users.filter((u: UserResponse) => u.status === status).length;
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      <View style={styles.container}>
         
-        <View style={styles.header}>
-          <Text style={styles.title}>{title || 'Tableau de bord'}</Text>
-          <Text style={styles.badgeRole}>{isStaff ? '⚡ Mode Administrateur' : '📖 Espace Membre'}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Membres</Text>
+          <TouchableOpacity 
+            style={styles.addButton} 
+            onPress={() => navigation.navigate('CreateUser')}
+          >
+            <Text style={styles.addButtonText}>+ Créer Membre</Text>
+          </TouchableOpacity>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>Secure</Text>
-            <Text style={styles.statLabel}>Statut Connexion</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>Gratuit</Text>
-            <Text style={styles.statLabel}>Accès Organisation</Text>
+        <View style={styles.scrollTabWrapper}>
+          <View style={styles.tabContainer}>
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'all' && styles.activeTab]} 
+              onPress={() => setActiveTab('all')}
+            >
+              <Text style={activeTab === 'all' ? styles.activeTabText : styles.tabText}>
+                Tous ({getCount('all')})
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'pending' && styles.activeTab]} 
+              onPress={() => setActiveTab('pending')}
+            >
+              <Text style={activeTab === 'pending' ? styles.activeTabText : styles.tabText}>
+                Attente ({getCount('pending')})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'active' && styles.activeTab]} 
+              onPress={() => setActiveTab('active')}
+            >
+              <Text style={activeTab === 'active' ? styles.activeTabText : styles.tabText}>
+                Actif ({getCount('active')})
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.tab, activeTab === 'suspended' && styles.activeTab]} 
+              onPress={() => setActiveTab('suspended')}
+            >
+              <Text style={activeTab === 'suspended' ? styles.activeTabText : styles.tabText}>
+                Bloqué ({getCount('suspended')})
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {isStaff && (
-          <>
-            <Text style={styles.sectionTitle}>Panneau d'administration</Text>
-            <View style={styles.grid}>
-              <TouchableOpacity 
-                style={[styles.cardAction, { backgroundColor: '#eff6ff' }]}
-                onPress={() => navigation.navigate('ManageUsers')}
-              >
-                <Text style={styles.iconAction}>👥</Text>
-                <Text style={styles.labelAction}>Gérer Membres</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#f0fdf4' }]}>
-                <Text style={styles.iconAction}>📚</Text>
-                <Text style={styles.labelAction}>Gérer Livres</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#fdf2f8' }]}>
-                <Text style={styles.iconAction}>🗂️</Text>
-                <Text style={styles.labelAction}>Gérer Groupes</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#fff7ed' }]}>
-                <Text style={styles.iconAction}>🛡️</Text>
-                <Text style={styles.labelAction}>Gérer Autorisations</Text>
-              </TouchableOpacity>
-            </View>
-          </>
+        {loading ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color="#2563eb" />
+          </View>
+        ) : (
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={(item: UserResponse) => item.id.toString()}
+            renderItem={({ item }: { item: UserResponse }) => (
+              <UserRow 
+                user={item} 
+                onPress={() => navigation.navigate('UserDetail', { userId: item.id })}
+                onValidate={
+                  item.status === 'pending' 
+                    ? () => handleValidateUser(item.id, `${item.firstName} ${item.lastName}`) 
+                    : undefined
+                }
+              />
+            )}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Aucun membre trouvé dans cette catégorie.</Text>
+              </View>
+            }
+          />
         )}
-
-        <Text style={styles.sectionTitle}>Espace de l'organisation</Text>
-        <View style={styles.grid}>
-          <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#f0fdf4' }]}>
-            <Text style={styles.iconAction}>📜</Text>
-            <Text style={styles.labelAction}>Ressources & Chartes</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#fef9c3' }]}>
-            <Text style={styles.iconAction}>📖</Text>
-            <Text style={styles.labelAction}>Guide de l'Appli</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#eff6ff' }]}>
-            <Text style={styles.iconAction}>📥</Text>
-            <Text style={styles.labelAction}>Mes Téléchargements</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#fdf4ff' }]}>
-            <Text style={styles.iconAction}>⭐</Text>
-            <Text style={styles.labelAction}>Favoris</Text>
-          </TouchableOpacity>
-        </View>
-
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#f3f4f6',
-  },
-  scrollContainer: {
-    padding: 24,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  badgeRole: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4b5563',
-    backgroundColor: '#e5e7eb',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    overflow: 'hidden',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 14,
-    marginTop: 12,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  cardAction: {
-    width: '48%',
-    padding: 20,
-    borderRadius: 14,
-    marginBottom: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  iconAction: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
-  labelAction: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#1f2937',
-    textAlign: 'center',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#ffffff',
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 16,
-  },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#2563eb',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginTop: 2,
-  },
-});
-
-export default DashboardScreen;
+export default ManageUsersScreen;

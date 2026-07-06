@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import axios from 'axios';
-import { API_URL } from '@env';
+import { userService } from '@services/userService';
+import { UserResponse } from '@types/user';
 import { styles } from './styles';
 import UserRow from './UserRow';
 
 const ManageUsersScreen = ({ navigation }: any) => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [users, setUsers] = useState<UserResponse[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active' | 'suspended'>('all');
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_URL}/users/`);
-      setUsers(response.data);
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de récupérer la liste des membres.');
+      const data = await userService.getAllUsers();
+      setUsers(data);
+    } catch (error: any) {
+      Alert.alert('Erreur', error.message || 'Impossible de récupérer la liste des membres.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -43,11 +43,11 @@ const ManageUsersScreen = ({ navigation }: any) => {
           text: 'Approuver',
           onPress: async () => {
             try {
-              await axios.patch(`${API_URL}/users/${userId}/`, { status: 'active' });
+              await userService.validateUser(userId);
               Alert.alert('Succès', 'Le membre a été approuvé.');
               fetchUsers();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible d’approuver ce membre.');
+            } catch (error: any) {
+              Alert.alert('Erreur', error.message || 'Impossible d’approuver ce membre.');
             }
           },
         },
@@ -55,14 +55,14 @@ const ManageUsersScreen = ({ navigation }: any) => {
     );
   };
 
-  const filteredUsers = users.filter((user: any) => {
+  const filteredUsers = users.filter((user: UserResponse) => {
     if (activeTab === 'all') return true;
     return user.status === activeTab;
   });
 
   const getCount = (status: 'all' | 'pending' | 'active' | 'suspended') => {
     if (status === 'all') return users.length;
-    return users.filter((u: any) => u.status === status).length;
+    return users.filter((u: UserResponse) => u.status === status).length;
   };
 
   return (
@@ -126,8 +126,8 @@ const ManageUsersScreen = ({ navigation }: any) => {
         ) : (
           <FlatList
             data={filteredUsers}
-            keyExtractor={(item: any) => item.id.toString()}
-            renderItem={({ item }: any) => (
+            keyExtractor={(item: UserResponse) => item.id.toString()}
+            renderItem={({ item }: { item: UserResponse }) => (
               <UserRow 
                 user={item} 
                 onPress={() => navigation.navigate('UserDetail', { userId: item.id })}
