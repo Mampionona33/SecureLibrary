@@ -1,44 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useUserStore } from '@store/useUserStore';
-import { userService } from '@services/userService';
-import { UserResponse } from '@types/user';
+import { useUserStore } from '@store/useUserStore'; // ✅ On utilise Zustand à 100%
 import { styles } from './styles';
 
 const UserDetailScreen = ({ route, navigation }: any) => {
   const { userId } = route.params;
   
-  // 1. Essayer de récupérer l'utilisateur depuis le store global
-  const storeUser = useUserStore((state) => 
+  // ✅ Branchement direct et dynamique sur Zustand
+  const user = useUserStore((state) => 
     state.users.find((u) => u.id.toString() === userId.toString())
   );
-  
-  const [user, setUser] = useState<UserResponse | undefined>(storeUser);
-  const [localLoading, setLocalLoading] = useState<boolean>(!storeUser);
+  const loading = useUserStore((state) => state.loading);
+  const fetchUsers = useUserStore((state) => state.fetchUsers);
 
-  // 2. Sécurité : Si l'utilisateur n'est pas dans le store, on va le chercher directement sur le serveur
+  // Sécurité : Si l'utilisateur n'est pas dans le store (ex: reload forcé), on recharge le store global
   useEffect(() => {
-    if (!storeUser) {
-      const fetchBackupUser = async () => {
-        try {
-          setLocalLoading(true);
-          const data = await userService.getUserById(userId);
-          setUser(data);
-        } catch (error: any) {
-          Alert.alert('Erreur', 'Impossible de charger les détails de ce membre.');
-          navigation.goBack();
-        } finally {
-          setLocalLoading(false);
-        }
-      };
-      fetchBackupUser();
-    } else {
-      setUser(storeUser);
+    if (!user) {
+      fetchUsers();
     }
-  }, [userId, storeUser]);
+  }, [user, fetchUsers]);
 
-  if (localLoading) {
+  if (loading && !user) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2563eb" />
