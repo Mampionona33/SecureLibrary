@@ -53,12 +53,23 @@ Frontend/app-example
 
 # --- Backend (Django / Python) ---
 Backend/venv/
-Backend/__pycache__/
-Backend/*.py[cod]
+Backend/.venv/
+Backend/env/
+.env
+
+# ✅ CORRECTION CRITIQUE : Ignore absolument TOUS les caches compilés Python dans l'arborescence
+**/__pycache__/
+*.py[cod]
+*$py.class
+
+# Database
 Backend/*.sqlite3
 Backend/db.sqlite3
-Backend/migrations/__pycache__/
-Backend/migrations/*.py
+
+# ✅ CORRECTION CRITIQUE : N'ignore PAS les fichiers de migration (.py), seulement leur cache
+**/migrations/__pycache__/
+
+# Logs & Assets
 Backend/*.log
 Backend/media/
 Backend/staticfiles/
