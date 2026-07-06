@@ -13,17 +13,28 @@ const UserEditScreen = ({ route, navigation }: any) => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'staff' | 'reader'>('reader');
-  const [status, setStatus] = useState<'active' | 'pending' | 'suspended'>('pending');
+  const [status, setStatus] = useState<'active' | 'pending' | 'suspended' | 'inactive'>('pending');
+  
+  const [allGroups, setAllGroups] = useState<any[]>([]);
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const initData = async () => {
       try {
+        // Chargement simultané des groupes et de l'utilisateur
+        const groupsData = await userService.getAllGroups();
+        setAllGroups(groupsData);
+
         const data = await userService.getUserById(userId);
-        setFirstName(data.firstName);
-        setLastName(data.lastName);
+        setFirstName(data.firstName || '');
+        setLastName(data.lastName || '');
         setEmail(data.email);
-        setRole(data.role);
-        setStatus(data.status);
+        setRole(data.role as any);
+        setStatus(data.status as any);
+
+        if (data.groups_list) {
+          setSelectedGroupIds(data.groups_list.map((g: any) => g.id));
+        }
       } catch (error: any) {
         Alert.alert('Erreur', 'Impossible de charger les données du membre.');
         navigation.goBack();
@@ -31,8 +42,16 @@ const UserEditScreen = ({ route, navigation }: any) => {
         setLoading(false);
       }
     };
-    fetchUserData();
+    initData();
   }, [userId]);
+
+  const toggleGroupSelection = (groupId: string) => {
+    if (selectedGroupIds.includes(groupId)) {
+      setSelectedGroupIds(selectedGroupIds.filter(id => id !== groupId));
+    } else {
+      setSelectedGroupIds([...selectedGroupIds, groupId]);
+    }
+  };
 
   const handleUpdate = async () => {
     if (!firstName.trim() || !lastName.trim() || !email.trim()) {
@@ -43,8 +62,16 @@ const UserEditScreen = ({ route, navigation }: any) => {
     try {
       setSaving(true);
       
-      // Ici, on met à jour le statut, et si ton API évolue, tu passeras aussi firstName, lastName, etc.
-      await userService.changeUserStatus(userId, status); 
+      // ✅ CORRECTION : On envoie toutes les données modifiées au serveur
+      const payload = {
+        firstName,
+        lastName,
+        role,
+        status,
+        group_ids: selectedGroupIds
+      };
+      
+      await userService.updateUserFull(userId, payload); 
       
       Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
         { text: 'OK', onPress: () => navigation.goBack() }
@@ -90,9 +117,6 @@ const UserEditScreen = ({ route, navigation }: any) => {
           <TextInput
             style={[styles.input, styles.disabledInput]}
             value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
             editable={false}
           />
 
@@ -102,7 +126,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
               <TouchableOpacity
                 key={r}
                 style={[styles.pickerButton, role === r && styles.pickerButtonActive]}
-                onPress={() => setRole(r)}
+                onPress={() => setRole(r as any)}
               >
                 <Text style={[styles.pickerText, role === r && styles.pickerTextActive]}>
                   {r === 'reader' ? 'Lecteur' : r === 'staff' ? 'Staff' : 'Admin'}
@@ -117,13 +141,45 @@ const UserEditScreen = ({ route, navigation }: any) => {
               <TouchableOpacity
                 key={s}
                 style={[styles.pickerButton, status === s && styles.pickerButtonActive]}
-                onPress={() => setStatus(s)}
+                onPress={() => setStatus(s as any)}
               >
                 <Text style={[styles.pickerText, status === s && styles.pickerTextActive]}>
                   {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
                 </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          <Text style={styles.label}>Assignation aux groupes</Text>
+          <View style={styles.groupsContainer}>
+            {allGroups.length === 0 ? (
+              <Text style={styles.noGroupsText}>Aucun groupe disponible.</Text>
+            ) : (
+              allGroups.map((group) => {
+                const isSelected = selectedGroupIds.includes(group.id);
+                return (
+                  <TouchableOpacity
+                    key={group.id}
+                    style={[styles.groupCheckboxRow, isSelected && styles.groupCheckboxRowActive]}
+                    onPress={() => toggleGroupSelection(group.id)}
+                  >
+                    <View style={[styles.checkboxCircle, isSelected && styles.checkboxCircleChecked]}>
+                      {isSelected && <View style={styles.checkboxInnerCircle} />}
+                    </View>
+                    <View style={{ flex: 1, marginLeft: 10 }}>
+                      <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
+                        {group.name}
+                      </Text>
+                      {group.description && (
+                        <Text style={styles.groupDescriptionText} numberOfLines={1}>
+                          {group.description}
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </View>
 

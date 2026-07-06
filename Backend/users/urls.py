@@ -4,7 +4,6 @@ from .views import (
     RegisterView,
     UserDeleteView,
     UserListView,
-    UserUpdateView,
     UserDetailView,
     EmailTokenObtainPairView,
     CurrentUserView,
@@ -12,7 +11,6 @@ from .views import (
 )
 
 router = DefaultRouter()
-# Enregistrer 'groups' EN PREMIER
 router.register(r'groups', GroupViewSet, basename='group')
 
 urlpatterns = [
@@ -21,7 +19,6 @@ urlpatterns = [
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path('', UserListView.as_view(), name='user-list'),
     path('<uuid:pk>/', UserDetailView.as_view(), name='user-detail'),
-    path('<uuid:pk>/update/', UserUpdateView.as_view(), name='user-update'),
     path('<uuid:pk>/delete/', UserDeleteView.as_view(), name='user-delete'),
     path('', include(router.urls)),
 ]

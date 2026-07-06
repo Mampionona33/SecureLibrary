@@ -31,6 +31,8 @@ apiClient.interceptors.response.use(
       try {
         const refreshCredentials = await Keychain.getGenericPassword({ service: 'refresh_token' });
         if (refreshCredentials && refreshCredentials.password) {
+          // Utilisation d'une instance axios brute isolée pour éviter les boucles infinies,
+          // mais construction propre de l'URL absolue
           const response = await axios.post(`${API_URL}/users/token/refresh/`, {
             refresh: refreshCredentials.password,
           });
@@ -39,11 +41,16 @@ apiClient.interceptors.response.use(
           await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
 
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          return axios(originalRequest);
+          
+          // ✅ CORRECTION : Rejouer avec apiClient pour conserver la configuration d'origine
+          return apiClient(originalRequest);
         }
       } catch (refreshError) {
         await Keychain.resetGenericPassword({ service: 'auth_token' });
         await Keychain.resetGenericPassword({ service: 'refresh_token' });
+        
+        // Optionnel : Tu devrais rejeter l'erreur pour que l'UI sache que la session a expiré
+        return Promise.reject(refreshError);
       }
     }
     return Promise.reject(error);
