@@ -24,6 +24,16 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+class Group(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name
+
+
 class CustomUser(AbstractUser):
     username = None
     email = models.EmailField(unique=True)
@@ -43,12 +53,14 @@ class CustomUser(AbstractUser):
 
     ROLE_CHOICES = [
         ("admin", "Admin"),
-        ("librarian", "Librarian"),
+        ("staff", "Staff"),
         ("reader", "Reader"),
     ]
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="reader")
 
-    objects = CustomUserManager()   # ✅ utiliser ton manager custom
+    groups_list = models.ManyToManyField(Group, related_name="members", blank=True)
+
+    objects = CustomUserManager()
 
     def __str__(self):
         return f"{self.email} ({self.role}, {self.status})"

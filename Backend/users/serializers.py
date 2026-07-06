@@ -1,18 +1,34 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model, authenticate
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from .models import Group
 
 User = get_user_model()
 
+class GroupSerializer(serializers.ModelSerializer):
+    member_count = serializers.IntegerField(source='members.count', read_only=True)
+
+    class Meta:
+        model = Group
+        fields = ["id", "name", "description", "member_count", "created_at"]
+
+
 class RegisterSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True)
-    status = serializers.CharField(read_only=True)
+    password = serializers.CharField(write_only=True, required=False)
+    status = serializers.CharField(required=False)
+    firstName = serializers.CharField(source='first_name', required=False, allow_blank=True)
+    lastName = serializers.CharField(source='last_name', required=False, allow_blank=True)
+    groups_list = GroupSerializer(many=True, read_only=True)
+    group_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, queryset=Group.objects.all(), required=False
+    )
 
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "password", "role", "status"]
+        fields = ["id", "firstName", "lastName", "email", "password", "role", "status", "groups_list", "group_ids"]
 
     def create(self, validated_data):
+        group_ids = validated_data.pop('group_ids', [])
         user = User.objects.create_user(
             email=validated_data["email"],
             password=validated_data["password"],
@@ -28,7 +44,38 @@ class RegisterSerializer(serializers.ModelSerializer):
             user.status = "active"
             user.save()
             
+        if group_ids:
+            user.groups_list.set(group_ids)
         return user
+
+    def update(self, instance, validated_data):
+        group_ids = validated_data.pop('group_ids', None)
+        
+        # Récupération des champs avec valeurs par défaut existantes
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.email = validated_data.get('email', instance.email)
+        instance.role = validated_data.get('role', instance.role)
+        instance.status = validated_data.get('status', instance.status)
+
+        # Alignement des permissions Django de base selon le rôle
+        if instance.role == "admin":
+            instance.is_staff = True
+            instance.is_superuser = True
+        elif instance.role == "staff":
+            instance.is_staff = True
+            instance.is_superuser = False
+        else:
+            instance.is_staff = False
+            instance.is_superuser = False
+
+        instance.save()
+
+        if group_ids is not None:
+            instance.groups_list.set(group_ids)
+            
+        return instance
+
 
 class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
@@ -49,7 +96,12 @@ class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
         
         return data
 
+
 class UserProfileSerializer(serializers.ModelSerializer):
+    firstName = serializers.CharField(source='first_name')
+    lastName = serializers.CharField(source='last_name')
+    groups_list = GroupSerializer(many=True, read_only=True)
+
     class Meta:
         model = User
-        fields = ["id", "first_name", "last_name", "email", "role", "status"]
+        fields = ["id", "firstName", "lastName", "email", "role", "status", "groups_list"]

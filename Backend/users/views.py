@@ -1,13 +1,15 @@
-from rest_framework import generics
+from rest_framework import generics, viewsets, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.views import TokenObtainPairView
+from .models import Group
 from .serializers import (
     RegisterSerializer, 
     EmailTokenObtainPairSerializer, 
-    UserProfileSerializer
+    UserProfileSerializer,
+    GroupSerializer
 )
 
 User = get_user_model()
@@ -45,3 +47,12 @@ class CurrentUserView(APIView):
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
         return Response({"user": serializer.data})
+
+class GroupViewSet(viewsets.ModelViewSet):
+    queryset = Group.objects.all().order_by('-created_at')
+    serializer_class = GroupSerializer
+
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return [permissions.IsAuthenticated()]
