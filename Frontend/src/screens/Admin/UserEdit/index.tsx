@@ -2,10 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { userService } from '@services/userService';
+import { useUserStore } from '@store/useUserStore';
 import { styles } from './styles';
 
 const UserEditScreen = ({ route, navigation }: any) => {
   const { userId } = route.params;
+  const updateUserInStore = useUserStore((state) => state.updateUserInStore);
+  const user = useUserStore((state) => state.users.find((u) => u.id === userId));
+
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
 
@@ -13,41 +17,51 @@ const UserEditScreen = ({ route, navigation }: any) => {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<'admin' | 'staff' | 'reader'>('reader');
-  const [status, setStatus] = useState<'active' | 'pending' | 'suspended' | 'inactive'>('pending');
-  
+  const [status, setStatus] = useState<'active' | 'pending' | 'suspended'>('pending');
   const [allGroups, setAllGroups] = useState<any[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
   useEffect(() => {
     const initData = async () => {
       try {
-        // Chargement simultané des groupes et de l'utilisateur
         const groupsData = await userService.getAllGroups();
         setAllGroups(groupsData);
 
-        const data = await userService.getUserById(userId);
-        setFirstName(data.firstName || '');
-        setLastName(data.lastName || '');
-        setEmail(data.email);
-        setRole(data.role as any);
-        setStatus(data.status as any);
+        if (user) {
+          setFirstName(user.firstName || '');
+          setLastName(user.lastName || '');
+          setEmail(user.email);
+          setRole(user.role as any);
+          setStatus(user.status as any);
 
-        if (data.groups_list) {
-          setSelectedGroupIds(data.groups_list.map((g: any) => g.id));
+          if (user.groups_list) {
+            setSelectedGroupIds(user.groups_list.map((g: any) => g.id));
+          }
+        } else {
+          const data = await userService.getUserById(userId);
+          setFirstName(data.firstName || '');
+          setLastName(data.lastName || '');
+          setEmail(data.email);
+          setRole(data.role as any);
+          setStatus(data.status as any);
+
+          if (data.groups_list) {
+            setSelectedGroupIds(data.groups_list.map((g: any) => g.id));
+          }
         }
       } catch (error: any) {
-        Alert.alert('Erreur', 'Impossible de charger les données du membre.');
+        Alert.alert('Erreur', 'Impossible de charger le membre.');
         navigation.goBack();
       } finally {
         setLoading(false);
       }
     };
     initData();
-  }, [userId]);
+  }, [userId, user]);
 
   const toggleGroupSelection = (groupId: string) => {
     if (selectedGroupIds.includes(groupId)) {
-      setSelectedGroupIds(selectedGroupIds.filter(id => id !== groupId));
+      setSelectedGroupIds(selectedGroupIds.filter((id) => id !== groupId));
     } else {
       setSelectedGroupIds([...selectedGroupIds, groupId]);
     }
@@ -62,16 +76,15 @@ const UserEditScreen = ({ route, navigation }: any) => {
     try {
       setSaving(true);
       
-      // ✅ CORRECTION : On envoie toutes les données modifiées au serveur
       const payload = {
         firstName,
         lastName,
         role,
         status,
-        group_ids: selectedGroupIds
+        group_ids: selectedGroupIds,
       };
       
-      await userService.updateUserFull(userId, payload); 
+      await updateUserInStore(userId, payload); 
       
       Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
         { text: 'OK', onPress: () => navigation.goBack() }
@@ -98,27 +111,13 @@ const UserEditScreen = ({ route, navigation }: any) => {
 
         <View style={styles.formCard}>
           <Text style={styles.label}>Prénom *</Text>
-          <TextInput
-            style={styles.input}
-            value={firstName}
-            onChangeText={setFirstName}
-            placeholder="Prénom"
-          />
+          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder="Prénom" />
 
           <Text style={styles.label}>Nom *</Text>
-          <TextInput
-            style={styles.input}
-            value={lastName}
-            onChangeText={setLastName}
-            placeholder="Nom de famille"
-          />
+          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} placeholder="Nom de famille" />
 
           <Text style={styles.label}>Adresse Email *</Text>
-          <TextInput
-            style={[styles.input, styles.disabledInput]}
-            value={email}
-            editable={false}
-          />
+          <TextInput style={[styles.input, styles.disabledInput]} value={email} editable={false} />
 
           <Text style={styles.label}>Rôle au sein de la bibliothèque</Text>
           <View style={styles.pickerRow}>
@@ -126,7 +125,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
               <TouchableOpacity
                 key={r}
                 style={[styles.pickerButton, role === r && styles.pickerButtonActive]}
-                onPress={() => setRole(r as any)}
+                onPress={() => setRole(r)}
               >
                 <Text style={[styles.pickerText, role === r && styles.pickerTextActive]}>
                   {r === 'reader' ? 'Lecteur' : r === 'staff' ? 'Staff' : 'Admin'}
@@ -141,7 +140,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
               <TouchableOpacity
                 key={s}
                 style={[styles.pickerButton, status === s && styles.pickerButtonActive]}
-                onPress={() => setStatus(s as any)}
+                onPress={() => setStatus(s)}
               >
                 <Text style={[styles.pickerText, status === s && styles.pickerTextActive]}>
                   {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
@@ -152,34 +151,23 @@ const UserEditScreen = ({ route, navigation }: any) => {
 
           <Text style={styles.label}>Assignation aux groupes</Text>
           <View style={styles.groupsContainer}>
-            {allGroups.length === 0 ? (
-              <Text style={styles.noGroupsText}>Aucun groupe disponible.</Text>
-            ) : (
-              allGroups.map((group) => {
-                const isSelected = selectedGroupIds.includes(group.id);
-                return (
-                  <TouchableOpacity
-                    key={group.id}
-                    style={[styles.groupCheckboxRow, isSelected && styles.groupCheckboxRowActive]}
-                    onPress={() => toggleGroupSelection(group.id)}
-                  >
-                    <View style={[styles.checkboxCircle, isSelected && styles.checkboxCircleChecked]}>
-                      {isSelected && <View style={styles.checkboxInnerCircle} />}
-                    </View>
-                    <View style={{ flex: 1, marginLeft: 10 }}>
-                      <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>
-                        {group.name}
-                      </Text>
-                      {group.description && (
-                        <Text style={styles.groupDescriptionText} numberOfLines={1}>
-                          {group.description}
-                        </Text>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })
-            )}
+            {allGroups.map((group) => {
+              const isSelected = selectedGroupIds.includes(group.id);
+              return (
+                <TouchableOpacity
+                  key={group.id}
+                  style={[styles.groupCheckboxRow, isSelected && styles.groupCheckboxRowActive]}
+                  onPress={() => toggleGroupSelection(group.id)}
+                >
+                  <View style={[styles.checkboxCircle, isSelected && styles.checkboxCircleChecked]}>
+                    {isSelected && <View style={styles.checkboxInnerCircle} />}
+                  </View>
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>{group.name}</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
@@ -188,11 +176,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
           onPress={handleUpdate}
           disabled={saving}
         >
-          {saving ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text style={styles.submitButtonText}>Enregistrer les modifications</Text>
-          )}
+          {saving ? <ActivityIndicator size="small" color="#ffffff" /> : <Text style={styles.submitButtonText}>Enregistrer</Text>}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

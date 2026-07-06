@@ -54,13 +54,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await response.json();
         const newAccessToken = data.access;
         
-        // On met à jour l'Access Token dans l'objet de session global
         const updatedSession = {
           access: newAccessToken,
           refresh: session.refresh
         };
 
-        await Keychain.setGenericPassword('secure_library', JSON.stringify(updatedSession), { service: 'user_session' });
+        // ✅ Correction de la clé d'enregistrement
+        await Keychain.setGenericPassword('user_session', JSON.stringify(updatedSession), { service: 'user_session' });
         setAuthToken(newAccessToken);
         return newAccessToken;
       }
@@ -130,12 +130,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const tokens = tokenData as TokenResponse;
       
-      // ✅ Stockage unifié sous un seul bloc JSON sécurisé
       const sessionData = {
         access: tokens.access,
         refresh: tokens.refresh
       };
-      await Keychain.setGenericPassword('secure_library', JSON.stringify(sessionData), { service: 'user_session' });
+      
+      // ✅ Correction ici : Stockage unifié robuste sous la clé de service
+      await Keychain.setGenericPassword('user_session', JSON.stringify(sessionData), { service: 'user_session' });
       
       setAuthToken(tokens.access);
       

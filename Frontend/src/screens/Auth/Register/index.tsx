@@ -51,8 +51,8 @@ const RegisterScreen = ({ navigation }: Props) => {
       // Préparation du payload JSON pour correspondre aux attentes de Django
       const payload = {
         username: data.email, // L'email sert d'identifiant unique requis
-        first_name: data.firstName,
-        last_name: data.lastName,
+        firstName: data.firstName,
+        lastName: data.lastName,
         email: data.email,
         password: data.password,
       };

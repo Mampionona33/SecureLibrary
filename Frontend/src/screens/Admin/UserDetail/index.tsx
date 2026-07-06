@@ -1,48 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUserStore } from '@store/useUserStore';
 import { userService } from '@services/userService';
 import { UserResponse } from '@types/user';
 import { styles } from './styles';
 
 const UserDetailScreen = ({ route, navigation }: any) => {
   const { userId } = route.params;
-  const [user, setUser] = useState<UserResponse | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [updating, setUpdating] = useState<boolean>(false);
+  
+  // 1. Essayer de récupérer l'utilisateur depuis le store global
+  const storeUser = useUserStore((state) => 
+    state.users.find((u) => u.id.toString() === userId.toString())
+  );
+  
+  const [user, setUser] = useState<UserResponse | undefined>(storeUser);
+  const [localLoading, setLocalLoading] = useState<boolean>(!storeUser);
 
-  const fetchUserDetails = async () => {
-    try {
-      const data = await userService.getUserById(userId);
-      setUser(data);
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de charger les détails.');
-      navigation.goBack();
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // 2. Sécurité : Si l'utilisateur n'est pas dans le store, on va le chercher directement sur le serveur
   useEffect(() => {
-    fetchUserDetails();
-  }, [userId]);
-
-  const handleStatusChange = async (newStatus: 'active' | 'pending' | 'suspended') => {
-    if (user?.status === newStatus) return;
-    
-    try {
-      setUpdating(true);
-      await userService.changeUserStatus(userId, newStatus);
-      Alert.alert('Succès', `Le statut a été configuré sur : ${newStatus}`);
-      await fetchUserDetails();
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de modifier le statut.');
-    } finally {
-      setUpdating(false);
+    if (!storeUser) {
+      const fetchBackupUser = async () => {
+        try {
+          setLocalLoading(true);
+          const data = await userService.getUserById(userId);
+          setUser(data);
+        } catch (error: any) {
+          Alert.alert('Erreur', 'Impossible de charger les détails de ce membre.');
+          navigation.goBack();
+        } finally {
+          setLocalLoading(false);
+        }
+      };
+      fetchBackupUser();
+    } else {
+      setUser(storeUser);
     }
-  };
+  }, [userId, storeUser]);
 
-  if (loading && !user) {
+  if (localLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#2563eb" />
@@ -50,50 +46,65 @@ const UserDetailScreen = ({ route, navigation }: any) => {
     );
   }
 
+  if (!user) {
+    return (
+      <View style={styles.center}>
+        <Text style={styles.errorText}>Utilisateur introuvable ({userId}).</Text>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Fiche Membre</Text>
-          <TouchableOpacity
-            style={{ backgroundColor: '#2563eb', paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8 }}
-            onPress={() => navigation.navigate('UserEdit', { userId })}
-          >
-            <Text style={{ color: '#ffffff', fontWeight: '600', fontSize: 14 }}>Éditer</Text>
-          </TouchableOpacity>
+        <Text style={styles.title}>Détails du Membre</Text>
+
+        <View style={styles.infoCard}>
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Prénom :</Text>
+            <Text style={styles.value}>{user.firstName || 'Non renseigné'}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Nom :</Text>
+            <Text style={styles.value}>{user.lastName || 'Non renseigné'}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Email :</Text>
+            <Text style={styles.value}>{user.email}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Rôle :</Text>
+            <Text style={[styles.badge, styles[`role_${user.role}`]]}>
+              {user.role === 'admin' ? 'Administrateur' : user.role === 'staff' ? 'Personnel' : 'Lecteur'}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Statut :</Text>
+            <Text style={[styles.badge, styles[`status_${user.status}`]]}>
+              {user.status === 'active' ? 'Actif' : user.status === 'pending' ? 'En attente' : 'Bloqué'}
+            </Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Text style={styles.label}>Groupes :</Text>
+            <Text style={styles.value}>
+              {user.groups_list && user.groups_list.length > 0
+                ? user.groups_list.map((g: any) => g.name).join(', ')
+                : 'Aucun groupe'}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.card}>
-          <Text style={styles.label}>Prénom / Nom</Text>
-          <Text style={styles.value}>{user?.firstName} {user?.lastName}</Text>
-
-          <Text style={styles.label}>Adresse Email</Text>
-          <Text style={styles.value}>{user?.email}</Text>
-
-          <Text style={styles.label}>Rôle système</Text>
-          <Text style={styles.valueBadge}>{user?.role}</Text>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.label}>Ajuster le statut d'accès</Text>
-          {updating ? (
-            <ActivityIndicator size="small" color="#2563eb" style={{ marginVertical: 12 }} />
-          ) : (
-            <View style={styles.pickerRow}>
-              {(['active', 'pending', 'suspended'] as const).map((s) => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.pickerButton, user?.status === s && styles.pickerButtonActive]}
-                  onPress={() => handleStatusChange(s)}
-                >
-                  <Text style={[styles.pickerText, user?.status === s && styles.pickerTextActive]}>
-                    {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </View>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('UserEdit', { userId: user.id })}
+        >
+          <Text style={styles.editButtonText}>Modifier le profil</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

@@ -1,36 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useUserStore } from '@store/useUserStore'; // ✅ Import Zustand
 import { userService } from '@services/userService';
 import { UserResponse } from '@types/user';
 import { styles } from './styles';
 import UserRow from './UserRow';
 
 const ManageUsersScreen = ({ navigation }: any) => {
-  const [users, setUsers] = useState<UserResponse[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [refreshing, setRefreshing] = useState<boolean>(false);
+  // ✅ Branchement direct sur l'état global
+  const { users, loading, refreshing, fetchUsers, validateUserInStore } = useUserStore();
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active' | 'suspended'>('all');
 
-  const fetchUsers = async () => {
-    try {
-      const data = await userService.getAllUsers();
-      setUsers(data);
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Impossible de récupérer la liste des membres.');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
   useEffect(() => {
-    fetchUsers();
+    fetchUsers(); // Plus besoin de useIsFocused ! Zustand maintient la liste à jour
   }, []);
 
   const handleRefresh = () => {
-    setRefreshing(true);
-    fetchUsers();
+    fetchUsers(true); // Rafraîchissement manuel par Pull-to-refresh
   };
 
   const handleValidateUser = async (userId: string, name: string) => {
@@ -43,9 +30,9 @@ const ManageUsersScreen = ({ navigation }: any) => {
           text: 'Approuver',
           onPress: async () => {
             try {
-              await userService.validateUser(userId);
+              // ✅ Utilise l'action Zustand : met à jour la DB Django et l'UI instantanément
+              await validateUserInStore(userId);
               Alert.alert('Succès', 'Le membre a été approuvé.');
-              fetchUsers();
             } catch (error: any) {
               Alert.alert('Erreur', error.message || 'Impossible d’approuver ce membre.');
             }
@@ -55,6 +42,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
     );
   };
 
+  // Filtrage basé sur les données réactives de Zustand
   const filteredUsers = users.filter((user: UserResponse) => {
     if (activeTab === 'all') return true;
     return user.status === activeTab;
@@ -119,7 +107,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
           </View>
         </View>
 
-        {loading ? (
+        {loading && users.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#2563eb" />
           </View>
@@ -130,7 +118,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
             renderItem={({ item }: { item: UserResponse }) => (
               <UserRow 
                 user={item} 
-                onPress={() => navigation.navigate('UserDetail', { userId: item.id })}
+                onPress={() => navigation.navigate('UserEdit', { userId: item.id })} // Redirige directement vers ton écran d'édition réactif
                 onValidate={
                   item.status === 'pending' 
                     ? () => handleValidateUser(item.id, `${item.firstName} ${item.lastName}`) 
