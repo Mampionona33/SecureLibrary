@@ -8,12 +8,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const extractErrorMessage = (data: any, fallback: string): string => {
   if (!data || typeof data !== 'object') return fallback;
   const raw = data.detail ?? data[Object.keys(data)[0]];
-  if (Array.isArray(raw)) {
-    return typeof raw[0] === 'string' ? raw[0] : fallback;
-  }
-  if (typeof raw === 'string') {
-    return raw;
-  }
+  if (Array.isArray(raw)) return typeof raw[0] === 'string' ? raw[0] : fallback;
+  if (typeof raw === 'string') return raw;
   return fallback;
 };
 
@@ -24,13 +20,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
 
+  const fetchUserProfile = async (token: string): Promise<UserProfileResponse | null> => {
+    try {
+      const response = await fetch(`${API_URL}/users/me/`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+      if (response.ok) return await response.json() as UserProfileResponse;
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const refreshAccessToken = async (): Promise<string | null> => {
+    try {
+      const refreshCredentials = await Keychain.getGenericPassword({ service: 'refresh_token' });
+      if (!refreshCredentials || !refreshCredentials.password) return null;
+
+      const response = await fetch(`${API_URL}/users/token/refresh/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refresh: refreshCredentials.password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newAccessToken = data.access;
+        await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
+        setAuthToken(newAccessToken);
+        return newAccessToken;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
   useEffect(() => {
     const checkPersistedSession = async () => {
       try {
         const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
         if (credentials && credentials.password) {
-          const token = credentials.password;
-          const userProfile = await fetchUserProfile(token);
+          let token = credentials.password;
+          let userProfile = await fetchUserProfile(token);
+
+          if (!userProfile) {
+            const renewedToken = await refreshAccessToken();
+            if (renewedToken) {
+              token = renewedToken;
+              userProfile = await fetchUserProfile(token);
+            }
+          }
 
           if (userProfile) {
             setAuthToken(token);
@@ -55,24 +99,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
     checkPersistedSession();
   }, []);
-
-  const fetchUserProfile = async (token: string): Promise<UserProfileResponse | null> => {
-    try {
-      const response = await fetch(`${API_URL}/users/me/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-      if (response.ok) {
-        return await response.json() as UserProfileResponse;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
 
   const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
     try {
@@ -115,10 +141,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      const isUserAdmin = userProfile.user.role === 'admin';
-      const isUserStaff = userProfile.user.role === 'staff' || isUserAdmin;
-
-      setIsStaff(isUserStaff);
+      setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
 
       if (userProfile.user.status === 'pending') {
         setIsPendingApproval(true);

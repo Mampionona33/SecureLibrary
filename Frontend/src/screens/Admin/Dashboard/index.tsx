@@ -1,26 +1,27 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useAuth } from '../../../context/AuthContext';
 
 interface DashboardProps {
   title: string;
 }
 
-const DashboardScreen = ({ title }: DashboardProps) => {
+type Props = NativeStackScreenProps<any, any> & DashboardProps;
+
+const DashboardScreen = ({ title, navigation }: Props) => {
   const { isStaff } = useAuth();
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         
-        {/* EN-TÊTE DE L'APPLICATION */}
         <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
+          <Text style={styles.title}>{title || 'Tableau de bord'}</Text>
           <Text style={styles.badgeRole}>{isStaff ? '⚡ Mode Administrateur' : '📖 Espace Membre'}</Text>
         </View>
 
-        {/* SECTION DES STATISTIQUES GLOBALES */}
         <View style={styles.statsContainer}>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>Secure</Text>
@@ -32,12 +33,14 @@ const DashboardScreen = ({ title }: DashboardProps) => {
           </View>
         </View>
 
-        {/* 1. SECTION ADMINISTRATION (Visible uniquement par l'Admin) */}
         {isStaff && (
           <>
             <Text style={styles.sectionTitle}>Panneau d'administration</Text>
             <View style={styles.grid}>
-              <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#eff6ff' }]}>
+              <TouchableOpacity 
+                style={[styles.cardAction, { backgroundColor: '#eff6ff' }]}
+                onPress={() => navigation.navigate('ManageUsers')}
+              >
                 <Text style={styles.iconAction}>👥</Text>
                 <Text style={styles.labelAction}>Gérer Membres</Text>
               </TouchableOpacity>
@@ -60,7 +63,6 @@ const DashboardScreen = ({ title }: DashboardProps) => {
           </>
         )}
 
-        {/* 2. SECTION ESPACE ORGANISATION (Visible par TOUT LE MONDE : Lecteurs et Admins) */}
         <Text style={styles.sectionTitle}>Espace de l'organisation</Text>
         <View style={styles.grid}>
           <TouchableOpacity style={[styles.cardAction, { backgroundColor: '#f0fdf4' }]}>
