@@ -9,17 +9,26 @@ export const apiClient = axios.create({
   },
 });
 
+// 1. Intercepteur de Requête : Ajoute le token d'accès extrait du JSON de session
 apiClient.interceptors.request.use(
   async (config) => {
-    const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
-    if (credentials && credentials.password) {
-      config.headers.Authorization = `Bearer ${credentials.password}`;
+    try {
+      const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
+      if (credentials && credentials.password) {
+        const session = JSON.parse(credentials.password);
+        if (session && session.access) {
+          config.headers.Authorization = `Bearer ${session.access}`;
+        }
+      }
+    } catch (error) {
+      console.error('[Interceptor Request] Erreur lecture Keychain:', error);
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
+// 2. Intercepteur de Réponse : Gère l'expiration (401) et rafraîchit automatiquement via le JSON de session
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -29,27 +38,35 @@ apiClient.interceptors.response.use(
       originalRequest._retry = true;
 
       try {
-        const refreshCredentials = await Keychain.getGenericPassword({ service: 'refresh_token' });
-        if (refreshCredentials && refreshCredentials.password) {
-          // Utilisation d'une instance axios brute isolée pour éviter les boucles infinies,
-          // mais construction propre de l'URL absolue
+        const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
+        if (credentials && credentials.password) {
+          const session = JSON.parse(credentials.password);
+          
+          if (!session || !session.refresh) {
+            throw new Error('No refresh token available in session structure');
+          }
+
+          // Appel à l'API Django pour obtenir un nouvel access token
           const response = await axios.post(`${API_URL}/users/token/refresh/`, {
-            refresh: refreshCredentials.password,
+            refresh: session.refresh,
           });
 
           const newAccessToken = response.data.access;
-          await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
 
+          // Mise à jour de la session unifiée dans le Keychain
+          const updatedSession = {
+            access: newAccessToken,
+            refresh: session.refresh,
+          };
+          await Keychain.setGenericPassword('secure_library', JSON.stringify(updatedSession), { service: 'user_session' });
+
+          // Rejeu de la requête initiale en échec avec le nouveau token
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-          
-          // ✅ CORRECTION : Rejouer avec apiClient pour conserver la configuration d'origine
           return apiClient(originalRequest);
         }
       } catch (refreshError) {
-        await Keychain.resetGenericPassword({ service: 'auth_token' });
-        await Keychain.resetGenericPassword({ service: 'refresh_token' });
-        
-        // Optionnel : Tu devrais rejeter l'erreur pour que l'UI sache que la session a expiré
+        // En cas d'échec critique du refresh (ex: refresh token expiré), on nettoie tout
+        await Keychain.resetGenericPassword({ service: 'user_session' });
         return Promise.reject(refreshError);
       }
     }

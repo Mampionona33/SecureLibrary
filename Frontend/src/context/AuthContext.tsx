@@ -38,19 +38,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const refreshAccessToken = async (): Promise<string | null> => {
     try {
-      const refreshCredentials = await Keychain.getGenericPassword({ service: 'refresh_token' });
-      if (!refreshCredentials || !refreshCredentials.password) return null;
+      const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
+      if (!credentials || !credentials.password) return null;
+
+      const session = JSON.parse(credentials.password);
+      if (!session.refresh) return null;
 
       const response = await fetch(`${API_URL}/users/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: refreshCredentials.password }),
+        body: JSON.stringify({ refresh: session.refresh }),
       });
 
       if (response.ok) {
         const data = await response.json();
         const newAccessToken = data.access;
-        await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
+        
+        // On met à jour l'Access Token dans l'objet de session global
+        const updatedSession = {
+          access: newAccessToken,
+          refresh: session.refresh
+        };
+
+        await Keychain.setGenericPassword('secure_library', JSON.stringify(updatedSession), { service: 'user_session' });
         setAuthToken(newAccessToken);
         return newAccessToken;
       }
@@ -63,9 +73,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkPersistedSession = async () => {
       try {
-        const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
+        const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
         if (credentials && credentials.password) {
-          let token = credentials.password;
+          const session = JSON.parse(credentials.password);
+          let token = session.access;
           let userProfile = await fetchUserProfile(token);
 
           if (!userProfile) {
@@ -119,8 +130,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const tokens = tokenData as TokenResponse;
       
-      await Keychain.setGenericPassword('user_session', tokens.access, { service: 'auth_token' });
-      await Keychain.setGenericPassword('user_refresh', tokens.refresh, { service: 'refresh_token' });
+      // ✅ Stockage unifié sous un seul bloc JSON sécurisé
+      const sessionData = {
+        access: tokens.access,
+        refresh: tokens.refresh
+      };
+      await Keychain.setGenericPassword('secure_library', JSON.stringify(sessionData), { service: 'user_session' });
       
       setAuthToken(tokens.access);
       
@@ -163,8 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
-      await Keychain.resetGenericPassword({ service: 'auth_token' });
-      await Keychain.resetGenericPassword({ service: 'refresh_token' });
+      await Keychain.resetGenericPassword({ service: 'user_session' });
     } catch (error) {
       console.error('Erreur nettoyage Keychain :', error);
     } finally {
