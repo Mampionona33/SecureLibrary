@@ -1,20 +1,13 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import * as Keychain from 'react-native-keychain';
-
-// Importation sécurisée de la variable d'environnement
 import { API_URL } from '@env';
-
-// Importation des types isolés
 import { TokenResponse, UserProfileResponse, AuthContextType } from '../types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// 🟢 Fonction utilitaire : garantit toujours une string, jamais un tableau/objet.
 const extractErrorMessage = (data: any, fallback: string): string => {
   if (!data || typeof data !== 'object') return fallback;
-
   const raw = data.detail ?? data[Object.keys(data)[0]];
-
   if (Array.isArray(raw)) {
     return typeof raw[0] === 'string' ? raw[0] : fallback;
   }
@@ -35,18 +28,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const checkPersistedSession = async () => {
       try {
         const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
-
         if (credentials && credentials.password) {
           const token = credentials.password;
           const userProfile = await fetchUserProfile(token);
 
-          if (userProfile && userProfile.status !== 'pending') {
+          if (userProfile) {
             setAuthToken(token);
-            setIsStaff(userProfile.role === 'admin' || userProfile.role === 'staff');
-            setIsPendingApproval(false);
-            setIsAuthenticated(true);
+            setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
+            
+            if (userProfile.user.status === 'pending') {
+              setIsPendingApproval(true);
+              setIsAuthenticated(false);
+            } else {
+              setIsPendingApproval(false);
+              setIsAuthenticated(true);
+            }
           } else {
-            // Si le profil n'existe plus ou est repassé en pending entre temps, on nettoie
             await logout();
           }
         }
@@ -56,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsLoadingAuth(false);
       }
     };
-
     checkPersistedSession();
   }, []);
 
@@ -69,7 +65,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           'Authorization': `Bearer ${token}`
         },
       });
-
       if (response.ok) {
         return await response.json() as UserProfileResponse;
       }
@@ -90,8 +85,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const tokenData = await tokenResponse.json();
 
       if (!tokenResponse.ok) {
-        // 🟢 Si Django refuse (ex: statut "pending"), on extrait proprement le message.
-        // L'écran Login.tsx interceptera ce texte pour effectuer la redirection manuelle.
         return {
           success: false,
           message: extractErrorMessage(tokenData, 'Identifiants ou e-mail incorrects.')
@@ -99,8 +92,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const tokens = tokenData as TokenResponse;
-      const userProfile = await fetchUserProfile(tokens.access);
+      
+      await Keychain.setGenericPassword('user_session', tokens.access, { service: 'auth_token' });
+      await Keychain.setGenericPassword('user_refresh', tokens.refresh, { service: 'refresh_token' });
+      
+      setAuthToken(tokens.access);
+      
+      if (tokens.user) {
+        setIsStaff(tokens.user.role === 'admin' || tokens.user.role === 'staff');
+        if (tokens.user.status === 'pending') {
+          setIsPendingApproval(true);
+          setIsAuthenticated(false);
+          return { success: true };
+        }
+      }
 
+      const userProfile = await fetchUserProfile(tokens.access);
       if (!userProfile) {
         return {
           success: false,
@@ -108,28 +115,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
       }
 
-      // Sécurité additionnelle au cas où le backend renverrait un profil en attente
-      if (userProfile.status === 'pending') {
-        return {
-          success: false,
-          message: "Votre compte est en attente de validation par un administrateur."
-        };
+      const isUserAdmin = userProfile.user.role === 'admin';
+      const isUserStaff = userProfile.user.role === 'staff' || isUserAdmin;
+
+      setIsStaff(isUserStaff);
+
+      if (userProfile.user.status === 'pending') {
+        setIsPendingApproval(true);
+        setIsAuthenticated(false);
+      } else {
+        setIsPendingApproval(false);
+        setIsAuthenticated(true);
       }
 
-      // Workflow standard pour un utilisateur actif validé
-      const isUserAdmin = userProfile.role === 'admin';
-      const isUserStaff = userProfile.role === 'staff' || isUserAdmin;
-
-      await Keychain.setGenericPassword('user_session', tokens.access, { service: 'auth_token' });
-      await Keychain.setGenericPassword('user_refresh', tokens.refresh, { service: 'refresh_token' });
-
-      setAuthToken(tokens.access);
-      setIsStaff(isUserStaff);
-      setIsPendingApproval(false);
-      setIsAuthenticated(true);
-
       return { success: true };
-
     } catch (error) {
       console.error('Erreur réseau lors du flux de login :', error);
       return {
