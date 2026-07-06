@@ -16,8 +16,8 @@ class GroupSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
     status = serializers.CharField(required=False)
-    firstName = serializers.CharField(source='first_name', required=False, allow_blank=True)
-    lastName = serializers.CharField(source='last_name', required=False, allow_blank=True)
+    firstName = serializers.CharField(source='first_name', allow_blank=True, default="")
+    lastName = serializers.CharField(source='last_name', allow_blank=True, default="")
     groups_list = GroupSerializer(many=True, read_only=True)
     group_ids = serializers.PrimaryKeyRelatedField(
         many=True, write_only=True, queryset=Group.objects.all(), required=False
@@ -51,14 +51,12 @@ class RegisterSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         group_ids = validated_data.pop('group_ids', None)
         
-        # Récupération des champs avec valeurs par défaut existantes
         instance.first_name = validated_data.get('first_name', instance.first_name)
         instance.last_name = validated_data.get('last_name', instance.last_name)
         instance.email = validated_data.get('email', instance.email)
         instance.role = validated_data.get('role', instance.role)
         instance.status = validated_data.get('status', instance.status)
 
-        # Alignement des permissions Django de base selon le rôle
         if instance.role == "admin":
             instance.is_staff = True
             instance.is_superuser = True
