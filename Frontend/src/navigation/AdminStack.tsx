@@ -4,12 +4,13 @@ import { TouchableOpacity, Text } from 'react-native';
 
 import { useCustomDrawer } from './DrawerNavigator';
 
-import AdminDashboardScreen from '../screens/Admin/Dashboard';
-import ManageUsersScreen from '../screens/Admin/ManageUsers';
-import ManageCategoriesScreen from '../screens/Admin/ManageCategories';
-import ManageBooksScreen from '../screens/Admin/ManageBooks';
-import UserDetailScreen from '../screens/Admin/UserDetail';
-import UserEditScreen from '../screens/Admin/UserEdit';
+import AdminDashboardScreen from '@screens/Admin/Dashboard';
+import ManageUsersScreen from '@screens/Admin/ManageUsers';
+import ManageCategoriesScreen from '@screens/Admin/ManageCategories';
+import ManageBooksScreen from '@screens/Admin/ManageBooks';
+import UserDetailScreen from '@screens/Admin/UserDetail';
+import UserEditScreen from '@screens/Admin/UserEdit';
+import  CreateUserScreen from '@screens/Admin/CreateUser';
 
 const Stack = createNativeStackNavigator();
 
@@ -44,6 +45,11 @@ const AdminStack = () => {
         name="ManageUsers" 
         component={ManageUsersScreen} 
         options={{ title: 'Validation Utilisateurs' }}
+      />
+      <Stack.Screen 
+        name="CreateUser" 
+        component={CreateUserScreen} 
+        options={{ title: 'Créer un membre' }}
       />
       <Stack.Screen 
         name="UserDetail" 

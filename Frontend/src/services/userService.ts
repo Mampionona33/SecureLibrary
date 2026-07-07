@@ -22,6 +22,19 @@ export const userService = {
     }
   },
 
+  createUser: async (payload: CreateUserData & { status: string }): Promise<UserResponse> => {
+    try {
+      // Point sur l'URL Django : /users/register/
+      const response = await apiClient.post<UserResponse>('/users/register/', payload);
+      return response.data;
+    } catch (error: any) {
+      console.error('[UserService] Erreur createUser:', error);
+      // Récupération fine de l'erreur Django (ex: email déjà utilisé)
+      const serverMessage = error.response?.data?.detail || error.response?.data?.email?.[0];
+      throw new Error(serverMessage || 'Impossible de créer ce membre.');
+    }
+  },
+
   getAllGroups: async (): Promise<any[]> => {
     try {
       const response = await apiClient.get<any[]>('/users/groups/');
