@@ -1,20 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useUserStore } from '@store/useUserStore'; // ✅ Import Zustand
+import { useFocusEffect } from '@react-navigation/native';
+import { useUserStore } from '@store/useUserStore';
 import { userService } from '@services/userService';
 import { UserResponse } from '@types/user';
 import { styles } from './styles';
-import UserRow from './UserRow';
+import UserRow from '@components/UserRow';
 
 const ManageUsersScreen = ({ navigation }: any) => {
-  // ✅ Branchement direct sur l'état global
   const { users, loading, refreshing, fetchUsers, validateUserInStore } = useUserStore();
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active' | 'suspended'>('all');
+    console.log('RENDER ManageUsersScreen, nb users:', users.length, 'premier user:', JSON.stringify(users[0]));  
 
-  useEffect(() => {
-    fetchUsers(); // Plus besoin de useIsFocused ! Zustand maintient la liste à jour
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      console.log('ManageUsersScreen a regagné le focus, fetch...');
+      fetchUsers(true);
+    }, [])
+  );
 
   const handleRefresh = () => {
     fetchUsers(true); // Rafraîchissement manuel par Pull-to-refresh
@@ -30,7 +34,6 @@ const ManageUsersScreen = ({ navigation }: any) => {
           text: 'Approuver',
           onPress: async () => {
             try {
-              // ✅ Utilise l'action Zustand : met à jour la DB Django et l'UI instantanément
               await validateUserInStore(userId);
               Alert.alert('Succès', 'Le membre a été approuvé.');
             } catch (error: any) {
@@ -42,7 +45,6 @@ const ManageUsersScreen = ({ navigation }: any) => {
     );
   };
 
-  // Filtrage basé sur les données réactives de Zustand
   const filteredUsers = users.filter((user: UserResponse) => {
     if (activeTab === 'all') return true;
     return user.status === activeTab;
@@ -118,7 +120,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
             renderItem={({ item }: { item: UserResponse }) => (
               <UserRow 
                 user={item} 
-                onPress={() => navigation.navigate('UserEdit', { userId: item.id })} // Redirige directement vers ton écran d'édition réactif
+                onPress={() => navigation.navigate('UserEdit', { userId: item.id })}
                 onValidate={
                   item.status === 'pending' 
                     ? () => handleValidateUser(item.id, `${item.firstName} ${item.lastName}`) 

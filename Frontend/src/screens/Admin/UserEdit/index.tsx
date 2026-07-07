@@ -21,6 +21,8 @@ const UserEditScreen = ({ route, navigation }: any) => {
   const [allGroups, setAllGroups] = useState<any[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
+  console.log("Mount user edit page");
+
   useEffect(() => {
     const initData = async () => {
       try {
@@ -85,9 +87,10 @@ const UserEditScreen = ({ route, navigation }: any) => {
       };
       
       await updateUserInStore(userId, payload); 
+      await useUserStore.getState().fetchUsers();
       
       Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
+        { text: 'OK', onPress: () => navigation.popToTop() }
       ]);
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
