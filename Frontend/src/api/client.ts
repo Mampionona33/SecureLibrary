@@ -9,14 +9,17 @@ export const apiClient = axios.create({
   },
 });
 
+// 1. Intercepteur de Requête (Sécurisé contre les crashs de chaîne brute)
 apiClient.interceptors.request.use(
   async (config) => {
     try {
       const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
       if (credentials && credentials.password) {
-        const session = JSON.parse(credentials.password);
-        if (session && session.access) {
-          config.headers.Authorization = `Bearer ${session.access}`;
+        if (credentials.password.startsWith('{')) {
+          const session = JSON.parse(credentials.password);
+          if (session && session.access) {
+            config.headers.Authorization = `Bearer ${session.access}`;
+          }
         }
       }
     } catch (error) {
@@ -27,6 +30,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// 2. Intercepteur de Réponse (Correction de la re-soumission)
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
@@ -42,6 +46,10 @@ apiClient.interceptors.response.use(
       try {
         const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
         if (credentials && credentials.password) {
+          if (!credentials.password.startsWith('{')) {
+            throw new Error('Invalid session format');
+          }
+
           const session = JSON.parse(credentials.password);
           
           if (!session || !session.refresh) {
@@ -64,13 +72,16 @@ apiClient.interceptors.response.use(
           
           await Keychain.setGenericPassword('user_session', JSON.stringify(updatedSession), { service: 'user_session' });
 
-          if (originalRequest.headers) {
-            originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
-          } else {
-            originalRequest.headers = { 'Authorization': `Bearer ${newAccessToken}` };
+          // ✅ CORRECTION : On met à jour directement la configuration de la requête en cours
+          if (!originalRequest.headers) {
+            originalRequest.headers = {};
           }
+          originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
 
-          return apiClient(originalRequest);
+          // ✅ CORRECTION : On utilise une instance axios de base avec l'URL absolue 
+          // pour contourner l'intercepteur de requête global qui risquerait de relire l'ancien token.
+          originalRequest.baseURL = API_URL;
+          return axios(originalRequest);
         }
       } catch (refreshError) {
         console.error('[Interceptor Response] Échec critique du refresh token:', refreshError);

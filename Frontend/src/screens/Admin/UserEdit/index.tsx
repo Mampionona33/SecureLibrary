@@ -90,7 +90,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
       await useUserStore.getState().fetchUsers();
       
       Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
-        { text: 'OK', onPress: () => navigation.popToTop() }
+        { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     } catch (error: any) {
       Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
