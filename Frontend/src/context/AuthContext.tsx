@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const session = JSON.parse(credentials.password);
       if (!session.refresh) return null;
 
-      const response = await fetch(`${API_URL}/users/token/refresh/`, {
+      const response = await fetch(`${API_URL}/users/login/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: session.refresh }),
@@ -59,7 +59,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           refresh: session.refresh
         };
 
-        // ✅ Correction de la clé d'enregistrement
         await Keychain.setGenericPassword('user_session', JSON.stringify(updatedSession), { service: 'user_session' });
         setAuthToken(newAccessToken);
         return newAccessToken;
@@ -135,7 +134,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         refresh: tokens.refresh
       };
       
-      // ✅ Correction ici : Stockage unifié robuste sous la clé de service
       await Keychain.setGenericPassword('user_session', JSON.stringify(sessionData), { service: 'user_session' });
       
       setAuthToken(tokens.access);

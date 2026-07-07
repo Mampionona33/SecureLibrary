@@ -9,7 +9,6 @@ export const apiClient = axios.create({
   },
 });
 
-// 1. Intercepteur de Requête
 apiClient.interceptors.request.use(
   async (config) => {
     try {
@@ -28,14 +27,12 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 2. Intercepteur de Réponse
 apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // Évite une boucle infinie si l'URL de refresh elle-même plante en 401
-    if (originalRequest.url?.includes('/users/token/refresh/')) {
+    if (originalRequest.url?.includes('/users/login/refresh/')) {
       return Promise.reject(error);
     }
 
@@ -51,10 +48,9 @@ apiClient.interceptors.response.use(
             throw new Error('No refresh token available');
           }
 
-          // ✅ Utilisation d'une instance Axios isolée pour éviter de polluer l'intercepteur
           const response = await axios({
             method: 'post',
-            url: `${API_URL}/users/token/refresh/`,
+            url: `${API_URL}/users/login/refresh/`,
             headers: { 'Content-Type': 'application/json' },
             data: { refresh: session.refresh }
           });
@@ -66,10 +62,8 @@ apiClient.interceptors.response.use(
             refresh: session.refresh,
           };
           
-          // ✅ Correction de l'identifiant (username aligné sur 'user_session')
           await Keychain.setGenericPassword('user_session', JSON.stringify(updatedSession), { service: 'user_session' });
 
-          // ✅ Mutation robuste des headers compatible avec toutes les versions d'Axios
           if (originalRequest.headers) {
             originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
           } else {
