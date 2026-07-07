@@ -68,42 +68,40 @@ const UserEditScreen = ({ route, navigation }: any) => {
   };
 
   const handleUpdate = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
-      return;
-    }
-
-    try {
-      setSaving(true);
-      
-      const payload = {
-        firstName,
-        lastName,
-        role,
-        status,
-        group_ids: selectedGroupIds,
-      };
-      
-      await updateUserInStore(userId, payload); 
-      await useUserStore.getState().fetchUsers();
-      
-      Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#2563eb" />
-      </View>
-    );
+  if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+    Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+    return;
   }
+
+  try {
+    setSaving(true);
+    
+    const payload = {
+      firstName,
+      lastName,
+      role,
+      status,
+      group_ids: selectedGroupIds,
+    };
+    
+    await updateUserInStore(userId, payload); 
+    await useUserStore.getState().fetchUsers();
+    
+    setSaving(false);
+
+    setTimeout(() => {
+      Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
+        { text: 'OK', onPress: () => navigation.popToTop() }
+      ]);
+    }, 500);
+
+  } catch (error: any) {
+    setSaving(false);
+    setTimeout(() => {
+      Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
+    }, 500);
+  }
+ };
 
   return (
     <SafeAreaView style={styles.safeArea}>
