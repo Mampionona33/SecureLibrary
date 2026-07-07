@@ -1,27 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { useUserStore } from '@store/useUserStore';
-import { userService } from '@services/userService';
 import { UserResponse } from '@types/user';
 import { styles } from './styles';
 import UserRow from '@components/UserRow';
+import { SearchBar } from '@components/SearchBar'; 
 
 const ManageUsersScreen = ({ navigation }: any) => {
   const { users, loading, refreshing, fetchUsers, validateUserInStore } = useUserStore();
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'active' | 'suspended'>('all');
-    console.log('RENDER ManageUsersScreen, nb users:', users.length, 'premier user:', JSON.stringify(users[0]));  
+  
+  // ✅ 1. Reçoit le résultat brut de la recherche du composant SearchBar
+  const [searchFilteredUsers, setSearchFilteredUsers] = useState<UserResponse[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      console.log('ManageUsersScreen a regagné le focus, fetch...');
-      fetchUsers(true);
-    }, [])
+      fetchUsers(); 
+    }, [fetchUsers])
   );
 
   const handleRefresh = () => {
-    fetchUsers(true); // Rafraîchissement manuel par Pull-to-refresh
+    fetchUsers(true);
   };
 
   const handleValidateUser = async (userId: string, name: string) => {
@@ -45,10 +46,13 @@ const ManageUsersScreen = ({ navigation }: any) => {
     );
   };
 
-  const filteredUsers = users.filter((user: UserResponse) => {
-    if (activeTab === 'all') return true;
-    return user.status === activeTab;
-  });
+  // ✅ 2. Fusion synchrone : On prend les résultats de la recherche, et on applique l'onglet actif
+  const displayedUsers = useMemo(() => {
+    return searchFilteredUsers.filter((user: UserResponse) => {
+      if (activeTab === 'all') return true;
+      return user.status === activeTab;
+    });
+  }, [searchFilteredUsers, activeTab]);
 
   const getCount = (status: 'all' | 'pending' | 'active' | 'suspended') => {
     if (status === 'all') return users.length;
@@ -109,13 +113,21 @@ const ManageUsersScreen = ({ navigation }: any) => {
           </View>
         </View>
 
+        {/* 🟢 3. La SearchBar écoute le store global et met à jour le state intermédiaire */}
+        <SearchBar<UserResponse>
+          data={users}
+          searchKeys={['firstName', 'lastName', 'email']}
+          onFilterResults={setSearchFilteredUsers} // 🚀 Connecté proprement ici
+          placeholder="Rechercher par nom, prénom ou email..."
+        />
+
         {loading && users.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color="#2563eb" />
           </View>
         ) : (
           <FlatList
-            data={filteredUsers}
+            data={displayedUsers} // Affiche la liste finale combinée (Recherche + Onglet)
             keyExtractor={(item: UserResponse) => item.id.toString()}
             renderItem={({ item }: { item: UserResponse }) => (
               <UserRow 
@@ -132,7 +144,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
             onRefresh={handleRefresh}
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>Aucun membre trouvé dans cette catégorie.</Text>
+                <Text style={styles.emptyText}>Aucun membre trouvé.</Text>
               </View>
             }
           />
