@@ -21,8 +21,6 @@ const UserEditScreen = ({ route, navigation }: any) => {
   const [allGroups, setAllGroups] = useState<any[]>([]);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
 
-  console.log("Mount user edit page");
-
   useEffect(() => {
     const initData = async () => {
       try {
