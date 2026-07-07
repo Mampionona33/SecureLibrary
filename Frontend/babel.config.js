@@ -19,6 +19,27 @@ module.exports = {
         alias: {
           "@api": "./src/api",
           "@assets": "./src/assets",
+          "@theme": "./src/theme",
+          "@components": "./src/components",
+          "@constants": "./src/constants",
+          "@context": "./src/context",
+          "@hooks": "./src/hooks",
+          "@navigation": "./src/navigation",
+          "@screens": "./src/screens",
+          "@services": "./src/services",
+          "@store": "./src/store",
+          "@types/*": ["src/types/*"],
+          "@utils": "./src/utils"
+        }
+      }
+    ],
+    [
+      'module:react-native-dotenv',
+      {
+        moduleName: '@env',
+        path: '.env',
+        blacklist: null,
+        whitelist: null,
           "@components": "./src/components",
           "@constants": "./src/constants",
           "@context": "./src/context",
