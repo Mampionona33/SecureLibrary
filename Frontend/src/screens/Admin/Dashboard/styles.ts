@@ -3,76 +3,51 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f8fafc', // Fond gris très clair (slate-50)
   },
   container: {
-    flex: 1,
     padding: 20,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
+    paddingTop: 30,
   },
   title: {
-    fontSize: 24,
+    fontSize: 26,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: '#0f172a', // Texte presque noir (slate-900)
+    marginBottom: 6,
   },
-  addButton: {
-    backgroundColor: '#2563eb',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+  subtitle: {
+    fontSize: 15,
+    color: '#64748b', // Texte gris (slate-500)
+    marginBottom: 35,
   },
-  addButtonText: {
-    color: '#ffffff',
-    fontWeight: '600',
-    fontSize: 14,
+  grid: {
+    gap: 16, // Espace constant entre les cartes
   },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#e5e7eb',
-    borderRadius: 8,
-    padding: 4,
-    marginBottom: 16,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 8,
-    alignItems: 'center',
-    borderRadius: 6,
-  },
-  activeTab: {
+  card: {
     backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#e2e8f0', // Bordure légère (slate-200)
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2, // Ombre légère sur Android
   },
-  tabText: {
-    fontSize: 14,
-    color: '#6b7280',
-    fontWeight: '500',
+  cardIcon: {
+    fontSize: 32,
+    marginBottom: 12,
   },
-  activeTabText: {
-    fontSize: 14,
-    color: '#1f2937',
-    fontWeight: '600',
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1e293b', // Slate-800
+    marginBottom: 6,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    padding: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: '#9ca3af',
-    textAlign: 'center',
+  cardDescription: {
+    fontSize: 13,
+    color: '#64748b', // Slate-500
+    lineHeight: 18,
   },
 });
