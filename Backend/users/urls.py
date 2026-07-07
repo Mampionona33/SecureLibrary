@@ -7,7 +7,8 @@ from .views import (
     UserDetailView,
     EmailTokenObtainPairView,
     CurrentUserView,
-    GroupViewSet
+    GroupViewSet,
+    CustomTokenRefreshView
 )
 
 router = DefaultRouter()
@@ -16,6 +17,7 @@ router.register(r'groups', GroupViewSet, basename='group')
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='user-register'),
     path('login/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('login/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path('', UserListView.as_view(), name='user-list'),
     path('<uuid:pk>/', UserDetailView.as_view(), name='user-detail'),

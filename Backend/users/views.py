@@ -3,13 +3,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from .models import Group
 from .serializers import (
     RegisterSerializer, 
     EmailTokenObtainPairSerializer, 
     UserProfileSerializer,
-    GroupSerializer
+    GroupSerializer,
+    CustomTokenRefreshSerializer
 )
 
 User = get_user_model()
@@ -51,3 +52,6 @@ class GroupViewSet(viewsets.ModelViewSet):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
             return [permissions.IsAdminUser()]
         return [permissions.IsAuthenticated()]
+
+class CustomTokenRefreshView(TokenRefreshView):
+    serializer_class = CustomTokenRefreshSerializer
