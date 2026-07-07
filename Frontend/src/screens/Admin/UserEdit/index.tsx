@@ -91,7 +91,7 @@ const UserEditScreen = ({ route, navigation }: any) => {
 
     setTimeout(() => {
       Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
-        { text: 'OK', onPress: () => navigation.popToTop() }
+        { text: 'OK', onPress: () => navigation.goBack() }
       ]);
     }, 500);
 
