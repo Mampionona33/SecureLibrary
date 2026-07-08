@@ -6,17 +6,18 @@ import {
   TouchableOpacity, 
   Animated, 
   Dimensions, 
-  TouchableWithoutFeedback 
+  TouchableWithoutFeedback,
+  Switch // 🟢 Composant Switch Natif
 } from 'react-native';
 import { useAuth } from '@context/AuthContext';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Import du thème
+import { useAppTheme } from '@theme/useAppTheme';
+import { useThemeStore } from '@store/useThemeStore'; // 🟢 Import du store du thème
 import MainStack from './MainStack';
 import AdminStack from './AdminStack';
 
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
 
-// Mini-context local pour piloter l'ouverture du tiroir
 const CustomDrawerContext = createContext<{ toggleDrawer: () => void } | undefined>(undefined);
 
 export const useCustomDrawer = () => {
@@ -30,57 +31,44 @@ export const DrawerNavigator = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'main' | 'admin'>(isStaff ? 'admin' : 'main');
   
-  // 🟢 Extraction des valeurs du thème
-  const { theme } = useAppTheme();
+  // 🟢 Thématisation et état du store
+  const { theme, isDark } = useAppTheme();
   const { colors, spacing, radius } = theme;
+  const setThemeMode = useThemeStore((state) => state.setThemeMode); // Méthode pour switcher dans Zustand
 
-  // Valeurs animées pour la position du tiroir et l'opacité de l'overlay
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
   const toggleDrawer = () => {
     if (isOpen) {
-      // Fermeture simultanée du tiroir et fondu de l'overlay
       Animated.parallel([
-        Animated.timing(animX, {
-          toValue: -DRAWER_WIDTH,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animOpacity, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
+        Animated.timing(animX, { toValue: -DRAWER_WIDTH, duration: 250, useNativeDriver: true }),
+        Animated.timing(animOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
       ]).start(() => setIsOpen(false));
     } else {
       setIsOpen(true);
-      // Ouverture simultanée du tiroir et apparition de l'overlay
       Animated.parallel([
-        Animated.timing(animX, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animOpacity, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
+        Animated.timing(animX, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(animOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
       ]).start();
     }
+  };
+
+  // 🟢 Toggle synchrone du mode clair/sombre
+  const handleToggleTheme = (value: boolean) => {
+    setThemeMode(value ? 'dark' : 'light');
   };
 
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
       <View style={styles.container}>
         
-        {/* 1. CONTENU DE L'APPLICATION EN ARRIÈRE-PLAN */}
+        {/* 1. APPLICATION EN ARRIÈRE-PLAN */}
         <View style={styles.contentArea}>
           {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
         </View>
 
-        {/* 2. OVERLAY ANIMÉ AVEC TRANSPARENCE DYNAMIQUE */}
+        {/* 2. OVERLAY ANIMÉ */}
         {isOpen && (
           <TouchableWithoutFeedback onPress={toggleDrawer}>
             <Animated.View 
@@ -95,7 +83,7 @@ export const DrawerNavigator = () => {
           </TouchableWithoutFeedback>
         )}
 
-        {/* 3. TIROIR SÉCURISÉ & THÉMATISÉ */}
+        {/* 3. TIROIR NAVIGATION */}
         <Animated.View 
           style={[
             styles.drawer, 
@@ -113,7 +101,7 @@ export const DrawerNavigator = () => {
               📖 SecureLibrary
             </Text>
             
-            {/* Onglet Bibliothèque */}
+            {/* Navigation principale */}
             <TouchableOpacity 
               style={[
                 styles.menuItem, 
@@ -130,7 +118,6 @@ export const DrawerNavigator = () => {
               </Text>
             </TouchableOpacity>
 
-            {/* Onglet Admin Panel */}
             {isStaff && (
               <TouchableOpacity 
                 style={[
@@ -149,12 +136,40 @@ export const DrawerNavigator = () => {
               </TouchableOpacity>
             )}
 
+            {/* 🟢 BLOC SWITCH DE THÈME (Positionné au-dessus du bouton de déconnexion) */}
+            <View style={[
+              styles.themeSwitchRow, 
+              { 
+                backgroundColor: colors.inputBackground, 
+                borderColor: colors.border,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginTop: 'auto', // Pousse vers le bas de la page
+                marginBottom: spacing.md
+              }
+            ]}>
+              <View style={styles.themeLabelContainer}>
+                <Text style={{ fontSize: 18 }}>{isDark ? '🌙' : '☀️'}</Text>
+                <Text style={[styles.themeLabelText, { color: colors.text, marginLeft: spacing.xs }]}>
+                  Mode Sombre
+                </Text>
+              </View>
+
+              <Switch
+                trackColor={{ false: colors.border, true: colors.primary }}
+                thumbColor={colors.surface}
+                ios_backgroundColor={colors.border}
+                onValueChange={handleToggleTheme}
+                value={isDark}
+              />
+            </View>
+
             {/* Bouton Déconnexion */}
             <TouchableOpacity 
               style={[
                 styles.logoutButton, 
                 { 
-                  backgroundColor: colors.danger + '20', // Opacité légère de danger
+                  backgroundColor: colors.danger + '20', 
                   borderRadius: radius.md, 
                   padding: spacing.md,
                   marginBottom: spacing.lg 
@@ -174,7 +189,7 @@ export const DrawerNavigator = () => {
   );
 };
 
-// 🎨 STYLES ÉPURÉS
+// 🎨 STYLES STRUCTURÉS
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
@@ -186,17 +201,12 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
+    top: 0, bottom: 0, left: 0, right: 0,
     zIndex: 10,
   },
   drawer: {
     position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
+    top: 0, bottom: 0, left: 0,
     zIndex: 20,
     borderRightWidth: 1,
     elevation: 5,
@@ -219,8 +229,21 @@ const styles = StyleSheet.create({
     fontSize: 16, 
     fontWeight: '600' 
   },
+  themeSwitchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+  },
+  themeLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  themeLabelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
   logoutButton: { 
-    marginTop: 'auto', 
     alignItems: 'center' 
   },
   logoutText: { 
