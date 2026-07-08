@@ -1,14 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
 import { userService } from '@services/userService';
 import { useUserStore } from '@store/useUserStore';
+import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Import du thème
 import { styles } from './styles';
 
 const UserEditScreen = ({ route, navigation }: any) => {
   const { userId } = route.params;
   const updateUserInStore = useUserStore((state) => state.updateUserInStore);
   const user = useUserStore((state) => state.users.find((u) => u.id === userId));
+
+  // 🟢 Extraction dynamique du thème
+  const { theme } = useAppTheme();
+  const { colors, spacing, radius } = theme;
 
   const [loading, setLoading] = useState<boolean>(true);
   const [saving, setSaving] = useState<boolean>(false);
@@ -68,101 +74,224 @@ const UserEditScreen = ({ route, navigation }: any) => {
   };
 
   const handleUpdate = async () => {
-  if (!firstName.trim() || !lastName.trim() || !email.trim()) {
-    Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
-    return;
+    if (!firstName.trim() || !lastName.trim() || !email.trim()) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      const payload = {
+        firstName,
+        lastName,
+        role,
+        status,
+        group_ids: selectedGroupIds,
+      };
+      
+      await updateUserInStore(userId, payload); 
+      await useUserStore.getState().fetchUsers();
+      
+      setSaving(false);
+
+      setTimeout(() => {
+        Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
+          { text: 'OK', onPress: () => navigation.goBack() }
+        ]);
+      }, 300);
+
+    } catch (error: any) {
+      setSaving(false);
+      setTimeout(() => {
+        Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
+      }, 300);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.center, { backgroundColor: colors.background }]}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </SafeAreaView>
+    );
   }
-
-  try {
-    setSaving(true);
-    
-    const payload = {
-      firstName,
-      lastName,
-      role,
-      status,
-      group_ids: selectedGroupIds,
-    };
-    
-    await updateUserInStore(userId, payload); 
-    await useUserStore.getState().fetchUsers();
-    
-    setSaving(false);
-
-    setTimeout(() => {
-      Alert.alert('Succès', 'Le profil a été mis à jour avec succès.', [
-        { text: 'OK', onPress: () => navigation.goBack() }
-      ]);
-    }, 500);
-
-  } catch (error: any) {
-    setSaving(false);
-    setTimeout(() => {
-      Alert.alert('Erreur', error.message || 'Échec de la mise à jour.');
-    }, 500);
-  }
- };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-        <Text style={styles.sectionTitle}>Modifier les informations</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <ScrollView contentContainerStyle={[styles.container, { padding: spacing.lg }]} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.sectionTitle, { color: colors.text, marginBottom: spacing.lg }]}>
+          Modifier les informations
+        </Text>
 
-        <View style={styles.formCard}>
-          <Text style={styles.label}>Prénom *</Text>
-          <TextInput style={styles.input} value={firstName} onChangeText={setFirstName} placeholder="Prénom" />
+        <View style={[
+          styles.formCard, 
+          { 
+            backgroundColor: colors.surface, 
+            borderColor: colors.border,
+            borderRadius: radius.lg,
+            padding: spacing.lg,
+            marginBottom: spacing.xl
+          }
+        ]}>
+          {/* Prénom */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Prénom *</Text>
+          <TextInput 
+            style={[
+              styles.input, 
+              { 
+                backgroundColor: colors.inputBackground, 
+                borderColor: colors.inputBorder,
+                color: colors.text,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginBottom: spacing.lg
+              }
+            ]} 
+            value={firstName} 
+            onChangeText={setFirstName} 
+            placeholder="Prénom" 
+            placeholderTextColor={colors.placeholder}
+          />
 
-          <Text style={styles.label}>Nom *</Text>
-          <TextInput style={styles.input} value={lastName} onChangeText={setLastName} placeholder="Nom de famille" />
+          {/* Nom */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Nom *</Text>
+          <TextInput 
+            style={[
+              styles.input, 
+              { 
+                backgroundColor: colors.inputBackground, 
+                borderColor: colors.inputBorder,
+                color: colors.text,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginBottom: spacing.lg
+              }
+            ]} 
+            value={lastName} 
+            onChangeText={setLastName} 
+            placeholder="Nom de famille" 
+            placeholderTextColor={colors.placeholder}
+          />
 
-          <Text style={styles.label}>Adresse Email *</Text>
-          <TextInput style={[styles.input, styles.disabledInput]} value={email} editable={false} />
+          {/* Email (Désactivé) */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Adresse Email *</Text>
+          <TextInput 
+            style={[
+              styles.input, 
+              { 
+                backgroundColor: colors.surfaceVariant, 
+                borderColor: colors.border,
+                color: colors.textMuted,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginBottom: spacing.lg
+              }
+            ]} 
+            value={email} 
+            editable={false} 
+          />
 
-          <Text style={styles.label}>Rôle au sein de la bibliothèque</Text>
-          <View style={styles.pickerRow}>
-            {(['reader', 'staff', 'admin'] as const).map((r) => (
-              <TouchableOpacity
-                key={r}
-                style={[styles.pickerButton, role === r && styles.pickerButtonActive]}
-                onPress={() => setRole(r)}
-              >
-                <Text style={[styles.pickerText, role === r && styles.pickerTextActive]}>
-                  {r === 'reader' ? 'Lecteur' : r === 'staff' ? 'Staff' : 'Admin'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Rôle */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Rôle au sein de la bibliothèque</Text>
+          <View style={[styles.pickerRow, { marginBottom: spacing.lg }]}>
+            {(['reader', 'staff', 'admin'] as const).map((r) => {
+              const isActive = role === r;
+              return (
+                <TouchableOpacity
+                  key={r}
+                  style={[
+                    styles.pickerButton,
+                    { 
+                      backgroundColor: isActive ? colors.surfaceVariant : colors.inputBackground,
+                      borderColor: isActive ? colors.primary : colors.inputBorder,
+                      borderRadius: radius.md,
+                      paddingVertical: spacing.sm,
+                      marginHorizontal: spacing.xs
+                    }
+                  ]}
+                  onPress={() => setRole(r)}
+                >
+                  <Text style={{ 
+                    color: isActive ? colors.primary : colors.textSecondary, 
+                    fontWeight: isActive ? '700' : '500',
+                    fontSize: 13
+                  }}>
+                    {r === 'reader' ? 'Lecteur' : r === 'staff' ? 'Staff' : 'Admin'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <Text style={styles.label}>Statut du compte</Text>
-          <View style={styles.pickerRow}>
-            {(['active', 'pending', 'suspended'] as const).map((s) => (
-              <TouchableOpacity
-                key={s}
-                style={[styles.pickerButton, status === s && styles.pickerButtonActive]}
-                onPress={() => setStatus(s)}
-              >
-                <Text style={[styles.pickerText, status === s && styles.pickerTextActive]}>
-                  {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
-                </Text>
-              </TouchableOpacity>
-            ))}
+          {/* Statut */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Statut du compte</Text>
+          <View style={[styles.pickerRow, { marginBottom: spacing.lg }]}>
+            {(['active', 'pending', 'suspended'] as const).map((s) => {
+              const isActive = status === s;
+              const activeColor = s === 'active' ? colors.success : s === 'pending' ? colors.warning : colors.danger;
+              return (
+                <TouchableOpacity
+                  key={s}
+                  style={[
+                    styles.pickerButton,
+                    { 
+                      backgroundColor: isActive ? colors.surfaceVariant : colors.inputBackground,
+                      borderColor: isActive ? activeColor : colors.inputBorder,
+                      borderRadius: radius.md,
+                      paddingVertical: spacing.sm,
+                      marginHorizontal: spacing.xs
+                    }
+                  ]}
+                  onPress={() => setStatus(s)}
+                >
+                  <Text style={{ 
+                    color: isActive ? activeColor : colors.textSecondary, 
+                    fontWeight: isActive ? '700' : '500',
+                    fontSize: 13
+                  }}>
+                    {s === 'active' ? 'Actif' : s === 'pending' ? 'Attente' : 'Bloqué'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
-          <Text style={styles.label}>Assignation aux groupes</Text>
+          {/* Groupes */}
+          <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Assignation aux groupes</Text>
           <View style={styles.groupsContainer}>
             {allGroups.map((group) => {
               const isSelected = selectedGroupIds.includes(group.id);
               return (
                 <TouchableOpacity
                   key={group.id}
-                  style={[styles.groupCheckboxRow, isSelected && styles.groupCheckboxRowActive]}
+                  style={[
+                    styles.groupCheckboxRow,
+                    {
+                      backgroundColor: isSelected ? colors.surfaceVariant : colors.inputBackground,
+                      borderColor: isSelected ? colors.primary : colors.inputBorder,
+                      borderRadius: radius.md,
+                      padding: spacing.sm,
+                      marginBottom: spacing.xs
+                    }
+                  ]}
                   onPress={() => toggleGroupSelection(group.id)}
                 >
-                  <View style={[styles.checkboxCircle, isSelected && styles.checkboxCircleChecked]}>
-                    {isSelected && <View style={styles.checkboxInnerCircle} />}
+                  <View style={[
+                    styles.checkboxCircle, 
+                    { borderColor: isSelected ? colors.primary : colors.border },
+                    isSelected && { backgroundColor: colors.primary }
+                  ]}>
+                    {isSelected && <View style={[styles.checkboxInnerCircle, { backgroundColor: colors.buttonPrimaryText }]} />}
                   </View>
-                  <View style={{ flex: 1, marginLeft: 10 }}>
-                    <Text style={[styles.groupNameText, isSelected && styles.groupNameTextActive]}>{group.name}</Text>
+                  <View style={{ flex: 1, marginLeft: spacing.sm }}>
+                    <Text style={{ 
+                      color: isSelected ? colors.text : colors.textSecondary,
+                      fontWeight: isSelected ? '600' : '400',
+                      fontSize: 14
+                    }}>
+                      {group.name}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               );
@@ -170,12 +299,25 @@ const UserEditScreen = ({ route, navigation }: any) => {
           </View>
         </View>
 
+        {/* Bouton Enregistrer */}
         <TouchableOpacity 
-          style={[styles.submitButton, saving && styles.disabledButton]} 
+          style={[
+            styles.submitButton, 
+            { 
+              backgroundColor: colors.success, 
+              borderRadius: radius.md,
+              paddingVertical: spacing.md
+            },
+            saving && { opacity: 0.6 }
+          ]} 
           onPress={handleUpdate}
           disabled={saving}
         >
-          {saving ? <ActivityIndicator size="small" color="#ffffff" /> : <Text style={styles.submitButtonText}>Enregistrer</Text>}
+          {saving ? (
+            <ActivityIndicator size="small" color="#ffffff" />
+          ) : (
+            <Text style={styles.submitButtonText}>Enregistrer</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

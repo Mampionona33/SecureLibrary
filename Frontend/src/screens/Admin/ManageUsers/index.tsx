@@ -12,6 +12,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useUserStore } from '@store/useUserStore';
 import { UserResponse } from '@types/user';
+import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Importation du thème
 
 import { styles } from './styles';
 import UserRow from '@components/UserRow';
@@ -25,6 +26,10 @@ const ManageUsersScreen = ({ navigation }: any) => {
     fetchUsers,
     validateUserInStore,
   } = useUserStore();
+
+  // 🟢 Extraction dynamique des variables du thème
+  const { theme } = useAppTheme();
+  const { colors, spacing, radius } = theme;
 
   const [activeTab, setActiveTab] = useState<
     'all' | 'pending' | 'active' | 'suspended'
@@ -106,109 +111,94 @@ const ManageUsersScreen = ({ navigation }: any) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.headerRow}>
-          <Text style={styles.title}>Membres</Text>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <View style={[styles.container, { padding: spacing.lg }]}>
+        
+        {/* En-tête avec bouton d'ajout */}
+        <View style={[styles.headerRow, { marginBottom: spacing.lg }]}>
+          <Text style={[styles.title, { color: colors.text }]}>Membres</Text>
 
           <TouchableOpacity
-            style={styles.addButton}
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: colors.buttonPrimary,
+                borderRadius: radius.md,
+                paddingVertical: spacing.sm,
+                paddingHorizontal: spacing.md,
+              },
+            ]}
             onPress={() => navigation.navigate('CreateUser')}
           >
-            <Text style={styles.addButtonText}>
+            <Text style={[styles.addButtonText, { color: colors.buttonPrimaryText }]}>
               + Créer Membre
             </Text>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.scrollTabWrapper}>
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'all' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('all')}
-            >
-              <Text
-                style={
-                  activeTab === 'all'
-                    ? styles.activeTabText
-                    : styles.tabText
-                }
-              >
-                Tous ({getCount('all')})
-              </Text>
-            </TouchableOpacity>
+        {/* Barre d'onglets personnalisée */}
+        <View style={[styles.scrollTabWrapper, { marginBottom: spacing.md }]}>
+          <View
+            style={[
+              styles.tabContainer,
+              {
+                backgroundColor: colors.surfaceVariant,
+                borderRadius: radius.md,
+                padding: spacing.xs,
+              },
+            ]}
+          >
+            {(['all', 'pending', 'active', 'suspended'] as const).map((tabKey) => {
+              const labels = {
+                all: 'Tous',
+                pending: 'Attente',
+                active: 'Actif',
+                suspended: 'Bloqué',
+              };
 
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'pending' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('pending')}
-            >
-              <Text
-                style={
-                  activeTab === 'pending'
-                    ? styles.activeTabText
-                    : styles.tabText
-                }
-              >
-                Attente ({getCount('pending')})
-              </Text>
-            </TouchableOpacity>
+              const isActive = activeTab === tabKey;
 
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'active' && styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('active')}
-            >
-              <Text
-                style={
-                  activeTab === 'active'
-                    ? styles.activeTabText
-                    : styles.tabText
-                }
-              >
-                Actif ({getCount('active')})
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.tab,
-                activeTab === 'suspended' &&
-                  styles.activeTab,
-              ]}
-              onPress={() => setActiveTab('suspended')}
-            >
-              <Text
-                style={
-                  activeTab === 'suspended'
-                    ? styles.activeTabText
-                    : styles.tabText
-                }
-              >
-                Bloqué ({getCount('suspended')})
-              </Text>
-            </TouchableOpacity>
+              return (
+                <TouchableOpacity
+                  key={tabKey}
+                  style={[
+                    styles.tab,
+                    { borderRadius: radius.sm },
+                    isActive && [
+                      styles.activeTab,
+                      { backgroundColor: colors.surface },
+                    ],
+                  ]}
+                  onPress={() => setActiveTab(tabKey)}
+                >
+                  <Text
+                    style={
+                      isActive
+                        ? [styles.activeTabText, { color: colors.text }]
+                        : [styles.tabText, { color: colors.textMuted }]
+                    }
+                  >
+                    {labels[tabKey]} ({getCount(tabKey)})
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 
+        {/* Barre de recherche */}
         <SearchBar
           value={query}
           onChangeText={setQuery}
           placeholder="Rechercher par nom, prénom ou email..."
         />
 
+        {/* Liste ou Loader */}
         {loading && users.length === 0 ? (
           <View style={styles.center}>
             <ActivityIndicator
               size="large"
-              color="#2563eb"
+              color={colors.primary}
             />
           </View>
         ) : (
@@ -239,8 +229,8 @@ const ManageUsersScreen = ({ navigation }: any) => {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Text style={styles.emptyText}>
+              <View style={[styles.emptyContainer, { padding: spacing.xl }]}>
+                <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   Aucun membre trouvé.
                 </Text>
               </View>
