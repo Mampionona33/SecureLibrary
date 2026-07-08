@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { AuthStackParamList } from '../../../navigation/types';
+import { AuthStackParamList } from '@navigation/types';
 
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
 
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '@context/AuthContext';
+import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Ton hook de thème
 import { loginSchema, LoginFormType } from './schema';
 import { styles } from './styles';
 
@@ -17,6 +18,10 @@ const LoginScreen = ({ navigation }: Props) => {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // 🟢 Extraction de tes propriétés de design system
+  const { theme, isDark } = useAppTheme();
+  const { colors, radius, spacing } = theme;
 
   const {
     control,
@@ -37,23 +42,15 @@ const LoginScreen = ({ navigation }: Props) => {
       const result = await login(data.email, data.password);
 
       if (!result.success) {
-        // 🟢 SÉCURITÉ & INTERCEPTION DU PENDING DICTÉ PAR DJANGO
-        // Si le message d'erreur renvoyé par le contexte contient les mots clés d'attente
         if (result.message && result.message.toLowerCase().includes("en attente")) {
-          // On dévie proprement la navigation vers l'écran d'attente en lui transmettant les informations
           navigation.navigate('PendingApproval', { 
             email: data.email, 
             password: data.password 
           });
-          return; // Interrompt la fonction ici pour ne PAS déclencher l'Alert.alert() générale
+          return;
         }
-
-        // Erreur classique (Identifiants invalides ou mauvaise saisie)
         Alert.alert('Erreur de connexion', result.message || 'Une erreur est survenue.');
       }
-      
-      // Si result.success est vrai, l'état global du contexte change, 
-      // et AppNavigator se charge de basculer automatiquement sur la MainStack.
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de joindre le service de sécurité.');
     } finally {
@@ -62,31 +59,58 @@ const LoginScreen = ({ navigation }: Props) => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    // 🟢 Utilisation de colors.background et des espacements
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-          <View style={styles.headerContainer}>
+        <ScrollView 
+          contentContainerStyle={[styles.container, { paddingHorizontal: spacing.lg }]} 
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.headerContainer, { marginBottom: spacing.xl }]}>
             <Text style={styles.logoIcon}>🔒</Text>
-            <Text style={styles.title}>SecureLibrary</Text>
-            <Text style={styles.subtitle}>Bibliothèque Chiffrée & Coffre-fort Numérique</Text>
+            {/* 🟢 Texte Principal */}
+            <Text style={[styles.title, { color: colors.text, marginBottom: spacing.sm }]}>SecureLibrary</Text>
+            {/* 🟢 Texte Secondaire Muted */}
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+              Bibliothèque Chiffrée & Coffre-fort Numérique
+            </Text>
           </View>
 
-          <View style={styles.formContainer}>
+          {/* 🟢 La carte utilise 'surface', ton 'border' et ton 'radius.lg' */}
+          <View style={[
+            styles.formContainer, 
+            { 
+              backgroundColor: colors.surface, 
+              borderColor: colors.border,
+              borderRadius: radius.lg,
+              padding: spacing.lg
+            }
+          ]}>
             
             {/* Champ Email */}
-            <Text style={styles.label}>Adresse Email</Text>
+            <Text style={[styles.label, { color: colors.text, marginBottom: spacing.xs }]}>Adresse Email</Text>
             <Controller
               control={control}
               name="email"
               render={({ field: { onChange, onBlur, value } }) => (
-                <View style={[styles.inputContainer, errors.email && styles.inputErrorBorder]}>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    backgroundColor: colors.inputBackground, 
+                    borderColor: colors.inputBorder,
+                    borderRadius: radius.md,
+                    height: 48,
+                    paddingHorizontal: spacing.sm
+                  },
+                  errors.email && { borderColor: colors.danger } // 🟢 Utilise colors.danger pour l'erreur
+                ]}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: colors.text }]}
                     placeholder="exemple@domaine.com"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.placeholder} // 🟢 Ton placeholder magique
                     keyboardType="email-address"
                     autoCapitalize="none"
                     onBlur={onBlur}
@@ -97,19 +121,29 @@ const LoginScreen = ({ navigation }: Props) => {
                 </View>
               )}
             />
-            {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+            {errors.email && <Text style={[styles.errorText, { color: colors.danger, marginTop: spacing.xs }]}>{errors.email.message}</Text>}
 
             {/* Champ Mot de passe */}
-            <Text style={styles.label}>Mot de passe</Text>
+            <Text style={[styles.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Mot de passe</Text>
             <Controller
               control={control}
               name="password"
               render={({ field: { onChange, onBlur, value } }) => (
-                <View style={[styles.inputContainer, errors.password && styles.inputErrorBorder]}>
+                <View style={[
+                  styles.inputContainer, 
+                  { 
+                    backgroundColor: colors.inputBackground, 
+                    borderColor: colors.inputBorder,
+                    borderRadius: radius.md,
+                    height: 48,
+                    paddingHorizontal: spacing.sm
+                  },
+                  errors.password && { borderColor: colors.danger }
+                ]}>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: colors.text }]}
                     placeholder="••••••••"
-                    placeholderTextColor="#9ca3af"
+                    placeholderTextColor={colors.placeholder}
                     secureTextEntry={!showPassword}
                     onBlur={onBlur}
                     onChangeText={onChange}
@@ -117,34 +151,47 @@ const LoginScreen = ({ navigation }: Props) => {
                     editable={!isLoading}
                   />
                   <TouchableOpacity
-                    style={styles.toggleButton}
+                    style={{ paddingLeft: spacing.sm }}
                     onPress={() => setShowPassword(!showPassword)}
                   >
-                    <Text style={styles.toggleText}>{showPassword ? 'Cacher' : 'Voir'}</Text>
+                    <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '600' }}>
+                      {showPassword ? 'Cacher' : 'Voir'}
+                    </Text>
                   </TouchableOpacity>
                 </View>
               )}
             />
-            {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+            {errors.password && <Text style={[styles.errorText, { color: colors.danger, marginTop: spacing.xs }]}>{errors.password.message}</Text>}
 
-            {/* Bouton Connexion */}
+            {/* Bouton Connexion branché sur buttonPrimary, buttonPrimaryText et radius.md */}
             <TouchableOpacity
-              style={[styles.submitButton, isLoading && styles.submitButtonDisabled]}
+              style={[
+                styles.submitButton, 
+                { 
+                  backgroundColor: colors.buttonPrimary,
+                  borderRadius: radius.md,
+                  marginTop: spacing.xl,
+                  height: 48
+                },
+                isLoading && styles.submitButtonDisabled
+              ]}
               onPress={handleSubmit(onSubmit)}
               disabled={isLoading}
             >
               {isLoading ? (
-                <ActivityIndicator color="#ffffff" />
+                <ActivityIndicator color={colors.buttonPrimaryText} />
               ) : (
-                <Text style={styles.submitButtonText}>Se connecter</Text>
+                <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>Se connecter</Text>
               )}
             </TouchableOpacity>
 
             {/* Redirection vers Inscription */}
-            <View style={styles.footer}>
-              <Text style={styles.footerText}>Pas encore de compte ? </Text>
+            <View style={[styles.footer, { marginTop: spacing.lg }]}>
+              <Text style={{ color: colors.textMuted, fontSize: 14 }}>
+                Pas encore de compte ?{' '}
+              </Text>
               <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.footerLink}>S'inscrire</Text>
+                <Text style={{ color: colors.primary, fontSize: 14, fontWeight: '700' }}>S'inscrire</Text>
               </TouchableOpacity>
             </View>
 
