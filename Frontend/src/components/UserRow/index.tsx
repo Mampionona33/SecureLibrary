@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { UserResponse } from '@types/user';
+import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Importation du thème
 import { styles } from './styles';
 
 interface UserRowProps {
@@ -10,16 +11,21 @@ interface UserRowProps {
 }
 
 const UserRow = ({ user, onPress, onValidate }: UserRowProps) => {
-  const getStatusStyle = (status: string) => {
+  // 🟢 Extraction dynamique du thème
+  const { theme } = useAppTheme();
+  const { colors, spacing, radius } = theme;
+
+  // Gestion des couleurs dynamique selon le statut
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return styles.statusActive;
+        return colors.success;
       case 'pending':
-        return styles.statusPending;
+        return colors.warning;
       case 'suspended':
-        return styles.statusSuspended;
+        return colors.danger;
       default:
-        return styles.statusDefault;
+        return colors.textMuted;
     }
   };
 
@@ -36,24 +42,83 @@ const UserRow = ({ user, onPress, onValidate }: UserRowProps) => {
     }
   };
 
+  const statusColor = getStatusColor(user.status);
+
   return (
-    <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.infoContainer}>
-        <Text style={styles.name}>
+    <TouchableOpacity 
+      style={[
+        styles.container, 
+        { 
+          backgroundColor: colors.surface, 
+          borderColor: colors.border,
+          borderRadius: radius.md,
+          padding: spacing.md,
+          marginBottom: spacing.sm,
+        }
+      ]} 
+      onPress={onPress} 
+      activeOpacity={0.7}
+    >
+      <View style={[styles.infoContainer, { marginRight: spacing.sm }]}>
+        <Text style={[styles.name, { color: colors.text, marginBottom: spacing.xs / 2 }]}>
           {user.firstName} {user.lastName}
         </Text>
-        <Text style={styles.email}>{user.email}</Text>
+        <Text style={[styles.email, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+          {user.email}
+        </Text>
+        
         <View style={styles.badgeRow}>
-          <Text style={[styles.badge, styles.roleBadge]}>{user.role}</Text>
-          <Text style={[styles.badge, getStatusStyle(user.status)]}>
+          {/* Badge de Rôle */}
+          <Text 
+            style={[
+              styles.badge, 
+              { 
+                backgroundColor: colors.surfaceVariant, 
+                color: colors.textSecondary,
+                borderRadius: radius.full,
+                paddingHorizontal: spacing.sm,
+                marginRight: spacing.xs,
+              }
+            ]}
+          >
+            {user.role}
+          </Text>
+
+          {/* Badge de Statut (Couleur dynamique adaptative) */}
+          <Text 
+            style={[
+              styles.badge, 
+              { 
+                backgroundColor: statusColor + '20', // Opacité légère pour le fond
+                color: statusColor,                  // Texte en couleur vive
+                borderRadius: radius.full,
+                paddingHorizontal: spacing.sm,
+              }
+            ]}
+          >
             {getStatusLabel(user.status)}
           </Text>
         </View>
       </View>
 
+      {/* Bouton Approuver */}
       {onValidate && (
-        <TouchableOpacity style={styles.validateButton} onPress={onValidate} activeOpacity={0.8}>
-          <Text style={styles.validateButtonText}>Approuver</Text>
+        <TouchableOpacity 
+          style={[
+            styles.validateButton, 
+            { 
+              backgroundColor: colors.success,
+              borderRadius: radius.sm,
+              paddingVertical: spacing.xs * 1.5,
+              paddingHorizontal: spacing.md,
+            }
+          ]} 
+          onPress={onValidate} 
+          activeOpacity={0.8}
+        >
+          <Text style={[styles.validateButtonText, { color: colors.buttonPrimaryText }]}>
+            Approuver
+          </Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>
