@@ -13,14 +13,18 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
 
-// Imports co-localisés et globaux
 import { unlockVaultSchema, UnlockVaultFormType } from './schema';
 import { styles } from './styles';
 import { useVault } from '@context/VaultContext';
+import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Import du thème
 
 const UnlockVaultScreen = () => {
   const { unlockVault } = useVault();
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // 🟢 Extraction dynamique du thème
+  const { theme } = useAppTheme();
+  const { colors, spacing, radius } = theme;
 
   const {
     control,
@@ -37,15 +41,12 @@ const UnlockVaultScreen = () => {
   const onSubmit = async (data: UnlockVaultFormType) => {
     setIsSubmitting(true);
     try {
-      // On envoie le PIN saisi au Keychain via le contexte
       const success = await unlockVault(data.pin);
       
       if (!success) {
         Alert.alert('Échec', 'Code PIN incorrect.');
-        reset({ pin: '' }); // On vide le champ en cas d'erreur
+        reset({ pin: '' });
       }
-      // Si success est true, AppNavigator le détecte et bascule tout seul !
-      
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de vérifier le code PIN.');
     } finally {
@@ -54,29 +55,41 @@ const UnlockVaultScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={[styles.container, { padding: spacing.lg }]}
       >
-        <View style={styles.iconContainer}>
+        <View style={[styles.iconContainer, { marginBottom: spacing.xl }]}>
           <Text style={styles.icon}>🔓</Text>
         </View>
 
-        <Text style={styles.title}>Application Verrouillée</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { color: colors.text, marginBottom: spacing.xs }]}>
+          Application Verrouillée
+        </Text>
+        <Text style={[styles.subtitle, { color: colors.textSecondary, marginBottom: spacing.xl }]}>
           Veuillez saisir votre code PIN à 4 chiffres pour accéder à la bibliothèque.
         </Text>
 
-        <View style={styles.inputContainer}>
+        <View style={[styles.inputContainer, { marginBottom: spacing.lg }]}>
           <Controller
             control={control}
             name="pin"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
-                style={[styles.input, errors.pin && styles.inputErrorBorder]}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
+                    borderRadius: radius.md,
+                    color: colors.text,
+                    padding: spacing.md,
+                  },
+                  errors.pin && { borderColor: colors.danger } // 🟢 Couleur d'erreur du thème
+                ]}
                 placeholder="••••"
-                placeholderTextColor="#9ca3af"
+                placeholderTextColor={colors.placeholder}
                 keyboardType="numeric"
                 secureTextEntry
                 maxLength={4}
@@ -84,30 +97,48 @@ const UnlockVaultScreen = () => {
                 onChangeText={onChange}
                 value={value}
                 editable={!isSubmitting}
-                autoFocus={true} // Ouvre le clavier directement au chargement
+                autoFocus={true}
               />
             )}
           />
-          {errors.pin && <Text style={styles.errorText}>{errors.pin.message}</Text>}
+          {errors.pin && (
+            <Text style={[styles.errorText, { color: colors.danger, marginTop: spacing.xs }]}>
+              {errors.pin.message}
+            </Text>
+          )}
         </View>
 
+        {/* Bouton Principal (Primary) */}
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[
+            styles.submitButton,
+            {
+              backgroundColor: colors.buttonPrimary,
+              borderRadius: radius.md,
+              paddingVertical: spacing.md,
+              marginBottom: spacing.md,
+            }
+          ]}
           onPress={handleSubmit(onSubmit)}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            <ActivityIndicator color="#ffffff" />
+            <ActivityIndicator color={colors.buttonPrimaryText} />
           ) : (
-            <Text style={styles.submitButtonText}>Déverrouiller</Text>
+            <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>
+              Déverrouiller
+            </Text>
           )}
         </TouchableOpacity>
 
+        {/* Bouton Secondaire Biométrie */}
         <TouchableOpacity 
-          style={styles.biometricButton}
+          style={[styles.biometricButton, { paddingVertical: spacing.sm }]}
           onPress={() => Alert.alert('Biométrie', 'FaceID / TouchID bientôt disponible.')}
         >
-          <Text style={styles.biometricText}>Utiliser la biométrie</Text>
+          <Text style={[styles.biometricText, { color: colors.primary }]}>
+            Utiliser la biométrie
+          </Text>
         </TouchableOpacity>
 
       </KeyboardAvoidingView>
