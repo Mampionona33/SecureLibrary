@@ -103,3 +103,63 @@ test('AuthProvider handles pending approval status correctly', async () => {
     expect(screen.getByText('Pending Approval')).toBeTruthy();
   }, { timeout: 3000 });
 });
+test('Login success with authenticated status', async () => {
+  global.fetch = jest.fn((url) => {
+    if (url.includes('/users/login/') && !url.includes('/refresh/')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          access: 'auth-token',
+          refresh: 'refresh-token',
+          user: {
+            id: 1,
+            email: 'test@example.com',
+            role: 'reader',
+            status: 'active'
+          }
+        })
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          role: 'reader',
+          status: 'active'
+        }
+      })
+    });
+  }) as jest.Mock;
+
+  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+
+  const TestComponent = () => {
+    const { login, isAuthenticated } = useAuth();
+    return (
+      <Text 
+        testID="login-button"
+        onPress={() => login('test@example.com', 'password123')}
+      >
+        {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
+      </Text>
+    );
+  };
+
+  render(
+    <AuthProvider>
+      <TestComponent />
+    </AuthProvider>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('login-button')).toBeTruthy();
+  });
+
+  fireEvent.press(screen.getByTestId('login-button'));
+
+  await waitFor(() => {
+    expect(screen.getByText('Authenticated')).toBeTruthy();
+  }, { timeout: 3000 });
+});
