@@ -364,3 +364,89 @@ test('Token refresh on session restore', async () => {
     expect(screen.getByText('Token Refreshed')).toBeTruthy();
   }, { timeout: 3000 });
 });
+
+test('Network error handling', async () => {
+  global.fetch = jest.fn(() =>
+    Promise.reject(new Error('Network error'))
+  ) as jest.Mock;
+
+  let loginResult: any = null;
+
+  const TestComponent = () => {
+    const { login } = useAuth();
+    return (
+      <Text 
+        testID="network-error-button"
+        onPress={async () => {
+          loginResult = await login('test@example.com', 'password123');
+        }}
+      >
+        Login
+      </Text>
+    );
+  };
+
+  render(
+    <AuthProvider>
+      <TestComponent />
+    </AuthProvider>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('network-error-button')).toBeTruthy();
+  });
+
+  fireEvent.press(screen.getByTestId('network-error-button'));
+
+  await waitFor(() => {
+    expect(loginResult.success).toBe(false);
+    expect(loginResult.message).toContain('serveur de sécurité est injoignable');
+  }, { timeout: 3000 });
+});
+
+test('Restore persisted session from Keychain', async () => {
+  const mockSession = {
+    access: 'persisted-token',
+    refresh: 'refresh-token'
+  };
+
+  (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
+    username: 'user_session',
+    password: JSON.stringify(mockSession)
+  });
+
+  global.fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        user: {
+          id: 1,
+          email: 'test@example.com',
+          role: 'reader',
+          status: 'active'
+        }
+      })
+    })
+  ) as jest.Mock;
+
+  const TestComponent = () => {
+    const { isAuthenticated, authToken } = useAuth();
+    return (
+      <Text testID="session-status">
+        {isAuthenticated && authToken ? 'Session Restored' : 'No Session'}
+      </Text>
+    );
+  };
+
+  render(
+    <AuthProvider>
+      <TestComponent />
+    </AuthProvider>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByText('Session Restored')).toBeTruthy();
+  }, { timeout: 3000 });
+
+  expect(Keychain.getGenericPassword).toHaveBeenCalled();
+});
