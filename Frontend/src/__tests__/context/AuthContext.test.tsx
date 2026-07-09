@@ -1,89 +1,105 @@
 import React from 'react';
-import { Text, TouchableOpacity } from 'react-native';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, waitFor , fireEvent} from '@testing-library/react-native';
+import { Text } from 'react-native';
 import { AuthProvider, useAuth } from '@context/AuthContext';
 import * as Keychain from 'react-native-keychain';
 
-// Mocks
-jest.mock('react-native-keychain', () => ({
-  getGenericPassword: jest.fn().mockResolvedValue(false),
-  setGenericPassword: jest.fn().mockResolvedValue(true),
-  resetGenericPassword: jest.fn().mockResolvedValue(true),
-}));
+jest.mock('react-native-keychain');
 
-jest.mock('@env', () => ({
-  API_URL: 'https://api.test-security.com',
-}));
-
-// ✅ Composant qui consomme le contexte
-const AuthConsumer = () => {
-  const { isLoadingAuth, isAuthenticated, login, authToken } = useAuth();
-
-  if (isLoadingAuth) {
-    return <Text testID="loading">Chargement...</Text>;
-  }
-
-  return (
-    <>
-      <Text testID="auth-status">
-        {isAuthenticated ? `Auth: ${authToken}` : 'Non Authentifié'}
-      </Text>
-      <TouchableOpacity testID="login-button" onPress={() => login('user@test.com', 'password')}>
-        <Text>Se Connecter</Text>
-      </TouchableOpacity>
-    </>
-  );
+const TestAuthConsumer = () => {
+  const { isAuthenticated } = useAuth();
+  return <Text>{isAuthenticated ? 'Authenticated' : 'Test Content'}</Text>;
 };
 
 describe('AuthProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(null);
   });
 
-  // ✅ Test 1
-  test('AuthProvider loads without crashing', () => {
+  test('AuthProvider loads without crashing', async () => {
     render(
       <AuthProvider>
-        <Text>Test Content</Text>
+        <TestAuthConsumer />
       </AuthProvider>
     );
-    expect(screen.getByText('Test Content')).toBeTruthy();
-  });
-
-  // ✅ Test 2 : Vérifier isAuthenticated
-  test('AuthProvider passes down isAuthenticated prop', async () => {
-    render(
-      <AuthProvider>
-        <AuthConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
-    });
-
-    expect(screen.getByTestId('auth-status')).toHaveTextContent('Non Authentifié');
-  });
-
-  // ✅ Test 3 : Vérifier que login est callable
-  test('AuthProvider passes down login function', async () => {
-    render(
-      <AuthProvider>
-        <AuthConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
-    });
-
-    // ✅ Vérifier que le bouton login existe et peut être cliqué
-    const loginButton = screen.getByTestId('login-button');
-    expect(loginButton).toBeTruthy();
-
-    fireEvent.press(loginButton);
     
-    // Vérifier que login a été appelé (vous devez rajouter du logging dans votre AuthContext pour vérifier)
-    // Ou mock le appel API et vérifier que l'état change
+    await waitFor(() => {
+      expect(screen.getByText('Test Content')).toBeTruthy();
+    });
   });
+
+  test('AuthProvider initializes with isAuthenticated as false', async () => {
+    render(
+      <AuthProvider>
+        <TestAuthConsumer />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Content')).toBeDefined();
+    });
+  });
+});
+test('AuthProvider handles pending approval status correctly', async () => {
+  global.fetch = jest.fn((url) => {
+    if (url.includes('/users/login/') && !url.includes('/refresh/')) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          access: 'pending-token',
+          refresh: 'pending-refresh',
+          user: {
+            id: 1,
+            email: 'pending@example.com',
+            role: 'reader',
+            status: 'pending'
+          }
+        })
+      });
+    }
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({
+        user: {
+          id: 1,
+          email: 'pending@example.com',
+          role: 'reader',
+          status: 'pending'
+        }
+      })
+    });
+  }) as jest.Mock;
+
+  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+
+  const TestComponent = () => {
+    const { login, isPendingApproval } = useAuth();
+    
+    return (
+      <Text 
+        testID="pending-text"
+        onPress={() => login('pending@example.com', 'password123')}
+      >
+        {isPendingApproval ? 'Pending Approval' : 'Not Pending'}
+      </Text>
+    );
+  };
+
+  render(
+    <AuthProvider>
+      <TestComponent />
+    </AuthProvider>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-text')).toBeTruthy();
+  });
+
+  const textElement = screen.getByTestId('pending-text');
+  fireEvent.press(textElement);
+
+  await waitFor(() => {
+    expect(screen.getByText('Pending Approval')).toBeTruthy();
+  }, { timeout: 3000 });
 });
