@@ -3,6 +3,12 @@ import * as Keychain from 'react-native-keychain';
 import { API_URL } from '@env';
 import { TokenResponse, UserProfileResponse, AuthContextType } from '../types/auth';
 
+interface AuthProviderProps {
+  isAuthenticated: boolean;
+  children: React.ReactNode;
+  login?: () => Promise<void>;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const extractErrorMessage = (data: any, fallback: string): string => {
@@ -13,7 +19,7 @@ const extractErrorMessage = (data: any, fallback: string): string => {
   return fallback;
 };
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isStaff, setIsStaff] = useState<boolean>(false);
   const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false); 
