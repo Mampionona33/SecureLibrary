@@ -1,11 +1,9 @@
 module.exports = {
   preset: '@react-native/jest-preset',
   testEnvironment: 'node',
-
   setupFilesAfterEnv: [
     '<rootDir>/jest.setup.js',
   ],
-
   transformIgnorePatterns: [
     'node_modules/(?!(' +
       'react-native' +
@@ -18,9 +16,7 @@ module.exports = {
       '|react-native-blob-util' +
       ')/)',
   ],
-
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@api/(.*)$': '<rootDir>/src/api/$1',
@@ -30,16 +26,37 @@ module.exports = {
     '^@store/(.*)$': '<rootDir>/src/store/$1',
     '^@theme/(.*)$': '<rootDir>/src/theme/$1',
     '^@types/(.*)$': '<rootDir>/src/types/$1',
-    '^@utils/(.*)$': '<rootDir>/src/utils/$1',  // ← test-utils est ici
+    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
     '^@storage/(.*)$': '<rootDir>/src/storage/$1',
     '^@env$': '<rootDir>/__mocks__/@env.js',
   },
-
   testPathIgnorePatterns: [
     '<rootDir>/node_modules/',
     '<rootDir>/android/',
     '<rootDir>/ios/',
   ],
-
+  collectCoverage: false,
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/*.styles.ts',
+    '!src/**/*.test.tsx',
+    '!src/__tests__/**',
+    '!src/types/**',
+  ],
+  coveragePathIgnorePatterns: [
+    '/node_modules/',
+    '/dist/',
+  ],
+  coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
+  coverageDirectory: '<rootDir>/coverage',
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 70,
+      lines: 70,
+      statements: 70,
+    },
+  },
   verbose: true,
 };
