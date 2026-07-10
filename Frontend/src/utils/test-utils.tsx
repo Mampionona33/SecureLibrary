@@ -1,17 +1,21 @@
-import React, { act } from 'react';
-import ReactTestRenderer from 'react-test-renderer';
-import { Text } from 'react-native';
+import React from 'react';
+import { render as rtlRender } from '@testing-library/react-native';
 import { AuthProvider } from '@context/AuthContext';
+import { VaultProvider } from '@context/VaultContext';
 
-test('AuthProvider passes down isAuthenticated prop', () => {
-  const isAuthenticated = true;
-  const component = ReactTestRenderer.create(
-    <AuthProvider isAuthenticated={isAuthenticated}>
-      <Text>Test Content</Text>
-    </AuthProvider>,
+// Un vrai helper qui enveloppe tes composants avec tes providers globaux
+function renderWithProviders(ui: React.ReactElement, options = {}) {
+  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+    <AuthProvider>
+      <VaultProvider>
+        {children}
+      </VaultProvider>
+    </AuthProvider>
   );
-  
-  act(() => {
-    expect(component.root.findByType(Text).props.children).toBe('Test Content');
-  });
-});
+
+  return rtlRender(ui, { wrapper: Wrapper, ...options });
+}
+
+// On ré-exporte tout ce qui vient de testing-library + notre render personnalisé
+export * from '@testing-library/react-native';
+export { renderWithProviders as render };
