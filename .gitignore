@@ -99,3 +99,13 @@ Thumbs.db
 *.swp
 *.swo
 *.bak
+
+# Android build artifacts
+Frontend/android/.gradle/
+Frontend/android/app/build/
+Frontend/android/app/.cxx/
+Frontend/android/build/
+Frontend/*.iml
+Frontend/*.jks
+Frontend/*.keystore
+Frontend/local.properties

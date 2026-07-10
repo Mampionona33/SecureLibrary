@@ -1,6 +1,11 @@
 module.exports = {
   preset: '@react-native/jest-preset',
-  testEnvironment: 'node',
+  // testEnvironment: 'node',
+  testEnvironmentOptions: {
+    // Tell Jest this environment supports act()
+    IS_REACT_ACT_ENVIRONMENT: true,
+  },
+  setupFilesAfterEnv: ['@testing-library/react-native/setup'],
   setupFilesAfterEnv: [
     '<rootDir>/jest.setup.js',
   ],
