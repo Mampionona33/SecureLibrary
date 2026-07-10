@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity } from 'react-native';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render as rtlRender, fireEvent, waitFor } from '@testing-library/react-native';
 import * as Keychain from 'react-native-keychain';
 import { VaultProvider, useVault } from '@context/VaultContext';
 
@@ -90,18 +90,18 @@ describe('VaultContext', () => {
   test('1. Initialisation (Keychain vide) : Initialiser avec un coffre non configuré et verrouillé si aucun PIN n\'existe dans Keychain', async () => {
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Not Configured');
-    expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+    expect(getByTestId('configured-status').props.children).toContain('Vault Not Configured');
+    expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
     expect(Keychain.getGenericPassword).toHaveBeenCalledWith({
       service: 'local_vault_pin',
     });
@@ -114,18 +114,18 @@ describe('VaultContext', () => {
       password: '1234',
     });
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Configured');
-    expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+    expect(getByTestId('configured-status').props.children).toContain('Vault Configured');
+    expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
   });
 
   // 3. Création du PIN (setupLocalVault)
@@ -133,21 +133,21 @@ describe('VaultContext', () => {
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
     (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('setup-button'));
+    fireEvent.press(getByTestId('setup-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Configured');
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Unlocked');
+      expect(getByTestId('configured-status').props.children).toContain('Vault Configured');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Unlocked');
     });
 
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
@@ -167,20 +167,20 @@ describe('VaultContext', () => {
       password: '1234',
     });
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('unlock-correct-button'));
+    fireEvent.press(getByTestId('unlock-correct-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Unlocked');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Unlocked');
     });
   });
 
@@ -191,20 +191,20 @@ describe('VaultContext', () => {
       password: '1234',
     });
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('unlock-wrong-button'));
+    fireEvent.press(getByTestId('unlock-wrong-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
     });
   });
 
@@ -212,21 +212,21 @@ describe('VaultContext', () => {
   test('6. Déverrouillage sans coffre (unlockVault) : Gérer l\'erreur et retourner false lors d\'une tentative de déverrouillage alors qu\'aucun coffre n\'est configuré', async () => {
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('unlock-correct-button'));
+    fireEvent.press(getByTestId('unlock-correct-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Not Configured');
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+      expect(getByTestId('configured-status').props.children).toContain('Vault Not Configured');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
     });
   });
 
@@ -235,26 +235,26 @@ describe('VaultContext', () => {
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(false);
     (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('setup-button'));
+    fireEvent.press(getByTestId('setup-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Unlocked');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Unlocked');
     });
 
-    fireEvent.press(screen.getByTestId('lock-button'));
+    fireEvent.press(getByTestId('lock-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
     });
   });
 
@@ -266,43 +266,32 @@ describe('VaultContext', () => {
     });
     (Keychain.resetGenericPassword as jest.Mock).mockResolvedValue(true);
 
-    render(
+    const { queryByTestId, getByTestId } = await rtlRender(
       <VaultProvider>
         <VaultConsumer />
       </VaultProvider>
     );
 
     await waitFor(() => {
-      expect(screen.queryByTestId('loading')).toBeNull();
+      expect(queryByTestId('loading')).toBeNull();
     });
 
-    fireEvent.press(screen.getByTestId('reset-button'));
+    fireEvent.press(getByTestId('reset-button'));
 
     await waitFor(() => {
-      expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Not Configured');
-      expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
+      expect(getByTestId('configured-status').props.children).toContain('Vault Not Configured');
+      expect(getByTestId('unlocked-status').props.children).toContain('Vault Locked');
     });
 
     expect(Keychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'local_vault_pin',
     });
   });
-
-
-// 9. Sécurité du Hook (useVault)
+  // 9. Sécurité du Hook (useVault)
   test("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
-    // Désactiver temporairement les logs d'erreur de React pour ne pas polluer la console du terminal
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
-    const TestingComponent = () => {
-      useVault();
-      return null;
-    };
-
-    // On englobe l'exécution complète du render (qui déclenche le cycle de vie React) dans le toThrow
+    // On appelle directement le hook dans l'assertion sans passer par rtlRender
     expect(() => {
-      render(<TestingComponent />);
+      useVault();
     }).toThrow("useVault doit être utilisé à l'intérieur d'un VaultProvider");
-
-    consoleSpy.mockRestore();
   });
+});
