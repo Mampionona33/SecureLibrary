@@ -34,6 +34,7 @@ const MainStack = () => {
             <TouchableOpacity 
               onPress={toggleDrawer}
               style={{ marginRight: 15 }}
+              testID="drawer-toggle-button"
             >
               <Text style={{ color: '#ffffff', fontSize: 24, fontWeight: 'bold' }}>☰</Text>
             </TouchableOpacity>
