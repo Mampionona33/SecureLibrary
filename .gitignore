@@ -3,13 +3,9 @@ Frontend/node_modules/
 Frontend/dist/
 Frontend/web-build/
 Frontend/expo-env.d.ts
-
-# Expo specific
 Frontend/.expo/
 Frontend/.expo-packager-cache/
 Frontend/.expo-developer-tools/
-
-# Metro bundler cache
 Frontend/.metro/
 Frontend/.rncache/
 Frontend/.metro-health-check*
@@ -51,23 +47,31 @@ Frontend/.DS_Store
 Frontend/*.tsbuildinfo
 Frontend/app-example
 
+# --- Tests / Coverage ---
+Frontend/coverage/
+Frontend/.coverage
+Frontend/htmlcov/
+Frontend/junit.xml
+Frontend/.pytest_cache/
+Frontend/lcov.info
+Frontend/coverage-final.json
+Frontend/clover.xml
+
 # --- Backend (Django / Python) ---
 Backend/venv/
 Backend/.venv/
 Backend/env/
 .env
 
-# ✅ CORRECTION CRITIQUE : Ignore absolument TOUS les caches compilés Python dans l'arborescence
+# Python cache
 **/__pycache__/
 *.py[cod]
 *$py.class
+**/migrations/__pycache__/
 
 # Database
 Backend/*.sqlite3
 Backend/db.sqlite3
-
-# ✅ CORRECTION CRITIQUE : N'ignore PAS les fichiers de migration (.py), seulement leur cache
-**/migrations/__pycache__/
 
 # Logs & Assets
 Backend/*.log
@@ -76,14 +80,14 @@ Backend/staticfiles/
 Backend/*.pot
 Backend/*.mo
 
-# --- Tests / Coverage ---
-coverage/
-.coverage
-htmlcov/
-junit.xml
-.pytest_cache/
-.tox/
-.mypy_cache/
+# Tests / Coverage
+Backend/coverage/
+Backend/.coverage
+Backend/htmlcov/
+Backend/junit.xml
+Backend/.pytest_cache/
+Backend/.tox/
+Backend/.mypy_cache/
 
 # --- IDE / OS ---
 .vscode/
@@ -91,7 +95,7 @@ junit.xml
 .DS_Store
 Thumbs.db
 
-# --- Divers ---
+# --- Misc ---
 *.swp
 *.swo
 *.bak
