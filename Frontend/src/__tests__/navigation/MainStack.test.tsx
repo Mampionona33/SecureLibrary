@@ -63,15 +63,11 @@ describe('MainStack', () => {
     expect(mockToggleDrawer).toHaveBeenCalled();
   });
 
-  test('MainStack affiche BookReader si le Vault est configuré', async () => {
-    // On force le coffre-fort à true pour ce scénario précis
-    (useVault as jest.Mock).mockReturnValue({
-      isVaultConfigured: true,
-    });
-
+  test('MainStack defines both BookList and BookReader screens', async () => {
     const { queryByTestId } = await rtlRender(<MainStack />);
 
-    // On s'assure que BookReader est bien sélectionné par la condition
+    // Both screens should always be defined in the navigator
+    expect(queryByTestId('screen-BookList')).toBeTruthy();
     expect(queryByTestId('screen-BookReader')).toBeTruthy();
   });
 });
