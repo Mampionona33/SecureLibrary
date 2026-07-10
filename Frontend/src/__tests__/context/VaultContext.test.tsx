@@ -288,8 +288,21 @@ describe('VaultContext', () => {
     });
   });
 
-  // 9. Sécurité du Hook (useVault) - Ignoré pour éviter les conflits d'environnement de rendu
-  test.skip("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
-    // Laissé en skip volontairement
+
+// 9. Sécurité du Hook (useVault)
+  test("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
+    // Désactiver temporairement les logs d'erreur de React pour ne pas polluer la console du terminal
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestingComponent = () => {
+      useVault();
+      return null;
+    };
+
+    // On englobe l'exécution complète du render (qui déclenche le cycle de vie React) dans le toThrow
+    expect(() => {
+      render(<TestingComponent />);
+    }).toThrow("useVault doit être utilisé à l'intérieur d'un VaultProvider");
+
+    consoleSpy.mockRestore();
   });
-});
