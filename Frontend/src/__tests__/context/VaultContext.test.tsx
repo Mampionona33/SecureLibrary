@@ -1,8 +1,12 @@
 import React from 'react';
 import { Text, TouchableOpacity } from 'react-native';
-import { renderHook , render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import * as Keychain from 'react-native-keychain';
 import { VaultProvider, useVault } from '@context/VaultContext';
+
+// Configuration de l'environnement pour éviter les avertissements sur act(...)
+// @ts-ignore
+global.IS_REACT_ACT_ENVIRONMENT = true;
 
 // Mocks
 jest.mock('react-native-keychain', () => ({
@@ -14,7 +18,7 @@ jest.mock('react-native-keychain', () => ({
   },
 }));
 
-// Composant Consommateur
+// Composant Consommateur pour les tests d'intégration
 const VaultConsumer = () => {
   const {
     isLoadingVault,
@@ -68,8 +72,8 @@ const VaultConsumer = () => {
       </TouchableOpacity>
       
       <TouchableOpacity
-     testID="reset-button"
-     onPress={() => resetVault()}
+        testID="reset-button"
+        onPress={() => resetVault()}
       >
         <Text>Reset Vault</Text>
       </TouchableOpacity>
@@ -253,11 +257,9 @@ describe('VaultContext', () => {
       expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
     });
   });
-});
 
-// 8. Réinitialisation (resetVault)
+  // 8. Réinitialisation (resetVault)
   test('8. Réinitialisation (resetVault) : Purger la clé Keychain local_vault_pin et réinitialiser les états isVaultConfigured et isVaultUnlocked à false', async () => {
-    // 1. Simuler un coffre déjà configuré
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
       username: 'user_vault',
       password: '1234',
@@ -274,25 +276,33 @@ describe('VaultContext', () => {
       expect(screen.queryByTestId('loading')).toBeNull();
     });
 
-    // 2. Déclencher la réinitialisation
     fireEvent.press(screen.getByTestId('reset-button'));
 
-    // 3. Assertions : le coffre doit repasser à non configuré et verrouillé
     await waitFor(() => {
       expect(screen.getByTestId('configured-status')).toHaveTextContent('Vault Not Configured');
       expect(screen.getByTestId('unlocked-status')).toHaveTextContent('Vault Locked');
     });
 
-    // 4. Vérifier que Keychain a bien été purgé
     expect(Keychain.resetGenericPassword).toHaveBeenCalledWith({
       service: 'local_vault_pin',
     });
   });
 
 
-test("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
-  const { result } = renderHook(() => useVault());
-  expect(result.error).toEqual(
-    new Error("useVault doit être utilisé à l'intérieur d'un VaultProvider")
-  );
-});
+// 9. Sécurité du Hook (useVault)
+  test("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
+    // Désactiver temporairement les logs d'erreur de React pour ne pas polluer la console du terminal
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const TestingComponent = () => {
+      useVault();
+      return null;
+    };
+
+    // On englobe l'exécution complète du render (qui déclenche le cycle de vie React) dans le toThrow
+    expect(() => {
+      render(<TestingComponent />);
+    }).toThrow("useVault doit être utilisé à l'intérieur d'un VaultProvider");
+
+    consoleSpy.mockRestore();
+  });
