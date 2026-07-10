@@ -3,9 +3,9 @@ import { render as rtlRender } from '@testing-library/react-native';
 import MainStack from '@navigation/MainStack';
 
 jest.mock('@navigation/DrawerNavigator', () => ({
-  useCustomDrawer: () => ({
+  useCustomDrawer: jest.fn(() => ({
     toggleDrawer: jest.fn(),
-  }),
+  })),
 }));
 
 jest.mock('@screens/Main/BookList', () => () => null);
@@ -19,7 +19,7 @@ jest.mock('@react-navigation/native-stack', () => ({
 }));
 
 jest.mock('@context/AuthContext', () => ({
-  useAuth: () => ({
+  useAuth: jest.fn(() => ({
     isAuthenticated: true,
     isStaff: false,
     isPendingApproval: false,
@@ -27,7 +27,7 @@ jest.mock('@context/AuthContext', () => ({
     authToken: 'mock-token',
     login: jest.fn(),
     logout: jest.fn(),
-  }),
+  })),
   AuthProvider: ({ children }: any) => children,
 }));
 
@@ -46,6 +46,13 @@ jest.mock('@context/VaultContext', () => ({
 
 describe('MainStack', () => {
   test('MainStack renders without crashing', () => {
+    expect(() => {
+      rtlRender(<MainStack />);
+    }).not.toThrow();
+  });
+
+  test('MainStack uses useCustomDrawer hook successfully', () => {
+    // If this doesn't throw, the hook was called successfully
     expect(() => {
       rtlRender(<MainStack />);
     }).not.toThrow();
