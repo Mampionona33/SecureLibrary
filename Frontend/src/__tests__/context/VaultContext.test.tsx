@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, TouchableOpacity } from 'react-native';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { renderHook , render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import * as Keychain from 'react-native-keychain';
 import { VaultProvider, useVault } from '@context/VaultContext';
 
@@ -288,3 +288,11 @@ describe('VaultContext', () => {
       service: 'local_vault_pin',
     });
   });
+
+
+test("9. Sécurité du Hook (useVault) : Lever une exception explicite si useVault est utilisé en dehors du VaultProvider", () => {
+  const { result } = renderHook(() => useVault());
+  expect(result.error).toEqual(
+    new Error("useVault doit être utilisé à l'intérieur d'un VaultProvider")
+  );
+});
