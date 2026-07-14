@@ -1,4 +1,57 @@
+// __tests__/api/client.test.ts
+
+// Step 1: Create mock functions for interceptor.use calls
+const mockRequestUse = jest.fn().mockReturnValue(0);
+const mockResponseUse = jest.fn().mockReturnValue(0);
+
+// Step 2: Create the mock axios instance structure
+const mockAxiosInstance = {
+  defaults: {
+    baseURL: 'http://127.0.0.1:8000/api',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  },
+  interceptors: {
+    request: {
+      use: mockRequestUse,
+      eject: jest.fn(),
+    },
+    response: {
+      use: mockResponseUse,
+      eject: jest.fn(),
+    },
+  },
+  get: jest.fn(),
+  post: jest.fn(),
+  put: jest.fn(),
+  delete: jest.fn(),
+  patch: jest.fn(),
+};
+
+// Step 3: Mock axios - simple factory
+jest.mock('axios');
+
+// Step 4: Mock @env
+jest.mock('@env', () => ({
+  API_URL: 'http://127.0.0.1:8000/api',
+}));
+
+// Step 5: Mock interceptors
+jest.mock('@api/interceptors', () => ({
+  requestInterceptor: jest.fn((config) => config),
+  requestErrorInterceptor: jest.fn((error) => Promise.reject(error)),
+  responseSuccessInterceptor: jest.fn((response) => response),
+  responseInterceptor: jest.fn((error) => Promise.reject(error)),
+}));
+
+// Step 6: NOW import and configure the mock
 import axios from 'axios';
+
+// Configure axios mock to return our instance when .create() is called
+(axios.create as jest.Mock) = jest.fn(() => mockAxiosInstance);
+
+// Step 7: NOW safe to import client
 import { apiClient } from '@api/client';
 import { 
   requestInterceptor, 
@@ -7,29 +60,18 @@ import {
   responseInterceptor 
 } from '@api/interceptors';
 
-// Mock des dépendances
-jest.mock('axios');
-jest.mock('../../api/interceptors', () => ({
-  requestInterceptor: jest.fn(),
-  requestErrorInterceptor: jest.fn(),
-  responseSuccessInterceptor: jest.fn(),
-  responseInterceptor: jest.fn(),
-}));
-
-jest.mock('@env', () => ({
-  API_URL: 'https://api.test.com',
-}));
-
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('apiClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRequestUse.mockClear();
+    mockResponseUse.mockClear();
   });
 
   describe('Configuration', () => {
     it('should have correct base URL', () => {
-      expect(apiClient.defaults.baseURL).toBe('https://api.test.com');
+      expect(apiClient.defaults.baseURL).toBe('http://127.0.0.1:8000/api');
     });
 
     it('should have correct content-type header', () => {
@@ -37,38 +79,29 @@ describe('apiClient', () => {
     });
 
     it('should register request interceptors', () => {
-      // Vérifier que les intercepteurs sont bien enregistrés
       expect(apiClient.interceptors.request).toBeDefined();
+      expect(mockRequestUse).toHaveBeenCalled();
     });
 
     it('should register response interceptors', () => {
       expect(apiClient.interceptors.response).toBeDefined();
+      expect(mockResponseUse).toHaveBeenCalled();
     });
   });
 
   describe('Interceptor registration', () => {
-    it('should have request interceptor registered', () => {
-      // Vérifier que l'intercepteur de requête est enregistré
-      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
-      expect(requestInterceptors.length).toBeGreaterThan(0);
-      
-      // Vérifier que le premier handler a une fonction fulfilled
-      if (requestInterceptors.length > 0) {
-        expect(typeof requestInterceptors[0].fulfilled).toBe('function');
-        expect(typeof requestInterceptors[0].rejected).toBe('function');
-      }
+    it('should register request interceptor with correct handlers', () => {
+      expect(mockRequestUse).toHaveBeenCalledWith(
+        requestInterceptor,
+        requestErrorInterceptor
+      );
     });
 
-    it('should have response interceptor registered', () => {
-      // Vérifier que l'intercepteur de réponse est enregistré
-      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
-      expect(responseInterceptors.length).toBeGreaterThan(0);
-      
-      // Vérifier que le premier handler a une fonction fulfilled et rejected
-      if (responseInterceptors.length > 0) {
-        expect(typeof responseInterceptors[0].fulfilled).toBe('function');
-        expect(typeof responseInterceptors[0].rejected).toBe('function');
-      }
+    it('should register response interceptor with correct handlers', () => {
+      expect(mockResponseUse).toHaveBeenCalledWith(
+        responseSuccessInterceptor,
+        responseInterceptor
+      );
     });
   });
 
@@ -101,37 +134,42 @@ describe('apiClient', () => {
 
   describe('Integration with interceptors', () => {
     it('should use the exported request interceptor', () => {
-      // Vérifier que l'intercepteur de requête est bien celui exporté
-      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
-      if (requestInterceptors.length > 0) {
-        const fulfilled = requestInterceptors[0].fulfilled;
-        // Comparer les noms de fonctions ou leur contenu
-        expect(fulfilled.name).toBe('requestInterceptor');
-      }
+      expect(mockRequestUse).toHaveBeenCalledWith(
+        requestInterceptor,
+        expect.any(Function)
+      );
     });
 
     it('should use the exported request error interceptor', () => {
-      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
-      if (requestInterceptors.length > 0) {
-        const rejected = requestInterceptors[0].rejected;
-        expect(rejected.name).toBe('requestErrorInterceptor');
-      }
+      expect(mockRequestUse).toHaveBeenCalledWith(
+        expect.any(Function),
+        requestErrorInterceptor
+      );
     });
 
     it('should use the exported response success interceptor', () => {
-      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
-      if (responseInterceptors.length > 0) {
-        const fulfilled = responseInterceptors[0].fulfilled;
-        expect(fulfilled.name).toBe('responseSuccessInterceptor');
-      }
+      expect(mockResponseUse).toHaveBeenCalledWith(
+        responseSuccessInterceptor,
+        expect.any(Function)
+      );
     });
 
     it('should use the exported response error interceptor', () => {
-      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
-      if (responseInterceptors.length > 0) {
-        const rejected = responseInterceptors[0].rejected;
-        expect(rejected.name).toBe('responseInterceptor');
-      }
+      expect(mockResponseUse).toHaveBeenCalledWith(
+        expect.any(Function),
+        responseInterceptor
+      );
+    });
+  });
+
+  describe('Axios create configuration', () => {
+    it('should call axios.create with correct configuration', () => {
+      expect(mockedAxios.create).toHaveBeenCalledWith({
+        baseURL: 'http://127.0.0.1:8000/api',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
     });
   });
 });
