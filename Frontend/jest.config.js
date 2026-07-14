@@ -53,14 +53,14 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   coverageDirectory: '<rootDir>/coverage',
-  // Remove coverageThreshold or keep it commented
-  // coverageThreshold: {
-  //   global: {
-  //     branches: 70,
-  //     functions: 70,
-  //     lines: 70,
-  //     statements: 70,
-  //   },
-  // },
+  // Set realistic thresholds based on your current coverage
+  coverageThreshold: {
+    global: {
+      branches: 10,  // Increased from 0%
+      functions: 10, // Increased from 0%
+      lines: 10,     // Increased from 7.5%
+      statements: 10 // Increased from 7.5%
+    }
+  },
   verbose: true,
 }
