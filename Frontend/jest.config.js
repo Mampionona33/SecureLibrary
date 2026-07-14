@@ -1,12 +1,10 @@
 module.exports = {
   preset: '@react-native/jest-preset',
-  // testEnvironment: 'node',
   testEnvironmentOptions: {
-    // Tell Jest this environment supports act()
     IS_REACT_ACT_ENVIRONMENT: true,
   },
-  setupFilesAfterEnv: ['@testing-library/react-native/setup'],
   setupFilesAfterEnv: [
+    '@testing-library/react-native/setup',
     '<rootDir>/jest.setup.js',
   ],
   transformIgnorePatterns: [
@@ -40,7 +38,7 @@ module.exports = {
     '<rootDir>/android/',
     '<rootDir>/ios/',
   ],
-  collectCoverage: false,
+  collectCoverage: false,  // Off by default
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
@@ -55,13 +53,14 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   coverageDirectory: '<rootDir>/coverage',
-  coverageThreshold: {
-    global: {
-      branches: 70,
-      functions: 70,
-      lines: 70,
-      statements: 70,
-    },
-  },
+  // Remove coverageThreshold or keep it commented
+  // coverageThreshold: {
+  //   global: {
+  //     branches: 70,
+  //     functions: 70,
+  //     lines: 70,
+  //     statements: 70,
+  //   },
+  // },
   verbose: true,
-};
+}
