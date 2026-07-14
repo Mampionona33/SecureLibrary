@@ -4,7 +4,7 @@ module.exports = {
     IS_REACT_ACT_ENVIRONMENT: true,
   },
   setupFilesAfterEnv: [
-    '@testing-library/react-native/setup',
+    // Use only your custom setup file
     '<rootDir>/jest.setup.js',
   ],
   transformIgnorePatterns: [
@@ -38,7 +38,7 @@ module.exports = {
     '<rootDir>/android/',
     '<rootDir>/ios/',
   ],
-  collectCoverage: false,  // Off by default
+  collectCoverage: false,
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',
@@ -53,6 +53,6 @@ module.exports = {
   ],
   coverageReporters: ['text', 'lcov', 'html', 'json-summary'],
   coverageDirectory: '<rootDir>/coverage',
-  coverageThreshold: null, // ← ADD THIS LINE to disable thresholds
+  coverageThreshold: null,
   verbose: true,
-}
+};
