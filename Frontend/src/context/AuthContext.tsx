@@ -1,114 +1,27 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import * as Keychain from 'react-native-keychain';
-import { API_URL } from '@env';
-import { TokenResponse, UserProfileResponse, AuthContextType } from '../types/auth';
-
-interface AuthProviderProps {
-  isAuthenticated: boolean;
-  children: React.ReactNode;
-  login?: () => Promise<void>;
-}
+import { authService } from '../services/authService';
+import { AuthContextType } from '../types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const extractErrorMessage = (data: any, fallback: string): string => {
-  if (!data || typeof data !== 'object') return fallback;
-  const raw = data.detail ?? data[Object.keys(data)[0]];
-  if (Array.isArray(raw)) return typeof raw[0] === 'string' ? raw[0] : fallback;
-  if (typeof raw === 'string') return raw;
-  return fallback;
-};
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isStaff, setIsStaff] = useState<boolean>(false);
-  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false); 
+  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
-
-  const fetchUserProfile = async (token: string): Promise<UserProfileResponse | null> => {
-    try {
-      const response = await fetch(`${API_URL}/users/me/`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-      if (response.ok) return await response.json() as UserProfileResponse;
-      return null;
-    } catch {
-      return null;
-    }
-  };
-
-  const refreshAccessToken = async (): Promise<string | null> => {
-    try {
-      const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
-      if (!credentials || !credentials.password) return null;
-
-      const session = JSON.parse(credentials.password);
-      if (!session.refresh) return null;
-
-      const response = await fetch(`${API_URL}/users/login/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: session.refresh }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const newAccessToken = data.access;
-        
-        const updatedSession = {
-          access: newAccessToken,
-          refresh: session.refresh
-        };
-
-        await Keychain.setGenericPassword('user_session', JSON.stringify(updatedSession), { service: 'user_session' });
-        setAuthToken(newAccessToken);
-        return newAccessToken;
-      }
-      return null;
-    } catch {
-      return null;
-    }
-  };
 
   useEffect(() => {
     const checkPersistedSession = async () => {
       try {
-        const credentials = await Keychain.getGenericPassword({ service: 'user_session' });
-        if (credentials && credentials.password) {
-          const session = JSON.parse(credentials.password);
-          let token = session.access;
-          let userProfile = await fetchUserProfile(token);
+        const { token, userProfile } = await authService.restoreSession();
 
-          if (!userProfile) {
-            const renewedToken = await refreshAccessToken();
-            if (renewedToken) {
-              token = renewedToken;
-              userProfile = await fetchUserProfile(token);
-            }
-          }
-
-          if (userProfile) {
-            setAuthToken(token);
-            setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
-            
-            if (userProfile.user.status === 'pending') {
-              setIsPendingApproval(true);
-              setIsAuthenticated(false);
-            } else {
-              setIsPendingApproval(false);
-              setIsAuthenticated(true);
-            }
-          } else {
-            await logout();
-          }
+        if (userProfile && token) {
+          setAuthToken(token);
+          setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
+          setIsPendingApproval(userProfile.user.status === 'pending');
+          setIsAuthenticated(userProfile.user.status !== 'pending');
         }
-      } catch (error) {
-        console.error("Erreur de restauration session :", error);
       } finally {
         setIsLoadingAuth(false);
       }
@@ -116,94 +29,37 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     checkPersistedSession();
   }, []);
 
-  const login = async (email: string, password: string): Promise<{ success: boolean; message?: string }> => {
-    try {
-      const tokenResponse = await fetch(`${API_URL}/users/login/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenResponse.ok) {
-        return {
-          success: false,
-          message: extractErrorMessage(tokenData, 'Identifiants ou e-mail incorrects.')
-        };
-      }
-
-      const tokens = tokenData as TokenResponse;
-      
-      const sessionData = {
-        access: tokens.access,
-        refresh: tokens.refresh
-      };
-      
-      await Keychain.setGenericPassword('user_session', JSON.stringify(sessionData), { service: 'user_session' });
-      
-      setAuthToken(tokens.access);
-      
-      if (tokens.user) {
-        setIsStaff(tokens.user.role === 'admin' || tokens.user.role === 'staff');
-        if (tokens.user.status === 'pending') {
-          setIsPendingApproval(true);
-          setIsAuthenticated(false);
-          return { success: true };
-        }
-      }
-
-      const userProfile = await fetchUserProfile(tokens.access);
-      if (!userProfile) {
-        return {
-          success: false,
-          message: "Impossible de récupérer votre profil de sécurité."
-        };
-      }
-
-      setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
-
-      if (userProfile.user.status === 'pending') {
-        setIsPendingApproval(true);
-        setIsAuthenticated(false);
-      } else {
-        setIsPendingApproval(false);
-        setIsAuthenticated(true);
-      }
-
-      return { success: true };
-    } catch (error) {
-      console.error('Erreur réseau lors du flux de login :', error);
-      return {
-        success: false,
-        message: 'Le serveur de sécurité est injoignable. Vérifiez votre réseau.'
-      };
+  const login = async (email: string, password: string) => {
+    const result = await authService.login(email, password);
+    if (result.success && result.token && result.userProfile) {
+      setAuthToken(result.token);
+      setIsStaff(result.userProfile.user.role === 'admin' || result.userProfile.user.role === 'staff');
+      setIsPendingApproval(result.userProfile.user.status === 'pending');
+      setIsAuthenticated(result.userProfile.user.status !== 'pending');
     }
+    return { success: result.success, message: result.message };
   };
 
   const logout = async () => {
-    try {
-      await Keychain.resetGenericPassword({ service: 'user_session' });
-    } catch (error) {
-      console.error('Erreur nettoyage Keychain :', error);
-    } finally {
-      setAuthToken(null);
-      setIsAuthenticated(false);
-      setIsStaff(false);
-      setIsPendingApproval(false);
-    }
+    await authService.logout();
+    setAuthToken(null);
+    setIsAuthenticated(false);
+    setIsStaff(false);
+    setIsPendingApproval(false);
   };
 
   return (
-    <AuthContext.Provider value={{
-      isAuthenticated,
-      isStaff,
-      isPendingApproval,
-      isLoadingAuth,
-      authToken,
-      login,
-      logout
-    }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        isStaff,
+        isPendingApproval,
+        isLoadingAuth,
+        authToken,
+        login,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -211,8 +67,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth doit être utilisé dans AuthProvider");
+  if (!context) throw new Error('useAuth doit être utilisé dans AuthProvider');
   return context;
 };
-
-export { AuthContext };
