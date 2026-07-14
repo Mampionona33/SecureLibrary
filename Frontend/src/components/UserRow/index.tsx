@@ -45,55 +45,65 @@ const UserRow = ({ user, onPress, onValidate }: UserRowProps) => {
   const statusColor = getStatusColor(user.status);
 
   return (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={[
-        styles.container, 
-        { 
-          backgroundColor: colors.surface, 
+        styles.container,
+        {
+          backgroundColor: colors.surface,
           borderColor: colors.border,
           borderRadius: radius.md,
           padding: spacing.md,
           marginBottom: spacing.sm,
-        }
-      ]} 
-      onPress={onPress} 
+        },
+      ]}
+      onPress={onPress}
       activeOpacity={0.7}
     >
       <View style={[styles.infoContainer, { marginRight: spacing.sm }]}>
-        <Text style={[styles.name, { color: colors.text, marginBottom: spacing.xs / 2 }]}>
+        <Text
+          style={[
+            styles.name,
+            { color: colors.text, marginBottom: spacing.xs / 2 },
+          ]}
+        >
           {user.firstName} {user.lastName}
         </Text>
-        <Text style={[styles.email, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+        <Text
+          style={[
+            styles.email,
+            { color: colors.textSecondary, marginBottom: spacing.xs },
+          ]}
+        >
           {user.email}
         </Text>
-        
+
         <View style={styles.badgeRow}>
           {/* Badge de Rôle */}
-          <Text 
+          <Text
             style={[
-              styles.badge, 
-              { 
-                backgroundColor: colors.surfaceVariant, 
+              styles.badge,
+              {
+                backgroundColor: colors.surfaceVariant,
                 color: colors.textSecondary,
                 borderRadius: radius.full,
                 paddingHorizontal: spacing.sm,
                 marginRight: spacing.xs,
-              }
+              },
             ]}
           >
             {user.role}
           </Text>
 
           {/* Badge de Statut (Couleur dynamique adaptative) */}
-          <Text 
+          <Text
             style={[
-              styles.badge, 
-              { 
+              styles.badge,
+              {
                 backgroundColor: statusColor + '20', // Opacité légère pour le fond
-                color: statusColor,                  // Texte en couleur vive
+                color: statusColor, // Texte en couleur vive
                 borderRadius: radius.full,
                 paddingHorizontal: spacing.sm,
-              }
+              },
             ]}
           >
             {getStatusLabel(user.status)}
@@ -103,20 +113,25 @@ const UserRow = ({ user, onPress, onValidate }: UserRowProps) => {
 
       {/* Bouton Approuver */}
       {onValidate && (
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[
-            styles.validateButton, 
-            { 
+            styles.validateButton,
+            {
               backgroundColor: colors.success,
               borderRadius: radius.sm,
               paddingVertical: spacing.xs * 1.5,
               paddingHorizontal: spacing.md,
-            }
-          ]} 
-          onPress={onValidate} 
+            },
+          ]}
+          onPress={onValidate}
           activeOpacity={0.8}
         >
-          <Text style={[styles.validateButtonText, { color: colors.buttonPrimaryText }]}>
+          <Text
+            style={[
+              styles.validateButtonText,
+              { color: colors.buttonPrimaryText },
+            ]}
+          >
             Approuver
           </Text>
         </TouchableOpacity>
