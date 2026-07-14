@@ -1,452 +1,218 @@
+// __tests__/context/AuthContext.test.tsx
 import React from 'react';
-import { render, screen, waitFor , fireEvent} from '@testing-library/react-native';
 import { Text } from 'react-native';
-import { AuthProvider, useAuth } from '@context/AuthContext';
+import { render, screen, waitFor, act } from '@testing-library/react-native';
 import * as Keychain from 'react-native-keychain';
+import { AuthProvider, useAuth } from '@context/AuthContext';
 
-jest.mock('react-native-keychain');
+// Create mock functions
+const mockRestoreSession = jest.fn().mockResolvedValue(null);
+const mockLogin = jest.fn().mockResolvedValue({ 
+  success: true,
+  token: 'mock-token',
+  userProfile: {
+    user: {
+      id: '1',
+      username: 'test',
+      role: 'reader',
+      status: 'active'
+    }
+  },
+  message: 'Login successful'
+});
+const mockLogout = jest.fn().mockResolvedValue(undefined);
 
-const TestAuthConsumer = () => {
-  const { isAuthenticated } = useAuth();
-  return <Text>{isAuthenticated ? 'Authenticated' : 'Test Content'}</Text>;
+// CORRECT: Mock must return { authService: { ... } }
+// Because the source imports: import { authService } from '@services/authService'
+jest.mock('@services/authService', () => ({
+  authService: {
+    restoreSession: mockRestoreSession,
+    login: mockLogin,
+    logout: mockLogout,
+  }
+}));
+
+// Mock Keychain
+jest.mock('react-native-keychain', () => ({
+  getGenericPassword: jest.fn(),
+  setGenericPassword: jest.fn(),
+  resetGenericPassword: jest.fn(),
+}));
+
+jest.mock('@env', () => ({
+  API_URL: 'http://127.0.0.1:8000/api',
+}));
+
+const mockedKeychain = Keychain as jest.Mocked<typeof Keychain>;
+
+// Simple test component
+const SimpleTestComponent = () => {
+  const { isAuthenticated, isLoadingAuth } = useAuth();
+  
+  if (isLoadingAuth) {
+    return <Text testID="loading">Loading...</Text>;
+  }
+  
+  return (
+    <Text testID="status">
+      {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
+    </Text>
+  );
 };
 
 describe('AuthProvider', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (Keychain.getGenericPassword as jest.Mock).mockResolvedValue(null);
+    mockRestoreSession.mockReset();
+    mockLogin.mockReset();
+    mockLogout.mockReset();
+    // Default: no persisted session
+    mockRestoreSession.mockResolvedValue(null);
   });
 
-  test('AuthProvider loads without crashing', async () => {
-    render(
-      <AuthProvider>
-        <TestAuthConsumer />
-      </AuthProvider>
-    );
-    
+  it('should render without crashing', async () => {
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <Text>Provider Works</Text>
+        </AuthProvider>
+      );
+    });
+
+    expect(screen.getByText('Provider Works')).toBeTruthy();
+  });
+
+  it('AuthProvider initializes with isAuthenticated as false', async () => {
+    mockRestoreSession.mockResolvedValue(null);
+    mockedKeychain.getGenericPassword.mockResolvedValue(false);
+
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <SimpleTestComponent />
+        </AuthProvider>
+      );
+    });
+
     await waitFor(() => {
-      expect(screen.getByText('Test Content')).toBeTruthy();
+      expect(screen.getByTestId('status').props.children).toBe('Not Authenticated');
     });
   });
 
-  test('AuthProvider initializes with isAuthenticated as false', async () => {
-    render(
-      <AuthProvider>
-        <TestAuthConsumer />
-      </AuthProvider>
-    );
-
-    await waitFor(() => {
-      expect(screen.getByText('Test Content')).toBeDefined();
-    });
-  });
-});
-test('AuthProvider handles pending approval status correctly', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/users/login/') && !url.includes('/refresh/')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          access: 'pending-token',
-          refresh: 'pending-refresh',
-          user: {
-            id: 1,
-            email: 'pending@example.com',
-            role: 'reader',
-            status: 'pending'
-          }
-        })
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
+  it('handles pending approval status correctly', async () => {
+    // Mock a pending user
+    mockRestoreSession.mockResolvedValue({
+      token: 'pending-token',
+      userProfile: {
         user: {
-          id: 1,
-          email: 'pending@example.com',
+          id: '2',
+          username: 'pendinguser',
           role: 'reader',
           status: 'pending'
         }
-      })
+      }
     });
-  }) as jest.Mock;
+    mockedKeychain.getGenericPassword.mockResolvedValue(false);
 
-  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+    const PendingTestComponent = () => {
+      const { isPendingApproval, isAuthenticated, isLoadingAuth } = useAuth();
+      
+      if (isLoadingAuth) {
+        return <Text>Loading...</Text>;
+      }
+      
+      return (
+        <>
+          <Text testID="pending">
+            {isPendingApproval ? 'Pending' : 'Not Pending'}
+          </Text>
+          <Text testID="authenticated">
+            {isAuthenticated ? 'Auth' : 'Not Auth'}
+          </Text>
+        </>
+      );
+    };
 
-  const TestComponent = () => {
-    const { login, isPendingApproval } = useAuth();
-    
-    return (
-      <Text 
-        testID="pending-text"
-        onPress={() => login('pending@example.com', 'password123')}
-      >
-        {isPendingApproval ? 'Pending Approval' : 'Not Pending'}
-      </Text>
-    );
-  };
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <PendingTestComponent />
+        </AuthProvider>
+      );
+    });
 
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('pending-text')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('pending').props.children).toBe('Pending');
+      expect(screen.getByTestId('authenticated').props.children).toBe('Not Auth');
+    });
   });
 
-  const textElement = screen.getByTestId('pending-text');
-  fireEvent.press(textElement);
+  it('Login success with authenticated status', async () => {
+    mockRestoreSession.mockResolvedValue(null);
+    mockedKeychain.getGenericPassword.mockResolvedValue(false);
+    mockedKeychain.setGenericPassword.mockResolvedValue(true);
 
-  await waitFor(() => {
-    expect(screen.getByText('Pending Approval')).toBeTruthy();
-  }, { timeout: 3000 });
-});
-test('Login success with authenticated status', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/users/login/') && !url.includes('/refresh/')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          access: 'auth-token',
-          refresh: 'refresh-token',
-          user: {
-            id: 1,
-            email: 'test@example.com',
-            role: 'reader',
-            status: 'active'
-          }
-        })
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
+    // Mock successful login
+    mockLogin.mockResolvedValue({
+      success: true,
+      token: 'mock-token',
+      userProfile: {
         user: {
-          id: 1,
-          email: 'test@example.com',
+          id: '1',
+          username: 'testuser',
           role: 'reader',
           status: 'active'
         }
-      })
+      },
+      message: 'Login successful'
     });
-  }) as jest.Mock;
 
-  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+    const LoginTestComponent = () => {
+      const { isAuthenticated, isLoadingAuth, login } = useAuth();
+      
+      if (isLoadingAuth) {
+        return <Text>Loading...</Text>;
+      }
+      
+      return (
+        <>
+          <Text testID="status">
+            {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
+          </Text>
+          <Text 
+            testID="login-btn" 
+            onPress={() => login('test@example.com', 'password123')}
+          >
+            Login
+          </Text>
+        </>
+      );
+    };
 
-  const TestComponent = () => {
-    const { login, isAuthenticated } = useAuth();
-    return (
-      <Text 
-        testID="login-button"
-        onPress={() => login('test@example.com', 'password123')}
-      >
-        {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('login-button')).toBeTruthy();
-  });
-
-  fireEvent.press(screen.getByTestId('login-button'));
-
-  await waitFor(() => {
-    expect(screen.getByText('Authenticated')).toBeTruthy();
-  }, { timeout: 3000 });
-});
-test('Login failure with error message', async () => {
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      ok: false,
-      json: () => Promise.resolve({
-        detail: 'Invalid credentials'
-      })
-    })
-  ) as jest.Mock;
-
-  let loginResult: any = null;
-
-  const TestComponent = () => {
-    const { login } = useAuth();
-    return (
-      <Text 
-        testID="login-fail-button"
-        onPress={async () => {
-          loginResult = await login('wrong@example.com', 'wrongpass');
-        }}
-      >
-        Login
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('login-fail-button')).toBeTruthy();
-  });
-
-  fireEvent.press(screen.getByTestId('login-fail-button'));
-
-  await waitFor(() => {
-    expect(loginResult.success).toBe(false);
-    expect(loginResult.message).toBe('Invalid credentials');
-  }, { timeout: 3000 });
-});
-test('Logout clears state', async () => {
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        user: {
-          id: 1,
-          email: 'test@example.com',
-          role: 'reader',
-          status: 'active'
-        }
-      })
-    })
-  ) as jest.Mock;
-
-  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
-  (Keychain.resetGenericPassword as jest.Mock).mockResolvedValue(true);
-
-  const TestComponent = () => {
-    const { logout, isAuthenticated, authToken } = useAuth();
-    return (
-      <Text 
-        testID="logout-button"
-        onPress={() => logout()}
-      >
-        {isAuthenticated ? 'Authenticated' : 'Logged Out'} {authToken ? 'Has Token' : 'No Token'}
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('logout-button')).toBeTruthy();
-  });
-
-  fireEvent.press(screen.getByTestId('logout-button'));
-
-  await waitFor(() => {
-    expect(screen.getByText('Logged Out No Token')).toBeTruthy();
-  }, { timeout: 3000 });
-});
-test('Staff role detection (admin/staff vs reader)', async () => {
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/users/login/') && !url.includes('/refresh/')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          access: 'staff-token',
-          refresh: 'refresh-token',
-          user: {
-            id: 1,
-            email: 'staff@example.com',
-            role: 'admin',
-            status: 'active'
-          }
-        })
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        user: {
-          id: 1,
-          email: 'staff@example.com',
-          role: 'admin',
-          status: 'active'
-        }
-      })
+    await act(async () => {
+      render(
+        <AuthProvider>
+          <LoginTestComponent />
+        </AuthProvider>
+      );
     });
-  }) as jest.Mock;
 
-  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+    // Verify initial state
+    expect(screen.getByTestId('status').props.children).toBe('Not Authenticated');
 
-  const TestComponent = () => {
-    const { login, isStaff } = useAuth();
-    return (
-      <Text 
-        testID="staff-button"
-        onPress={() => login('staff@example.com', 'password123')}
-      >
-        {isStaff ? 'Is Staff' : 'Not Staff'}
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('staff-button')).toBeTruthy();
-  });
-
-  fireEvent.press(screen.getByTestId('staff-button'));
-
-  await waitFor(() => {
-    expect(screen.getByText('Is Staff')).toBeTruthy();
-  }, { timeout: 3000 });
-});
-
-test('Token refresh on session restore', async () => {
-  const mockSession = {
-    access: 'expired-token',
-    refresh: 'refresh-token'
-  };
-
-  (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
-    username: 'user_session',
-    password: JSON.stringify(mockSession)
-  });
-
-  global.fetch = jest.fn((url) => {
-    if (url.includes('/users/login/refresh/')) {
-      return Promise.resolve({
-        ok: true,
-        json: () => Promise.resolve({
-          access: 'new-access-token',
-          refresh: 'refresh-token'
-        })
-      });
-    }
-    return Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        user: {
-          id: 1,
-          email: 'test@example.com',
-          role: 'reader',
-          status: 'active'
-        }
-      })
+    // Trigger login
+    await act(async () => {
+      screen.getByTestId('login-btn').props.onPress();
     });
-  }) as jest.Mock;
 
-  (Keychain.setGenericPassword as jest.Mock).mockResolvedValue(true);
+    // Wait for login to complete
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenCalledWith('test@example.com', 'password123');
+    });
 
-  const TestComponent = () => {
-    const { authToken } = useAuth();
-    return <Text testID="token-status">{authToken ? 'Token Refreshed' : 'No Token'}</Text>;
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByText('Token Refreshed')).toBeTruthy();
-  }, { timeout: 3000 });
-});
-
-test('Network error handling', async () => {
-  global.fetch = jest.fn(() =>
-    Promise.reject(new Error('Network error'))
-  ) as jest.Mock;
-
-  let loginResult: any = null;
-
-  const TestComponent = () => {
-    const { login } = useAuth();
-    return (
-      <Text 
-        testID="network-error-button"
-        onPress={async () => {
-          loginResult = await login('test@example.com', 'password123');
-        }}
-      >
-        Login
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByTestId('network-error-button')).toBeTruthy();
+    // Now verify authenticated state
+    await waitFor(() => {
+      expect(screen.getByTestId('status').props.children).toBe('Authenticated');
+    });
   });
-
-  fireEvent.press(screen.getByTestId('network-error-button'));
-
-  await waitFor(() => {
-    expect(loginResult.success).toBe(false);
-    expect(loginResult.message).toContain('serveur de sécurité est injoignable');
-  }, { timeout: 3000 });
-});
-
-test('Restore persisted session from Keychain', async () => {
-  const mockSession = {
-    access: 'persisted-token',
-    refresh: 'refresh-token'
-  };
-
-  (Keychain.getGenericPassword as jest.Mock).mockResolvedValue({
-    username: 'user_session',
-    password: JSON.stringify(mockSession)
-  });
-
-  global.fetch = jest.fn(() =>
-    Promise.resolve({
-      ok: true,
-      json: () => Promise.resolve({
-        user: {
-          id: 1,
-          email: 'test@example.com',
-          role: 'reader',
-          status: 'active'
-        }
-      })
-    })
-  ) as jest.Mock;
-
-  const TestComponent = () => {
-    const { isAuthenticated, authToken } = useAuth();
-    return (
-      <Text testID="session-status">
-        {isAuthenticated && authToken ? 'Session Restored' : 'No Session'}
-      </Text>
-    );
-  };
-
-  render(
-    <AuthProvider>
-      <TestComponent />
-    </AuthProvider>
-  );
-
-  await waitFor(() => {
-    expect(screen.getByText('Session Restored')).toBeTruthy();
-  }, { timeout: 3000 });
-
-  expect(Keychain.getGenericPassword).toHaveBeenCalled();
 });

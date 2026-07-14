@@ -1,6 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '../services/authService';
-import { AuthContextType } from '../types/auth';
+import { authService } from '@services/authService';
+import { AuthContextType } from '@types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
