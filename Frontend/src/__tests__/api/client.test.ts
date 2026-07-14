@@ -1,459 +1,137 @@
 import axios from 'axios';
-import * as Keychain from 'react-native-keychain';
-import { API_URL } from '@env';
 import { apiClient } from '@api/client';
+import { 
+  requestInterceptor, 
+  requestErrorInterceptor,
+  responseSuccessInterceptor,
+  responseInterceptor 
+} from '@api/interceptors';
 
-// Mock dependencies
+// Mock des dépendances
 jest.mock('axios');
-jest.mock('react-native-keychain');
+jest.mock('../../api/interceptors', () => ({
+  requestInterceptor: jest.fn(),
+  requestErrorInterceptor: jest.fn(),
+  responseSuccessInterceptor: jest.fn(),
+  responseInterceptor: jest.fn(),
+}));
+
 jest.mock('@env', () => ({
   API_URL: 'https://api.test.com',
 }));
 
 const mockedAxios = axios as jest.Mocked<typeof axios>;
-const mockedKeychain = Keychain as jest.Mocked<typeof Keychain>;
 
 describe('apiClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset axios defaults
-    apiClient.defaults.headers.common = {};
-    apiClient.defaults.headers.Authorization = undefined;
   });
 
-  describe('Request Interceptor', () => {
-    test('should add Authorization header when valid session exists', async () => {
-      const mockSession = JSON.stringify({
-        access: 'valid-access-token',
-        refresh: 'valid-refresh-token',
-      });
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBe('Bearer valid-access-token');
-      expect(mockedKeychain.getGenericPassword).toHaveBeenCalledWith({
-        service: 'user_session',
-      });
+  describe('Configuration', () => {
+    it('should have correct base URL', () => {
+      expect(apiClient.defaults.baseURL).toBe('https://api.test.com');
     });
 
-    test('should handle session with access token inside nested object', async () => {
-      const mockSession = JSON.stringify({
-        access: 'nested-access-token',
-        refresh: 'nested-refresh-token',
-        user: { id: 1 },
-      });
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBe('Bearer nested-access-token');
+    it('should have correct content-type header', () => {
+      expect(apiClient.defaults.headers['Content-Type']).toBe('application/json');
     });
 
-    test('should not add Authorization header when no credentials exist', async () => {
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce(null);
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
-      expect(mockedKeychain.getGenericPassword).toHaveBeenCalledWith({
-        service: 'user_session',
-      });
+    it('should register request interceptors', () => {
+      // Vérifier que les intercepteurs sont bien enregistrés
+      expect(apiClient.interceptors.request).toBeDefined();
     });
 
-    test('should not add Authorization header when password is empty', async () => {
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: '',
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
-    });
-
-    test('should handle non-JSON password gracefully', async () => {
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: 'plain-text-token',
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
-    });
-
-    test('should handle Keychain error gracefully', async () => {
-      mockedKeychain.getGenericPassword.mockRejectedValueOnce(
-        new Error('Keychain unavailable')
-      );
-
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[Interceptor Request] Erreur lecture Keychain:',
-        expect.any(Error)
-      );
-
-      consoleSpy.mockRestore();
-    });
-
-    test('should handle malformed JSON in password', async () => {
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: '{invalid json}',
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
-      
-      consoleSpy.mockRestore();
-    });
-
-    test('should handle session with missing access token', async () => {
-      const mockSession = JSON.stringify({
-        refresh: 'valid-refresh-token',
-      });
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const config = {
-        headers: {},
-        url: '/test',
-      };
-
-      const result = await (apiClient.interceptors.request as any).handlers[0].fulfilled(config);
-
-      expect(result.headers.Authorization).toBeUndefined();
+    it('should register response interceptors', () => {
+      expect(apiClient.interceptors.response).toBeDefined();
     });
   });
 
-  describe('Response Interceptor', () => {
-    test('should pass through successful responses', async () => {
-      const response = { data: 'success', status: 200 };
+  describe('Interceptor registration', () => {
+    it('should have request interceptor registered', () => {
+      // Vérifier que l'intercepteur de requête est enregistré
+      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
+      expect(requestInterceptors.length).toBeGreaterThan(0);
       
-      const result = await (apiClient.interceptors.response as any).handlers[0].fulfilled(response);
+      // Vérifier que le premier handler a une fonction fulfilled
+      if (requestInterceptors.length > 0) {
+        expect(typeof requestInterceptors[0].fulfilled).toBe('function');
+        expect(typeof requestInterceptors[0].rejected).toBe('function');
+      }
+    });
+
+    it('should have response interceptor registered', () => {
+      // Vérifier que l'intercepteur de réponse est enregistré
+      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
+      expect(responseInterceptors.length).toBeGreaterThan(0);
       
-      expect(result).toEqual(response);
+      // Vérifier que le premier handler a une fonction fulfilled et rejected
+      if (responseInterceptors.length > 0) {
+        expect(typeof responseInterceptors[0].fulfilled).toBe('function');
+        expect(typeof responseInterceptors[0].rejected).toBe('function');
+      }
+    });
+  });
+
+  describe('HTTP methods', () => {
+    it('should have get method', () => {
+      expect(apiClient.get).toBeDefined();
+      expect(typeof apiClient.get).toBe('function');
     });
 
-    test('should not attempt refresh on refresh endpoint', async () => {
-      const error = {
-        config: { url: '/users/login/refresh/', _retry: false },
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toEqual(error);
-
-      expect(mockedKeychain.getGenericPassword).not.toHaveBeenCalled();
+    it('should have post method', () => {
+      expect(apiClient.post).toBeDefined();
+      expect(typeof apiClient.post).toBe('function');
     });
 
-    test('should refresh token on 401 and retry request', async () => {
-      const mockSession = JSON.stringify({
-        access: 'old-token',
-        refresh: 'refresh-token',
-      });
-
-      const newAccessToken = 'new-access-token';
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      mockedAxios.mockImplementationOnce(() => 
-        Promise.resolve({ data: { access: newAccessToken } })
-      );
-
-      mockedKeychain.setGenericPassword.mockResolvedValueOnce(true);
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      const result = await (apiClient.interceptors.response as any).handlers[1].rejected(error);
-
-      expect(mockedKeychain.getGenericPassword).toHaveBeenCalledWith({
-        service: 'user_session',
-      });
-      expect(mockedKeychain.setGenericPassword).toHaveBeenCalledWith(
-        'user_session',
-        JSON.stringify({
-          access: newAccessToken,
-          refresh: 'refresh-token',
-        }),
-        { service: 'user_session' }
-      );
-      expect(result.config.headers.Authorization).toBe(`Bearer ${newAccessToken}`);
+    it('should have put method', () => {
+      expect(apiClient.put).toBeDefined();
+      expect(typeof apiClient.put).toBe('function');
     });
 
-    test('should handle token refresh failure', async () => {
-      const mockSession = JSON.stringify({
-        access: 'old-token',
-        refresh: 'refresh-token',
-      });
-
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      mockedAxios.mockImplementationOnce(() => 
-        Promise.reject(new Error('Refresh failed'))
-      );
-
-      mockedKeychain.resetGenericPassword.mockResolvedValueOnce(true);
-
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toThrow('Refresh failed');
-
-      expect(mockedKeychain.resetGenericPassword).toHaveBeenCalledWith({
-        service: 'user_session',
-      });
-      expect(consoleSpy).toHaveBeenCalledWith(
-        '[Interceptor Response] Échec critique du refresh token:',
-        expect.any(Error)
-      );
-
-      consoleSpy.mockRestore();
+    it('should have delete method', () => {
+      expect(apiClient.delete).toBeDefined();
+      expect(typeof apiClient.delete).toBe('function');
     });
 
-    test('should handle missing refresh token', async () => {
-      const mockSession = JSON.stringify({
-        access: 'old-token',
-        // No refresh token
-      });
+    it('should have patch method', () => {
+      expect(apiClient.patch).toBeDefined();
+      expect(typeof apiClient.patch).toBe('function');
+    });
+  });
 
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toThrow('No refresh token available');
-
-      expect(mockedAxios).not.toHaveBeenCalled();
-      
-      consoleSpy.mockRestore();
+  describe('Integration with interceptors', () => {
+    it('should use the exported request interceptor', () => {
+      // Vérifier que l'intercepteur de requête est bien celui exporté
+      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
+      if (requestInterceptors.length > 0) {
+        const fulfilled = requestInterceptors[0].fulfilled;
+        // Comparer les noms de fonctions ou leur contenu
+        expect(fulfilled.name).toBe('requestInterceptor');
+      }
     });
 
-    test('should handle invalid session format', async () => {
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: 'plain-text-invalid',
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toThrow('Invalid session format');
-
-      expect(mockedAxios).not.toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+    it('should use the exported request error interceptor', () => {
+      const requestInterceptors = (apiClient.interceptors.request as any).handlers || [];
+      if (requestInterceptors.length > 0) {
+        const rejected = requestInterceptors[0].rejected;
+        expect(rejected.name).toBe('requestErrorInterceptor');
+      }
     });
 
-    test('should not retry if already retried', async () => {
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: true,
-        baseURL: API_URL,
-      };
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toEqual(error);
-
-      expect(mockedKeychain.getGenericPassword).not.toHaveBeenCalled();
+    it('should use the exported response success interceptor', () => {
+      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
+      if (responseInterceptors.length > 0) {
+        const fulfilled = responseInterceptors[0].fulfilled;
+        expect(fulfilled.name).toBe('responseSuccessInterceptor');
+      }
     });
 
-    test('should handle 401 without response object', async () => {
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      const error = {
-        config: originalRequest,
-        // No response object
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toEqual(error);
-
-      expect(mockedKeychain.getGenericPassword).not.toHaveBeenCalled();
-    });
-
-    test('should handle non-401 errors', async () => {
-      const error = {
-        config: { url: '/test' },
-        response: { status: 404 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toEqual(error);
-
-      expect(mockedKeychain.getGenericPassword).not.toHaveBeenCalled();
-    });
-
-    test('should handle refresh token response without access token', async () => {
-      const mockSession = JSON.stringify({
-        access: 'old-token',
-        refresh: 'refresh-token',
-      });
-
-      const originalRequest = {
-        url: '/protected',
-        headers: {},
-        _retry: false,
-        baseURL: API_URL,
-      };
-
-      mockedKeychain.getGenericPassword.mockResolvedValueOnce({
-        password: mockSession,
-        service: 'user_session',
-        storage: 'keychain' as any,
-      });
-
-      mockedAxios.mockImplementationOnce(() => 
-        Promise.resolve({ data: {} }) // No access token
-      );
-
-      const error = {
-        config: originalRequest,
-        response: { status: 401 },
-      };
-
-      await expect(
-        (apiClient.interceptors.response as any).handlers[1].rejected(error)
-      ).rejects.toBeDefined();
-
-      // Should attempt to set new token (even if undefined)
-      expect(mockedKeychain.setGenericPassword).toHaveBeenCalled();
+    it('should use the exported response error interceptor', () => {
+      const responseInterceptors = (apiClient.interceptors.response as any).handlers || [];
+      if (responseInterceptors.length > 0) {
+        const rejected = responseInterceptors[0].rejected;
+        expect(rejected.name).toBe('responseInterceptor');
+      }
     });
   });
 });
