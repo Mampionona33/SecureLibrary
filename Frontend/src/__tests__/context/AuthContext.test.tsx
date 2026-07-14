@@ -1,58 +1,69 @@
-// __tests__/context/AuthContext.test.tsx
 import React from 'react';
 import { Text } from 'react-native';
 import { render, screen, waitFor, act } from '@testing-library/react-native';
 import * as Keychain from 'react-native-keychain';
-import { AuthProvider, useAuth } from '@context/AuthContext';
 
-// Create mock functions
-const mockRestoreSession = jest.fn().mockResolvedValue(null);
-const mockLogin = jest.fn().mockResolvedValue({ 
-  success: true,
-  token: 'mock-token',
-  userProfile: {
-    user: {
-      id: '1',
-      username: 'test',
-      role: 'reader',
-      status: 'active'
-    }
-  },
-  message: 'Login successful'
-});
-const mockLogout = jest.fn().mockResolvedValue(undefined);
+// Mock the authService BEFORE importing the component
+jest.mock('@services/authService', () => {
+  const mockRestoreSession = jest.fn().mockResolvedValue({ token: null, userProfile: null });
+  const mockLogin = jest.fn().mockResolvedValue({
+    success: true,
+    token: 'mock-token',
+    userProfile: {
+      user: {
+        id: '1',
+        username: 'test',
+        role: 'reader',
+        status: 'active'
+      }
+    },
+    message: 'Login successful'
+  });
+  const mockLogout = jest.fn().mockResolvedValue(undefined);
 
-// CORRECT: Mock must return { authService: { ... } }
-// Because the source imports: import { authService } from '@services/authService'
-jest.mock('@services/authService', () => ({
-  authService: {
+  const authService = {
     restoreSession: mockRestoreSession,
     login: mockLogin,
     logout: mockLogout,
-  }
-}));
+  };
+
+  return {
+    __esModule: true,
+    default: authService,
+    authService: authService,
+  };
+});
 
 // Mock Keychain
 jest.mock('react-native-keychain', () => ({
-  getGenericPassword: jest.fn(),
-  setGenericPassword: jest.fn(),
-  resetGenericPassword: jest.fn(),
+  getGenericPassword: jest.fn().mockResolvedValue(false),
+  setGenericPassword: jest.fn().mockResolvedValue(true),
+  resetGenericPassword: jest.fn().mockResolvedValue(true),
 }));
 
 jest.mock('@env', () => ({
   API_URL: 'http://127.0.0.1:8000/api',
 }));
 
+// Now import the component
+import { AuthProvider, useAuth } from '@context/AuthContext';
+import { authService } from '@services/authService';
+
+// Get the mocked functions
+const mockRestoreSession = authService.restoreSession as jest.Mock;
+const mockLogin = authService.login as jest.Mock;
+const mockLogout = authService.logout as jest.Mock;
+
 const mockedKeychain = Keychain as jest.Mocked<typeof Keychain>;
 
 // Simple test component
 const SimpleTestComponent = () => {
   const { isAuthenticated, isLoadingAuth } = useAuth();
-  
+
   if (isLoadingAuth) {
     return <Text testID="loading">Loading...</Text>;
   }
-  
+
   return (
     <Text testID="status">
       {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
@@ -61,13 +72,30 @@ const SimpleTestComponent = () => {
 };
 
 describe('AuthProvider', () => {
+  // Clear all mocks before each test
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRestoreSession.mockReset();
-    mockLogin.mockReset();
-    mockLogout.mockReset();
-    // Default: no persisted session
-    mockRestoreSession.mockResolvedValue(null);
+    // Reset the mock implementations - ALWAYS return an object
+    mockRestoreSession.mockResolvedValue({ token: null, userProfile: null });
+    mockLogin.mockResolvedValue({
+      success: true,
+      token: 'mock-token',
+      userProfile: {
+        user: {
+          id: '1',
+          username: 'test',
+          role: 'reader',
+          status: 'active'
+        }
+      },
+      message: 'Login successful'
+    });
+    mockLogout.mockResolvedValue(undefined);
+  });
+
+  // Clean up after each test
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
   it('should render without crashing', async () => {
@@ -83,8 +111,8 @@ describe('AuthProvider', () => {
   });
 
   it('AuthProvider initializes with isAuthenticated as false', async () => {
-    mockRestoreSession.mockResolvedValue(null);
-    mockedKeychain.getGenericPassword.mockResolvedValue(false);
+    // Return empty object (no token, no user)
+    mockRestoreSession.mockResolvedValue({ token: null, userProfile: null });
 
     await act(async () => {
       render(
@@ -112,15 +140,14 @@ describe('AuthProvider', () => {
         }
       }
     });
-    mockedKeychain.getGenericPassword.mockResolvedValue(false);
 
     const PendingTestComponent = () => {
       const { isPendingApproval, isAuthenticated, isLoadingAuth } = useAuth();
-      
+
       if (isLoadingAuth) {
         return <Text>Loading...</Text>;
       }
-      
+
       return (
         <>
           <Text testID="pending">
@@ -148,9 +175,8 @@ describe('AuthProvider', () => {
   });
 
   it('Login success with authenticated status', async () => {
-    mockRestoreSession.mockResolvedValue(null);
-    mockedKeychain.getGenericPassword.mockResolvedValue(false);
-    mockedKeychain.setGenericPassword.mockResolvedValue(true);
+    // Start with no session
+    mockRestoreSession.mockResolvedValue({ token: null, userProfile: null });
 
     // Mock successful login
     mockLogin.mockResolvedValue({
@@ -169,18 +195,18 @@ describe('AuthProvider', () => {
 
     const LoginTestComponent = () => {
       const { isAuthenticated, isLoadingAuth, login } = useAuth();
-      
+
       if (isLoadingAuth) {
         return <Text>Loading...</Text>;
       }
-      
+
       return (
         <>
           <Text testID="status">
             {isAuthenticated ? 'Authenticated' : 'Not Authenticated'}
           </Text>
-          <Text 
-            testID="login-btn" 
+          <Text
+            testID="login-btn"
             onPress={() => login('test@example.com', 'password123')}
           >
             Login
