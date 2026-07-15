@@ -131,6 +131,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                   ]}
                 >
                   <TextInput
+                    testID="register-lastname"
                     style={styles.input}
                     placeholder="Dupont"
                     placeholderTextColor={colors.placeholder}
@@ -160,6 +161,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                   ]}
                 >
                   <TextInput
+                    testID="register-firstname"
                     style={styles.input}
                     placeholder="Jean"
                     placeholderTextColor={colors.placeholder}
@@ -189,6 +191,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                   ]}
                 >
                   <TextInput
+                    testID="register-email"
                     style={styles.input}
                     placeholder="exemple@domaine.com"
                     placeholderTextColor={colors.placeholder}
@@ -219,6 +222,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                   ]}
                 >
                   <TextInput
+                    testID="register-password"
                     style={styles.input}
                     placeholder="••••••••"
                     placeholderTextColor={colors.placeholder}
@@ -229,6 +233,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                     editable={!isLoading}
                   />
                   <TouchableOpacity
+                    testID="register-toggle-password"
                     style={styles.toggleButton}
                     onPress={() => setShowPassword(!showPassword)}
                   >
@@ -256,6 +261,7 @@ const RegisterScreen = ({ navigation }: Props) => {
                   ]}
                 >
                   <TextInput
+                    testID="register-confirm-password"
                     style={styles.input}
                     placeholder="••••••••"
                     placeholderTextColor={colors.placeholder}
@@ -276,6 +282,7 @@ const RegisterScreen = ({ navigation }: Props) => {
 
             {/* Bouton de soumission */}
             <TouchableOpacity
+              testID="register-submit"
               style={[
                 styles.submitButton,
                 isLoading ? styles.submitButtonDisabled : undefined,
@@ -293,7 +300,10 @@ const RegisterScreen = ({ navigation }: Props) => {
             {/* Lien vers Login */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Déjà un compte ? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+              <TouchableOpacity
+                testID="register-login-link"
+                onPress={() => navigation.navigate('Login')}
+              >
                 <Text style={styles.footerLink}>Se connecter</Text>
               </TouchableOpacity>
             </View>
