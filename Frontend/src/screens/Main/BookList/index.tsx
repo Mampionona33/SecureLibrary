@@ -22,6 +22,7 @@ const BookListScreen = ({ navigation }: Props) => {
   // Rendu d'une carte de livre
   const renderBookItem = ({ item }: { item: Book }) => (
     <TouchableOpacity 
+      testID={`booklist-book-${item.id}`}
       style={styles.bookCard}
       onPress={() => navigation.navigate('BookReader', {
         bookId: item.id,
@@ -43,13 +44,14 @@ const BookListScreen = ({ navigation }: Props) => {
     <SafeAreaView style={styles.safeArea}>
       {/* Barre supérieure d'en-tête */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Bibliothèque Archives</Text>
-        <Text style={styles.headerSubtitle}>Sélectionnez un document crypté à décoder</Text>
+        <Text testID="booklist-header-title" style={styles.headerTitle}>Bibliothèque Archives</Text>
+        <Text testID="booklist-header-subtitle" style={styles.headerSubtitle}>Sélectionnez un document crypté à décoder</Text>
       </View>
 
       {/* Barre de filtrage horizontale des catégories */}
       <View style={{ height: 60 }}>
         <FlatList
+          testID="booklist-categories"
           data={MOCK_CATEGORIES}
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -59,6 +61,7 @@ const BookListScreen = ({ navigation }: Props) => {
             const isActive = selectedCategory === item.id;
             return (
               <TouchableOpacity
+                testID={`booklist-category-${item.id}`}
                 style={[styles.categoryBadge, isActive && styles.categoryBadgeActive]}
                 onPress={() => setSelectedCategory(item.id)}
               >
@@ -73,12 +76,13 @@ const BookListScreen = ({ navigation }: Props) => {
 
       {/* Liste principale des livres */}
       <FlatList
+        testID="booklist-books"
         data={filteredBooks}
         keyExtractor={(item) => item.id}
         renderItem={renderBookItem}
         contentContainerStyle={styles.listContainer}
         ListEmptyComponent={
-          <Text style={styles.emptyText}>Aucun document dans cette section.</Text>
+          <Text testID="booklist-empty" style={styles.emptyText}>Aucun document dans cette section.</Text>
         }
       />
     </SafeAreaView>
