@@ -1,3 +1,4 @@
+// screens/Admin/ManageUsers/index.tsx
 import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
@@ -12,7 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 
 import { useUserStore } from '@store/useUserStore';
 import { UserResponse } from '@types/user';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Importation du thème
+import { useAppTheme } from '@theme/useAppTheme';
 
 import { styles } from './styles';
 import UserRow from '@components/UserRow';
@@ -27,7 +28,6 @@ const ManageUsersScreen = ({ navigation }: any) => {
     validateUserInStore,
   } = useUserStore();
 
-  // 🟢 Extraction dynamique des variables du thème
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -116,9 +116,10 @@ const ManageUsersScreen = ({ navigation }: any) => {
         
         {/* En-tête avec bouton d'ajout */}
         <View style={[styles.headerRow, { marginBottom: spacing.lg }]}>
-          <Text style={[styles.title, { color: colors.text }]}>Membres</Text>
+          <Text testID="manage-users-title" style={[styles.title, { color: colors.text }]}>Membres</Text>
 
           <TouchableOpacity
+            testID="manage-users-add-button"
             style={[
               styles.addButton,
               {
@@ -161,6 +162,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
               return (
                 <TouchableOpacity
                   key={tabKey}
+                  testID={`manage-users-tab-${tabKey}`}
                   style={[
                     styles.tab,
                     { borderRadius: radius.sm },
@@ -188,6 +190,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
 
         {/* Barre de recherche */}
         <SearchBar
+          testID="manage-users-search"
           value={query}
           onChangeText={setQuery}
           placeholder="Rechercher par nom, prénom ou email..."
@@ -195,7 +198,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
 
         {/* Liste ou Loader */}
         {loading && users.length === 0 ? (
-          <View style={styles.center}>
+          <View testID="manage-users-loader" style={styles.center}>
             <ActivityIndicator
               size="large"
               color={colors.primary}
@@ -203,6 +206,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
           </View>
         ) : (
           <FlatList
+            testID="manage-users-list"
             data={displayedUsers}
             keyExtractor={(item: UserResponse) =>
               item.id.toString()
@@ -229,7 +233,7 @@ const ManageUsersScreen = ({ navigation }: any) => {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             ListEmptyComponent={
-              <View style={[styles.emptyContainer, { padding: spacing.xl }]}>
+              <View testID="manage-users-empty" style={[styles.emptyContainer, { padding: spacing.xl }]}>
                 <Text style={[styles.emptyText, { color: colors.textMuted }]}>
                   Aucun membre trouvé.
                 </Text>
