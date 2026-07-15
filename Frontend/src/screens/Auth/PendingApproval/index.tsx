@@ -43,16 +43,16 @@ const PendingApprovalScreen = () => {
         
         <View style={styles.card}>
           <Text style={styles.icon}>⏳</Text>
-          <Text style={styles.title}>Accès en attente</Text>
-          <Text style={styles.subtitle}>
+          <Text style={styles.title} testID="pending-title">Accès en attente</Text>
+          <Text style={styles.subtitle} testID="pending-subtitle">
             Votre inscription a bien été enregistrée. Pour des raisons de sécurité, 
             un administrateur doit valider manuellement votre compte avant que vous 
             puissiez accéder à la bibliothèque chiffrée.
           </Text>
 
           {lastCheckedAt && (
-            <View style={styles.statusBadge}>
-              <Text style={styles.lastChecked}>
+            <View style={styles.statusBadge} testID="pending-status-badge">
+              <Text style={styles.lastChecked} testID="pending-last-checked">
                 ✓ Vérifié à {lastCheckedAt.toLocaleTimeString()} (Toujours en attente)
               </Text>
             </View>
@@ -61,18 +61,20 @@ const PendingApprovalScreen = () => {
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
+            testID="pending-refresh-button"
             style={[styles.refreshButton, isChecking && styles.disabledButton]}
             onPress={handleRefreshStatus}
             disabled={isChecking}
           >
             {isChecking ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color="#ffffff" testID="pending-activity-indicator" />
             ) : (
               <Text style={styles.refreshButtonText}>🔄 Vérifier à nouveau</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity 
+            testID="pending-logout-button"
             style={styles.logoutButton} 
             onPress={logout}
             disabled={isChecking}

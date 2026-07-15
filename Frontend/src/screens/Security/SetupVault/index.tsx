@@ -16,13 +16,12 @@ import { valibotResolver } from '@hookform/resolvers/valibot';
 import { setupVaultSchema, SetupVaultFormType } from './schema';
 import { styles } from './styles';
 import { useVault } from '@context/VaultContext';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Import du thème
+import { useAppTheme } from '@theme/useAppTheme';
 
 const SetupVaultScreen = () => {
   const { setupLocalVault } = useVault();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🟢 Extraction dynamique du thème
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -79,6 +78,7 @@ const SetupVaultScreen = () => {
             name="pin"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                testID="setup-pin-input"
                 style={[
                   styles.input,
                   {
@@ -119,6 +119,7 @@ const SetupVaultScreen = () => {
             name="confirmPin"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                testID="setup-confirm-pin-input"
                 style={[
                   styles.input,
                   {
@@ -151,6 +152,7 @@ const SetupVaultScreen = () => {
 
         {/* Bouton de validation */}
         <TouchableOpacity
+          testID="setup-submit-button"
           style={[
             styles.submitButton,
             {
@@ -165,7 +167,7 @@ const SetupVaultScreen = () => {
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            <ActivityIndicator color={colors.buttonPrimaryText} />
+            <ActivityIndicator testID="setup-activity-indicator" color={colors.buttonPrimaryText} />
           ) : (
             <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>
               Sécuriser mon accès
