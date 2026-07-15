@@ -13,14 +13,13 @@ import * as v from 'valibot';
 
 import { useUserStore } from '@store/useUserStore';
 import { userService } from '@services/userService';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Importation du thème
+import { useAppTheme } from '@theme/useAppTheme';
 import { createUserSchema } from './schema';
 import { styles } from './styles';
 
 export default function CreateUserScreen({ navigation }: any) {
   const fetchUsers = useUserStore((state) => state.fetchUsers);
 
-  // 🟢 Extraction dynamique des variables du thème
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -101,20 +100,28 @@ export default function CreateUserScreen({ navigation }: any) {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={[styles.container, { padding: spacing.lg }]} keyboardShouldPersistTaps="handled">
-        <Text style={[styles.title, { color: colors.text, marginBottom: spacing.lg }]}>Nouveau Membre</Text>
+        <Text 
+          testID="create-user-title"
+          style={[styles.title, { color: colors.text, marginBottom: spacing.lg }]}
+        >
+          Nouveau Membre
+        </Text>
 
         {/* Bannière d'erreur API */}
         {apiError && (
-          <View style={[
-            styles.errorBanner, 
-            { 
-              backgroundColor: colors.danger + '20', // Opacité légère
-              borderLeftColor: colors.danger,
-              borderRadius: radius.md,
-              padding: spacing.md,
-              marginBottom: spacing.md
-            }
-          ]}>
+          <View 
+            testID="create-user-api-error"
+            style={[
+              styles.errorBanner, 
+              { 
+                backgroundColor: colors.danger + '20',
+                borderLeftColor: colors.danger,
+                borderRadius: radius.md,
+                padding: spacing.md,
+                marginBottom: spacing.md
+              }
+            ]}
+          >
             <Text style={[styles.errorBannerText, { color: colors.danger }]}>{apiError}</Text>
           </View>
         )}
@@ -135,6 +142,7 @@ export default function CreateUserScreen({ navigation }: any) {
           <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
             <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Prénom</Text>
             <TextInput
+              testID="create-user-firstname"
               style={[
                 styles.input,
                 { 
@@ -152,7 +160,12 @@ export default function CreateUserScreen({ navigation }: any) {
               onChangeText={setFirstName}
             />
             {fieldErrors.firstName && (
-              <Text style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}>{fieldErrors.firstName}</Text>
+              <Text 
+                testID="create-user-firstname-error"
+                style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}
+              >
+                {fieldErrors.firstName}
+              </Text>
             )}
           </View>
 
@@ -160,6 +173,7 @@ export default function CreateUserScreen({ navigation }: any) {
           <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
             <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Nom de famille</Text>
             <TextInput
+              testID="create-user-lastname"
               style={[
                 styles.input,
                 { 
@@ -177,7 +191,12 @@ export default function CreateUserScreen({ navigation }: any) {
               onChangeText={setLastName}
             />
             {fieldErrors.lastName && (
-              <Text style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}>{fieldErrors.lastName}</Text>
+              <Text 
+                testID="create-user-lastname-error"
+                style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}
+              >
+                {fieldErrors.lastName}
+              </Text>
             )}
           </View>
 
@@ -185,6 +204,7 @@ export default function CreateUserScreen({ navigation }: any) {
           <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
             <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Adresse Email</Text>
             <TextInput
+              testID="create-user-email"
               style={[
                 styles.input,
                 { 
@@ -205,7 +225,12 @@ export default function CreateUserScreen({ navigation }: any) {
               onChangeText={setEmail}
             />
             {fieldErrors.email && (
-              <Text style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}>{fieldErrors.email}</Text>
+              <Text 
+                testID="create-user-email-error"
+                style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}
+              >
+                {fieldErrors.email}
+              </Text>
             )}
           </View>
 
@@ -213,6 +238,7 @@ export default function CreateUserScreen({ navigation }: any) {
           <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
             <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>Mot de passe initial</Text>
             <TextInput
+              testID="create-user-password"
               style={[
                 styles.input,
                 { 
@@ -233,7 +259,12 @@ export default function CreateUserScreen({ navigation }: any) {
               onChangeText={setPassword}
             />
             {fieldErrors.password && (
-              <Text style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}>{fieldErrors.password}</Text>
+              <Text 
+                testID="create-user-password-error"
+                style={[styles.fieldErrorText, { color: colors.danger, marginTop: spacing.xs }]}
+              >
+                {fieldErrors.password}
+              </Text>
             )}
           </View>
 
@@ -247,6 +278,7 @@ export default function CreateUserScreen({ navigation }: any) {
                 return (
                   <TouchableOpacity
                     key={r}
+                    testID={`create-user-role-${r}`}
                     style={[
                       styles.pickerButton,
                       {
@@ -273,6 +305,7 @@ export default function CreateUserScreen({ navigation }: any) {
 
         {/* Bouton de Soumission */}
         <TouchableOpacity
+          testID="create-user-submit"
           style={[
             styles.submitButton,
             { 
@@ -286,7 +319,7 @@ export default function CreateUserScreen({ navigation }: any) {
           disabled={loading}
         >
           {loading ? (
-            <ActivityIndicator color={colors.buttonPrimaryText} />
+            <ActivityIndicator testID="create-user-loading" color={colors.buttonPrimaryText} />
           ) : (
             <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>Ajouter le membre</Text>
           )}
