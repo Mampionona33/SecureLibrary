@@ -29,16 +29,21 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
     <SafeAreaView style={styles.safeArea}>
       {/* Top Bar / Header de lecture */}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+        <TouchableOpacity 
+          testID="bookreader-back-button"
+          style={styles.backButton} 
+          onPress={() => navigation.goBack()}
+        >
           <Text style={styles.backButtonText}>🔕 Fermer</Text>
         </TouchableOpacity>
-        <Text style={styles.bookTitle} numberOfLines={1}>{title}</Text>
+        <Text testID="bookreader-title" style={styles.bookTitle} numberOfLines={1}>{title}</Text>
         <View style={styles.placeholder} />
       </View>
 
       {/* Zone d'affichage du PDF */}
       <View style={styles.container}>
         <Pdf
+          testID="bookreader-pdf"
           trustAllCerts={false} // Option sécuritaire recommandée pour Android
           source={pdfSource}
           onLoadComplete={(numberOfPages) => {
@@ -58,7 +63,7 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
           }}
           style={styles.pdf}
           renderActivityIndicator={() => (
-            <View style={styles.centerContainer}>
+            <View testID="bookreader-loader" style={styles.centerContainer}>
               <ActivityIndicator size="large" color="#ffffff" />
               <Text style={styles.loadingText}>Déchiffrement et chargement du livre...</Text>
             </View>
@@ -67,9 +72,13 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
 
         {/* Si une erreur fatale survient en dehors du composant PDF */}
         {isError && (
-          <View style={styles.centerContainer}>
+          <View testID="bookreader-error" style={styles.centerContainer}>
             <Text style={styles.errorText}>Le document n'a pas pu être affiché.</Text>
-            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <TouchableOpacity 
+              testID="bookreader-error-back-button"
+              style={styles.backButton} 
+              onPress={() => navigation.goBack()}
+            >
               <Text style={[styles.backButtonText, { color: '#3b82f6' }]}>Retour à la bibliothèque</Text>
             </TouchableOpacity>
           </View>
@@ -78,11 +87,11 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
 
       {/* Barre d'état inférieure (Pagination & Progression) */}
       {!isError && totalPages > 0 && (
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
+        <View testID="bookreader-footer" style={styles.footer}>
+          <Text testID="bookreader-page-info" style={styles.footerText}>
             Page {currentPage} / {totalPages}
           </Text>
-          <Text style={styles.footerText}>
+          <Text testID="bookreader-progress" style={styles.footerText}>
             {calculateReadingProgress(currentPage, totalPages)}% lu
           </Text>
         </View>
