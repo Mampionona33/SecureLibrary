@@ -16,13 +16,12 @@ import { valibotResolver } from '@hookform/resolvers/valibot';
 import { unlockVaultSchema, UnlockVaultFormType } from './schema';
 import { styles } from './styles';
 import { useVault } from '@context/VaultContext';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Import du thème
+import { useAppTheme } from '@theme/useAppTheme';
 
 const UnlockVaultScreen = () => {
   const { unlockVault } = useVault();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 🟢 Extraction dynamique du thème
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -77,6 +76,7 @@ const UnlockVaultScreen = () => {
             name="pin"
             render={({ field: { onChange, onBlur, value } }) => (
               <TextInput
+                testID="unlock-pin-input"
                 style={[
                   styles.input,
                   {
@@ -86,7 +86,7 @@ const UnlockVaultScreen = () => {
                     color: colors.text,
                     padding: spacing.md,
                   },
-                  errors.pin && { borderColor: colors.danger } // 🟢 Couleur d'erreur du thème
+                  errors.pin && { borderColor: colors.danger }
                 ]}
                 placeholder="••••"
                 placeholderTextColor={colors.placeholder}
@@ -108,8 +108,8 @@ const UnlockVaultScreen = () => {
           )}
         </View>
 
-        {/* Bouton Principal (Primary) */}
         <TouchableOpacity
+          testID="unlock-submit-button"
           style={[
             styles.submitButton,
             {
@@ -123,7 +123,7 @@ const UnlockVaultScreen = () => {
           disabled={isSubmitting}
         >
           {isSubmitting ? (
-            <ActivityIndicator color={colors.buttonPrimaryText} />
+            <ActivityIndicator testID="unlock-activity-indicator" color={colors.buttonPrimaryText} />
           ) : (
             <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>
               Déverrouiller
@@ -131,8 +131,8 @@ const UnlockVaultScreen = () => {
           )}
         </TouchableOpacity>
 
-        {/* Bouton Secondaire Biométrie */}
         <TouchableOpacity 
+          testID="unlock-biometric-button"
           style={[styles.biometricButton, { paddingVertical: spacing.sm }]}
           onPress={() => Alert.alert('Biométrie', 'FaceID / TouchID bientôt disponible.')}
         >
