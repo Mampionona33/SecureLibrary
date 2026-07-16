@@ -14,6 +14,7 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
 
 const getAccessToken = async (): Promise<string | null> => {
   try {
+    // Session JSON first
     const sessionData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     if (sessionData?.password) {
       try {
@@ -26,18 +27,17 @@ const getAccessToken = async (): Promise<string | null> => {
     const tokenData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
     return tokenData?.password || null;
   } catch (error) {
-    console.error('[getAccessToken] Erreur:', error);
+    console.error('[getAccessToken] Error:', error);
     return null;
   }
 };
 
 const getRefreshToken = async (): Promise<string | null> => {
   try {
-    // D'abord essayer le token individuel (le plus fiable)
+    // Try individual refresh token first
     const refreshData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
     if (refreshData?.password) return refreshData.password;
-
-    // Fallback : session JSON
+    // Fallback: session JSON
     const sessionData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     if (sessionData?.password) {
       try {
@@ -47,7 +47,7 @@ const getRefreshToken = async (): Promise<string | null> => {
     }
     return null;
   } catch (error) {
-    console.error('[getRefreshToken] Erreur:', error);
+    console.error('[getRefreshToken] Error:', error);
     return null;
   }
 };
@@ -56,11 +56,14 @@ const updateSession = async (accessToken: string, refreshToken?: string): Promis
   try {
     if (refreshToken) {
       const session = { access: accessToken, refresh: refreshToken };
+      // Store session JSON
       await Keychain.setGenericPassword('user_session', JSON.stringify(session), { service: KEYCHAIN_KEYS.SESSION });
+      // Store individual tokens
       await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
       await Keychain.setGenericPassword('user_refresh', refreshToken, { service: KEYCHAIN_KEYS.REFRESH_TOKEN });
       return;
     }
+    // If no new refresh token, try to keep existing
     const existingRefresh = await getRefreshToken();
     if (existingRefresh) {
       const session = { access: accessToken, refresh: existingRefresh };
@@ -70,7 +73,7 @@ const updateSession = async (accessToken: string, refreshToken?: string): Promis
       await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
     }
   } catch (error) {
-    console.error('[updateSession] Erreur:', error);
+    console.error('[updateSession] Error:', error);
   }
 };
 
@@ -80,7 +83,7 @@ const clearAllTokens = async (): Promise<void> => {
     await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
     await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
   } catch (error) {
-    console.error('[clearAllTokens] Erreur:', error);
+    console.error('[clearAllTokens] Error:', error);
   }
 };
 
@@ -92,18 +95,14 @@ export const requestInterceptor = async (config: any): Promise<any> => {
       config.headers.Authorization = `Bearer ${token}`;
     }
   } catch (error) {
-    console.error('[Interceptor Request] Erreur:', error);
+    console.error('[Interceptor Request] Error:', error);
   }
   return config;
 };
 
-export const requestErrorInterceptor = (error: any): Promise<any> => {
-  return Promise.reject(error);
-};
+export const requestErrorInterceptor = (error: any): Promise<any> => Promise.reject(error);
 
-export const responseSuccessInterceptor = (response: any): any => {
-  return response;
-};
+export const responseSuccessInterceptor = (response: any): any => response;
 
 export const responseInterceptor = async (error: any): Promise<any> => {
   const originalRequest = error.config as CustomAxiosRequestConfig;
@@ -121,12 +120,12 @@ export const responseInterceptor = async (error: any): Promise<any> => {
   try {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) {
-      console.warn('[Interceptor] Aucun refresh token disponible, nettoyage des tokens');
+      console.warn('[Interceptor] No refresh token available, clearing tokens.');
       await clearAllTokens();
       return Promise.reject(error);
     }
 
-    console.log('[Interceptor] Tentative de rafraîchissement du token...');
+    console.log('[Interceptor] Attempting token refresh...');
     const refreshResponse = await axios({
       method: 'post',
       url: `${API_URL}/token/refresh/`,
@@ -136,22 +135,26 @@ export const responseInterceptor = async (error: any): Promise<any> => {
     });
 
     const newAccessToken = refreshResponse.data?.access;
+    const newRefreshToken = refreshResponse.data?.refresh; // Important!
+
     if (!newAccessToken) {
-      console.warn('[Interceptor] Aucun nouveau token reçu, nettoyage des tokens');
+      console.warn('[Interceptor] No new access token received, clearing tokens.');
       await clearAllTokens();
       return Promise.reject(error);
     }
 
-    console.log('[Interceptor] Token rafraîchi avec succès');
-    await updateSession(newAccessToken, refreshToken);
+    console.log('[Interceptor] Token refreshed successfully.');
+    // Update session with both tokens (new refresh if available)
+    await updateSession(newAccessToken, newRefreshToken || refreshToken);
 
     if (originalRequest.headers) {
       originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
     }
-    return axios(originalRequest);
 
+    console.log('[Interceptor] Retrying original request.');
+    return axios(originalRequest);
   } catch (refreshError) {
-    console.error('[Interceptor] Échec du rafraîchissement:', refreshError);
+    console.error('[Interceptor] Refresh failed:', refreshError);
     await clearAllTokens();
     return Promise.reject(refreshError);
   }
