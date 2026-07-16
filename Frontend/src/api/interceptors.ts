@@ -34,17 +34,24 @@ const getAccessToken = async (): Promise<string | null> => {
 
 const getRefreshToken = async (): Promise<string | null> => {
   try {
-    // Try individual refresh token first
+    // First try the individual refresh token
     const refreshData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
-    if (refreshData?.password) return refreshData.password;
-    // Fallback: session JSON
+    if (refreshData?.password) {
+      console.log('[getRefreshToken] Found individual refresh token');
+      return refreshData.password;
+    }
+    // Fallback to session JSON
     const sessionData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     if (sessionData?.password) {
       try {
         const session = JSON.parse(sessionData.password);
-        if (session.refresh) return session.refresh;
+        if (session.refresh) {
+          console.log('[getRefreshToken] Found refresh token in session');
+          return session.refresh;
+        }
       } catch (_) {}
     }
+    console.log('[getRefreshToken] No refresh token found');
     return null;
   } catch (error) {
     console.error('[getRefreshToken] Error:', error);
@@ -56,21 +63,19 @@ const updateSession = async (accessToken: string, refreshToken?: string): Promis
   try {
     if (refreshToken) {
       const session = { access: accessToken, refresh: refreshToken };
-      // Store session JSON
       await Keychain.setGenericPassword('user_session', JSON.stringify(session), { service: KEYCHAIN_KEYS.SESSION });
-      // Store individual tokens
       await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
       await Keychain.setGenericPassword('user_refresh', refreshToken, { service: KEYCHAIN_KEYS.REFRESH_TOKEN });
-      return;
-    }
-    // If no new refresh token, try to keep existing
-    const existingRefresh = await getRefreshToken();
-    if (existingRefresh) {
-      const session = { access: accessToken, refresh: existingRefresh };
-      await Keychain.setGenericPassword('user_session', JSON.stringify(session), { service: KEYCHAIN_KEYS.SESSION });
-      await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
+      console.log('[updateSession] Updated session and individual tokens');
     } else {
-      await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
+      const existingRefresh = await getRefreshToken();
+      if (existingRefresh) {
+        const session = { access: accessToken, refresh: existingRefresh };
+        await Keychain.setGenericPassword('user_session', JSON.stringify(session), { service: KEYCHAIN_KEYS.SESSION });
+        await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
+      } else {
+        await Keychain.setGenericPassword('user_session', accessToken, { service: KEYCHAIN_KEYS.ACCESS_TOKEN });
+      }
     }
   } catch (error) {
     console.error('[updateSession] Error:', error);
@@ -82,6 +87,7 @@ const clearAllTokens = async (): Promise<void> => {
     await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
     await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+    console.log('[clearAllTokens] All tokens cleared');
   } catch (error) {
     console.error('[clearAllTokens] Error:', error);
   }
@@ -135,7 +141,7 @@ export const responseInterceptor = async (error: any): Promise<any> => {
     });
 
     const newAccessToken = refreshResponse.data?.access;
-    const newRefreshToken = refreshResponse.data?.refresh; // Important!
+    const newRefreshToken = refreshResponse.data?.refresh;
 
     if (!newAccessToken) {
       console.warn('[Interceptor] No new access token received, clearing tokens.');
@@ -144,7 +150,7 @@ export const responseInterceptor = async (error: any): Promise<any> => {
     }
 
     console.log('[Interceptor] Token refreshed successfully.');
-    // Update session with both tokens (new refresh if available)
+    // Update session with the new tokens (if refresh is also rotated)
     await updateSession(newAccessToken, newRefreshToken || refreshToken);
 
     if (originalRequest.headers) {

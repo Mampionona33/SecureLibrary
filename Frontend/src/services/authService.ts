@@ -41,7 +41,15 @@ export const authService = {
       if (response.ok) {
         const data = await response.json();
         const newAccessToken = data.access;
+        const newRefreshToken = data.refresh;
+        // Update both tokens
         await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
+        if (newRefreshToken) {
+          await Keychain.setGenericPassword('user_refresh', newRefreshToken, { service: 'refresh_token' });
+          // Also update session JSON
+          const session = { access: newAccessToken, refresh: newRefreshToken };
+          await Keychain.setGenericPassword('user_session', JSON.stringify(session), { service: 'user_session' });
+        }
         return newAccessToken;
       }
       return null;
@@ -74,17 +82,20 @@ export const authService = {
 
       const tokens = tokenData as TokenResponse;
 
-      // Stockage individuel
+      // Store tokens securely
+      // 1. Individual tokens (for direct lookup)
       await Keychain.setGenericPassword('user_session', tokens.access, { service: 'auth_token' });
       await Keychain.setGenericPassword('user_refresh', tokens.refresh, { service: 'refresh_token' });
 
-      // Stockage session JSON
+      // 2. Session JSON (for interceptors)
       const session = { access: tokens.access, refresh: tokens.refresh };
       await Keychain.setGenericPassword(
         'user_session',
         JSON.stringify(session),
         { service: 'user_session' }
       );
+
+      console.log('✅ Tokens stored successfully');
 
       const userProfile = await this.fetchUserProfile(tokens.access);
       if (!userProfile) {
@@ -109,6 +120,7 @@ export const authService = {
       await Keychain.resetGenericPassword({ service: 'auth_token' });
       await Keychain.resetGenericPassword({ service: 'refresh_token' });
       await Keychain.resetGenericPassword({ service: 'user_session' });
+      console.log('🔓 Logout: tokens cleared');
     } catch (error) {
       console.error('Erreur nettoyage Keychain :', error);
     }
@@ -116,7 +128,7 @@ export const authService = {
 
   async restoreSession(): Promise<{ token: string | null; userProfile: UserProfileResponse | null }> {
     try {
-      // D'abord la session JSON
+      // Try session JSON first
       const sessionData = await Keychain.getGenericPassword({ service: 'user_session' });
       let token: string | null = null;
       if (sessionData?.password) {
@@ -126,7 +138,7 @@ export const authService = {
         } catch (_) {}
       }
 
-      // Fallback individuel
+      // Fallback to individual access token
       if (!token) {
         const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
         if (credentials?.password) token = credentials.password;
