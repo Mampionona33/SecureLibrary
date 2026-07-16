@@ -1,4 +1,3 @@
-// __tests__/screens/Main/BookList.test.tsx
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { Text } from 'react-native';
@@ -33,6 +32,10 @@ const mockBooks = [
 ];
 
 // ==================== MOCKS ====================
+
+jest.mock('@env', () => ({
+  API_URL: 'http://127.0.0.1:8000/api',
+}));
 
 jest.mock('@screens/Main/BookList/mockData', () => ({
   MOCK_CATEGORIES: mockCategories,
@@ -69,7 +72,11 @@ jest.mock('@navigation/types', () => ({
   MainStackParamList: {},
 }));
 
-// Mock FlatList to render children in a simple View
+jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: ({ children }: any) => children,
+  useSafeAreaInsets: jest.fn(() => ({ top: 0, bottom: 0, left: 0, right: 0 })),
+}));
+
 jest.mock('react-native', () => {
   const React = require('react');
   return {
@@ -78,16 +85,17 @@ jest.mock('react-native', () => {
     TouchableOpacity: 'TouchableOpacity',
     SafeAreaView: 'SafeAreaView',
     ScrollView: 'ScrollView',
-    FlatList: ({ data, renderItem, keyExtractor, ListEmptyComponent }) => {
+    FlatList: ({ data, renderItem, keyExtractor, ListEmptyComponent, testID }: any) => {
       if (!data || data.length === 0) {
         return ListEmptyComponent || null;
       }
       return React.createElement(
         'View',
-        { testID: 'mock-flatlist' },
-        data?.map((item, index) => {
+        { testID },
+        data.map((item: any, index: number) => {
           const key = keyExtractor ? keyExtractor(item, index) : index;
-          return renderItem({ item, index });
+          const element = renderItem({ item, index });
+          return React.cloneElement(element, { key });
         })
       );
     },
@@ -143,7 +151,6 @@ describe('BookListScreen', () => {
     jest.clearAllMocks();
   });
 
-  // ===== RENDER TESTS =====
   describe('Rendu', () => {
     it('devrait se rendre sans erreur', async () => {
       let instance: any;
@@ -164,31 +171,40 @@ describe('BookListScreen', () => {
         );
       });
       const root = instance.root;
-      const title = root.find((el: any) => el.props.testID === 'booklist-header-title');
-      const subtitle = root.find((el: any) => el.props.testID === 'booklist-header-subtitle');
-      expect(title).toBeDefined();
-      expect(subtitle).toBeDefined();
-      expect(title.props.children).toBe('Bibliothèque Archives');
+      const titleElements = root.findAll((el: any) => el.props.testID === 'booklist-header-title');
+      const subtitleElements = root.findAll((el: any) => el.props.testID === 'booklist-header-subtitle');
+      
+      expect(titleElements.length).toBeGreaterThan(0);
+      expect(subtitleElements.length).toBeGreaterThan(0);
+      expect(titleElements[0].props.children).toBe('Bibliothèque Archives');
+      expect(subtitleElements[0].props.children).toBe('Sélectionnez un document crypté à décoder');
     });
 
-    it.skip('devrait afficher les catégories', () => {});
-    it.skip('devrait afficher une liste de livres', () => {});
+    it('devrait rendre deux FlatList (catégories et livres)', async () => {
+      let instance: any;
+      await ReactTestRenderer.act(async () => {
+        instance = ReactTestRenderer.create(
+          <BookListScreen navigation={mockNavigation} route={mockRoute} />
+        );
+      });
+      const root = instance.root;
+      const categoriesFlatList = root.findAll((el: any) => el.props.testID === 'booklist-categories');
+      const booksFlatList = root.findAll((el: any) => el.props.testID === 'booklist-books');
+      expect(categoriesFlatList.length).toBeGreaterThan(0);
+      expect(booksFlatList.length).toBeGreaterThan(0);
+    });
   });
 
-  // ===== INTERACTION TESTS =====
   describe('Interactions', () => {
-    it.skip('devrait filtrer les livres lors du clic sur une catégorie', () => {});
-    it.skip('devrait naviguer vers BookReader lors du clic sur un livre', () => {});
-    it.skip('devrait afficher "Tous" par défaut', () => {});
+    it.skip('devrait filtrer les livres lors du clic sur une catégorie', async () => {});
+    it.skip('devrait naviguer vers BookReader lors du clic sur un livre', async () => {});
   });
 
-  // ===== NAVIGATION =====
   describe('Navigation', () => {
-    it.skip('devrait naviguer avec les bons paramètres pour le second livre', () => {});
+    it.skip('devrait naviguer avec les bons paramètres', async () => {});
   });
 
-  // ===== EDGE CASES =====
   describe('Cas de bordure', () => {
-    it.skip('devrait gérer plusieurs filtres sans erreur', () => {});
+    it.skip('devrait gérer plusieurs filtres sans erreur', async () => {});
   });
 });
