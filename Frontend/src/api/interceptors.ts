@@ -223,8 +223,8 @@ export const responseInterceptor = async (error: any): Promise<any> => {
   const isUnauthorized = error.response?.status === 401;
   
   // Éviter les boucles infinies - ne pas retenter sur les endpoints de refresh
-  const isRefreshEndpoint = originalRequest.url?.includes('/users/login/refresh/') || 
-                           originalRequest.url?.includes('/users/token/refresh/');
+  const isRefreshEndpoint = originalRequest.url?.includes('/token/refresh/') || 
+                           originalRequest.url?.includes('/users/login/refresh/');
 
   if (isRefreshEndpoint) {
     return Promise.reject(error);
@@ -253,7 +253,7 @@ export const responseInterceptor = async (error: any): Promise<any> => {
     
     const refreshResponse = await axios({
       method: 'post',
-      url: `${API_URL}/users/token/refresh/`,
+      url: `${API_URL}/token/refresh/`, // ✅ URL CORRECTE
       headers: { 'Content-Type': 'application/json' },
       data: { refresh: refreshToken },
       timeout: 10000,

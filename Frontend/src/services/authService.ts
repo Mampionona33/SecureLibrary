@@ -32,7 +32,8 @@ export const authService = {
       const refreshCredentials = await Keychain.getGenericPassword({ service: 'refresh_token' });
       if (!refreshCredentials || !refreshCredentials.password) return null;
 
-      const response = await fetch(`${API_URL}/users/token/refresh/`, {
+      // ✅ URL corrigée : /token/refresh/ au lieu de /users/token/refresh/
+      const response = await fetch(`${API_URL}/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh: refreshCredentials.password }),
@@ -41,7 +42,10 @@ export const authService = {
       if (response.ok) {
         const data = await response.json();
         const newAccessToken = data.access;
+        // Mettre à jour le token d'accès dans Keychain (au format individuel)
         await Keychain.setGenericPassword('user_session', newAccessToken, { service: 'auth_token' });
+        // Optionnel : mettre à jour aussi le format session JSON si nécessaire
+        // (l'intercepteur le fait déjà, mais on peut le faire ici pour cohérence)
         return newAccessToken;
       }
       return null;
@@ -69,8 +73,17 @@ export const authService = {
 
       const tokens = tokenData as TokenResponse;
 
+      // Stockage individuel (pour compatibilité avec intercepteurs)
       await Keychain.setGenericPassword('user_session', tokens.access, { service: 'auth_token' });
       await Keychain.setGenericPassword('user_refresh', tokens.refresh, { service: 'refresh_token' });
+
+      // Stockage au format session JSON (pour l'intercepteur prioritaire)
+      const session = { access: tokens.access, refresh: tokens.refresh };
+      await Keychain.setGenericPassword(
+        'user_session',
+        JSON.stringify(session),
+        { service: 'user_session' }
+      );
 
       const userProfile = await this.fetchUserProfile(tokens.access);
       if (!userProfile) {
@@ -94,6 +107,7 @@ export const authService = {
     try {
       await Keychain.resetGenericPassword({ service: 'auth_token' });
       await Keychain.resetGenericPassword({ service: 'refresh_token' });
+      await Keychain.resetGenericPassword({ service: 'user_session' }); // Nettoyer aussi le format session
     } catch (error) {
       console.error('Erreur nettoyage Keychain :', error);
     }
@@ -101,9 +115,29 @@ export const authService = {
 
   async restoreSession(): Promise<{ token: string | null; userProfile: UserProfileResponse | null }> {
     try {
-      const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
-      if (credentials && credentials.password) {
-        let token = credentials.password;
+      // Essayer d'abord le format session (JSON)
+      const sessionData = await Keychain.getGenericPassword({ service: 'user_session' });
+      let token: string | null = null;
+      if (sessionData && sessionData.password) {
+        try {
+          const session = JSON.parse(sessionData.password);
+          if (session.access) {
+            token = session.access;
+          }
+        } catch (parseError) {
+          // Si ce n'est pas du JSON, essayer le format individuel
+        }
+      }
+
+      // Fallback : token individuel
+      if (!token) {
+        const credentials = await Keychain.getGenericPassword({ service: 'auth_token' });
+        if (credentials && credentials.password) {
+          token = credentials.password;
+        }
+      }
+
+      if (token) {
         let userProfile = await this.fetchUserProfile(token);
 
         if (!userProfile) {
