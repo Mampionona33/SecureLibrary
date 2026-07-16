@@ -25,7 +25,8 @@ class CategorySerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        # ✅ slug en lecture seule – le backend le génère automatiquement
+        read_only_fields = ['id', 'slug', 'created_at', 'updated_at']
 
     def get_children(self, obj):
         return CategorySerializer(obj.children.all(), many=True).data
