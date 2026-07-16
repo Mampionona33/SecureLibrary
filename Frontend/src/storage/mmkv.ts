@@ -1,4 +1,3 @@
-// src/storage/mmkv.ts
 import { MMKV } from 'react-native-mmkv';
 
 let mmkvInstance: MMKV | null = null;
