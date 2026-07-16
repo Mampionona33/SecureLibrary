@@ -276,6 +276,16 @@ describe('ManageCategoriesScreen', () => {
       const emptyText = findByTestID(root, 'categories-empty');
       expect(emptyText).toBeDefined();
     });
+
+    it('devrait appeler fetchCategories au montage', async () => {
+      let instance: any;
+      await ReactTestRenderer.act(async () => {
+        instance = ReactTestRenderer.create(
+          <ManageCategoriesScreen navigation={mockNavigation} />
+        );
+      });
+      expect(mockFetchCategories).toHaveBeenCalled();
+    });
   });
 
   // ===== FILTER =====

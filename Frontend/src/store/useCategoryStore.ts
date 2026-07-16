@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiClient } from '@api/client';
 
 export interface Category {
   id: string;
@@ -30,33 +31,25 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   fetchCategories: async () => {
     set({ loading: true, error: null });
     try {
-      // Simuler un appel API (à remplacer par votre vrai service)
-      const response = await fetch('/api/library/categories/');
-      if (!response.ok) throw new Error('Failed to fetch categories');
-      const data = await response.json();
-      set({ categories: data, loading: false });
+      const response = await apiClient.get('/library/categories/');
+      set({ categories: response.data, loading: false });
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message || 'Failed to fetch categories', loading: false });
     }
   },
 
   createCategory: async (data) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch('/api/library/categories/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to create category');
-      const newCategory = await response.json();
+      const response = await apiClient.post('/library/categories/', data);
+      const newCategory = response.data;
       set((state) => ({
         categories: [...state.categories, newCategory],
         loading: false,
       }));
       return newCategory;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message || 'Failed to create category', loading: false });
       throw error;
     }
   },
@@ -64,13 +57,8 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   updateCategory: async (id, data) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/library/categories/${id}/`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to update category');
-      const updatedCategory = await response.json();
+      const response = await apiClient.put(`/library/categories/${id}/`, data);
+      const updatedCategory = response.data;
       set((state) => ({
         categories: state.categories.map((c) =>
           c.id === id ? updatedCategory : c
@@ -79,7 +67,7 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
       }));
       return updatedCategory;
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message || 'Failed to update category', loading: false });
       throw error;
     }
   },
@@ -87,16 +75,13 @@ export const useCategoryStore = create<CategoryState>((set, get) => ({
   deleteCategory: async (id) => {
     set({ loading: true, error: null });
     try {
-      const response = await fetch(`/api/library/categories/${id}/`, {
-        method: 'DELETE',
-      });
-      if (!response.ok) throw new Error('Failed to delete category');
+      await apiClient.delete(`/library/categories/${id}/`);
       set((state) => ({
         categories: state.categories.filter((c) => c.id !== id),
         loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message, loading: false });
+      set({ error: error.message || 'Failed to delete category', loading: false });
       throw error;
     }
   },
