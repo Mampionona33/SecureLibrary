@@ -10,7 +10,8 @@ import ManageCategoriesScreen from '@screens/Admin/ManageCategories';
 import ManageBooksScreen from '@screens/Admin/ManageBooks';
 import UserDetailScreen from '@screens/Admin/UserDetail';
 import UserEditScreen from '@screens/Admin/UserEdit';
-import  CreateUserScreen from '@screens/Admin/CreateUser';
+import CreateUserScreen from '@screens/Admin/CreateUser';
+import CreateBookScreen from '@screens/Admin/CreateBook'; // ✅ Ajout
 
 const Stack = createNativeStackNavigator();
 
@@ -70,6 +71,12 @@ const AdminStack = () => {
         name="ManageBooks" 
         component={ManageBooksScreen} 
         options={{ title: 'Gestion des Livres' }}
+      />
+      {/* ✅ Ajout de l'écran CreateBook */}
+      <Stack.Screen 
+        name="CreateBook" 
+        component={CreateBookScreen} 
+        options={{ title: 'Ajouter un livre' }}
       />
     </Stack.Navigator>
   );
