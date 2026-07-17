@@ -4,6 +4,7 @@ import ReactTestRenderer from 'react-test-renderer';
 import { Alert } from 'react-native';
 import CreateBookScreen from '@screens/Admin/CreateBook';
 import { useBookStore } from '@store/useBookStore';
+import { useCategoryStore } from '@store/useCategoryStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import * as v from 'valibot';
 
@@ -27,9 +28,13 @@ jest.mock('react-native', () => {
   };
 }, { virtual: true });
 
-// Mock du store
+// Mocks des stores
 jest.mock('@store/useBookStore', () => ({
   useBookStore: jest.fn(),
+}));
+
+jest.mock('@store/useCategoryStore', () => ({
+  useCategoryStore: jest.fn(),
 }));
 
 jest.mock('@theme/useAppTheme', () => ({
@@ -40,7 +45,7 @@ jest.mock('@theme/useAppTheme', () => ({
 let mockFormData = {
   title: '',
   author: '',
-  category: '',
+  category: null,
   year: undefined,
   isbn: '',
   description: '',
@@ -104,8 +109,53 @@ jest.mock('@screens/Admin/CreateBook/styles', () => ({
     submitButtonDisabled: {},
     filePickerButton: {},
     filePickerText: {},
+    categorySelector: {},
+    categorySelectorText: {},
   },
 }));
+
+// Mock du CategoryPickerModal
+jest.mock('@components/CategoryPickerModal', () => {
+  const React = require('react');
+  const { View, Text, TouchableOpacity } = require('react-native');
+  return ({ visible, onSelect, onClose, selectedValue }) => {
+    if (!visible) return null;
+    return React.createElement(
+      View,
+      { testID: 'category-picker-modal' },
+      React.createElement(
+        TouchableOpacity,
+        {
+          testID: 'modal-select-category-1',
+          onPress: () => {
+            onSelect('1');
+            onClose();
+          },
+        },
+        React.createElement(Text, null, 'Sélectionner Sciences')
+      ),
+      React.createElement(
+        TouchableOpacity,
+        {
+          testID: 'modal-select-category-2',
+          onPress: () => {
+            onSelect('2');
+            onClose();
+          },
+        },
+        React.createElement(Text, null, 'Sélectionner Romans')
+      ),
+      React.createElement(
+        TouchableOpacity,
+        {
+          testID: 'modal-close',
+          onPress: onClose,
+        },
+        React.createElement(Text, null, 'Fermer')
+      )
+    );
+  };
+});
 
 // ==================== TEST SETUP ====================
 
@@ -122,11 +172,24 @@ const mockNavigation = {
   setOptions: jest.fn(),
 };
 
-// Le store Zustand avec le sélecteur
+const mockCategories = [
+  { id: '1', name: 'Sciences', description: 'Livres scientifiques' },
+  { id: '2', name: 'Romans', description: 'Romans et fictions' },
+];
+
 (useBookStore as jest.Mock).mockImplementation((selector) => {
   const state = {
     createBook: mockCreateBook,
     fetchBooks: mockFetchBooks,
+  };
+  return selector ? selector(state) : state;
+});
+
+(useCategoryStore as jest.Mock).mockImplementation((selector) => {
+  const state = {
+    categories: mockCategories,
+    loading: false,
+    fetchCategories: jest.fn(),
   };
   return selector ? selector(state) : state;
 });
@@ -176,16 +239,14 @@ describe('CreateBookScreen', () => {
     mockNavigate.mockReset();
     mockGoBack.mockReset();
     Alert.alert = jest.fn();
-    // Réinitialiser les données du formulaire
     mockFormData = {
       title: '',
       author: '',
-      category: '',
+      category: null,
       year: undefined,
       isbn: '',
       description: '',
     };
-    // Réinitialiser le mock du store
     (useBookStore as jest.Mock).mockImplementation((selector) => {
       const state = {
         createBook: mockCreateBook,
@@ -193,7 +254,6 @@ describe('CreateBookScreen', () => {
       };
       return selector ? selector(state) : state;
     });
-    // Réinitialiser le mock de valibot
     (v.safeParse as jest.Mock).mockImplementation(() => ({
       success: true,
       issues: [],
@@ -236,7 +296,7 @@ describe('CreateBookScreen', () => {
       const root = instance.root;
       expect(findByTestID(root, 'create-book-title-input')).toBeDefined();
       expect(findByTestID(root, 'create-book-author-input')).toBeDefined();
-      expect(findByTestID(root, 'create-book-category-input')).toBeDefined();
+      expect(findByTestID(root, 'create-book-category-select')).toBeDefined();
       expect(findByTestID(root, 'create-book-year-input')).toBeDefined();
       expect(findByTestID(root, 'create-book-isbn-input')).toBeDefined();
       expect(findByTestID(root, 'create-book-description-input')).toBeDefined();
@@ -292,11 +352,10 @@ describe('CreateBookScreen', () => {
       (v.safeParse as jest.Mock).mockReturnValue({ success: true, issues: [] });
       mockCreateBook.mockResolvedValue({ id: 'new-id' });
 
-      // Pré-remplir les données du formulaire
       mockFormData = {
         title: 'Le Seigneur des Anneaux',
         author: 'J.R.R. Tolkien',
-        category: '',
+        category: null,
         year: undefined,
         isbn: '',
         description: '',
@@ -309,9 +368,6 @@ describe('CreateBookScreen', () => {
         );
       });
       const root = instance.root;
-
-      // Simuler la saisie pour déclencher les changements (optionnel)
-      // Le formulaire est déjà rempli via mockFormData
 
       const submitButton = findByTestID(root, 'create-book-submit');
       await ReactTestRenderer.act(async () => {
@@ -345,7 +401,7 @@ describe('CreateBookScreen', () => {
       mockFormData = {
         title: 'Titre',
         author: 'Auteur',
-        category: '',
+        category: null,
         year: undefined,
         isbn: '',
         description: '',
@@ -375,6 +431,54 @@ describe('CreateBookScreen', () => {
         'Erreur création'
       );
     });
+
+    it('devrait permettre de sélectionner une catégorie', async () => {
+      let instance: any;
+      await ReactTestRenderer.act(async () => {
+        instance = ReactTestRenderer.create(
+          <CreateBookScreen navigation={mockNavigation} />
+        );
+      });
+      const root = instance.root;
+
+      // Ouvrir le modal
+      const selectButton = findByTestID(root, 'create-book-category-select');
+      expect(selectButton).toBeDefined();
+      await ReactTestRenderer.act(async () => {
+        selectButton.props.onPress();
+      });
+
+      // Vérifier que le modal est affiché
+      const modal = findByTestID(root, 'category-picker-modal');
+      expect(modal).toBeDefined();
+
+      // Sélectionner une catégorie
+      const selectCategory = findByTestID(root, 'modal-select-category-1');
+      expect(selectCategory).toBeDefined();
+      await ReactTestRenderer.act(async () => {
+        selectCategory.props.onPress();
+      });
+
+      // Vérifier que le texte du bouton de sélection est devenu "Sciences"
+      // On récupère le bouton de sélection à nouveau, et on vérifie son enfant Text
+      const updatedSelectButton = findByTestID(root, 'create-book-category-select');
+      expect(updatedSelectButton).toBeDefined();
+      // Le premier enfant du TouchableOpacity est le Text
+      const textChild = updatedSelectButton.props.children;
+      // Le Text a un style et des props, on vérifie son contenu
+      // Dans le composant, le Text est le premier enfant (et unique)
+      // On peut vérifier que le texte est "Sciences"
+      // Mais ici, on a plusieurs children? Dans le composant, c'est un Text direct, donc on peut le trouver.
+      // Pour simplifier, on recherche un Text "Sciences" dans l'ensemble du root, mais on sait que le mock de useCategoryStore renvoie une catégorie "Sciences".
+      // On attend que le texte "Sciences" apparaisse.
+      const categoryLabel = root.find(
+        (el: any) =>
+          el.props.children &&
+          typeof el.props.children === 'string' &&
+          el.props.children === 'Sciences'
+      );
+      expect(categoryLabel).toBeDefined();
+    });
   });
 
   // ===== NAVIGATION =====
@@ -386,7 +490,7 @@ describe('CreateBookScreen', () => {
       mockFormData = {
         title: 'Titre',
         author: 'Auteur',
-        category: '',
+        category: null,
         year: undefined,
         isbn: '',
         description: '',

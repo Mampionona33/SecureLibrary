@@ -14,12 +14,15 @@ import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
 
 import { useBookStore } from '@store/useBookStore';
+import { useCategoryStore } from '@store/useCategoryStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import { createBookSchema, CreateBookFormType } from './schema';
 import { styles } from './styles';
+import CategoryPickerModal from '@components/CategoryPickerModal';
 
 const CreateBookScreen = ({ navigation }: any) => {
   const { createBook, fetchBooks } = useBookStore();
+  const { categories } = useCategoryStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -27,12 +30,15 @@ const CreateBookScreen = ({ navigation }: any) => {
   const [apiError, setApiError] = useState<string | null>(null);
   const [selectedPdf, setSelectedPdf] = useState<{ uri: string; name: string } | null>(null);
   const [selectedCover, setSelectedCover] = useState<{ uri: string; name: string } | null>(null);
+  const [categoryModalVisible, setCategoryModalVisible] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   const {
     control,
     handleSubmit,
     formState: { errors },
     reset,
+    setValue,
   } = useForm<CreateBookFormType>({
     resolver: valibotResolver(createBookSchema),
     defaultValues: {
@@ -66,6 +72,7 @@ const CreateBookScreen = ({ navigation }: any) => {
       reset();
       setSelectedPdf(null);
       setSelectedCover(null);
+      setSelectedCategoryId(null);
 
       Alert.alert('Succès', 'Le livre a été créé avec succès.', [
         { text: 'OK', onPress: () => navigation.goBack() },
@@ -76,6 +83,18 @@ const CreateBookScreen = ({ navigation }: any) => {
       setApiError(message);
       Alert.alert('Erreur', message);
     }
+  };
+
+  const handleCategorySelect = (categoryId: string | null) => {
+    setSelectedCategoryId(categoryId);
+    // Mettre à jour le formulaire avec l'ID de la catégorie
+    setValue('category', categoryId || '');
+  };
+
+  const getCategoryName = (id: string | null) => {
+    if (!id) return 'Aucune';
+    const category = categories.find((c) => c.id === id);
+    return category ? category.name : 'Aucune';
   };
 
   return (
@@ -203,7 +222,7 @@ const CreateBookScreen = ({ navigation }: any) => {
             )}
           </View>
 
-          {/* Catégorie */}
+          {/* Catégorie - MODIFIÉ AVEC MODAL */}
           <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
             <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
               Catégorie
@@ -212,26 +231,32 @@ const CreateBookScreen = ({ navigation }: any) => {
               control={control}
               name="category"
               render={({ field: { onChange, onBlur, value } }) => (
-                <TextInput
-                  testID="create-book-category-input"
+                <TouchableOpacity
+                  testID="create-book-category-select"
                   style={[
                     styles.input,
                     {
                       backgroundColor: colors.inputBackground,
                       borderColor: colors.inputBorder,
-                      color: colors.text,
                       borderRadius: radius.md,
                       paddingHorizontal: spacing.md,
+                      justifyContent: 'center',
                     },
                   ]}
-                  placeholder="Ex: Fantaisie"
-                  placeholderTextColor={colors.placeholder}
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value || ''}
-                />
+                  onPress={() => setCategoryModalVisible(true)}
+                >
+                  <Text
+                    style={[
+                      styles.categorySelectorText,
+                      { color: selectedCategoryId ? colors.text : colors.placeholder },
+                    ]}
+                  >
+                    {selectedCategoryId ? getCategoryName(selectedCategoryId) : 'Sélectionner une catégorie'}
+                  </Text>
+                </TouchableOpacity>
               )}
             />
+            {/* On cache le TextInput original pour utiliser le sélecteur */}
           </View>
 
           {/* Année */}
@@ -408,6 +433,14 @@ const CreateBookScreen = ({ navigation }: any) => {
           )}
         </TouchableOpacity>
       </ScrollView>
+
+      {/* Modal de sélection de catégorie */}
+      <CategoryPickerModal
+        visible={categoryModalVisible}
+        onSelect={handleCategorySelect}
+        onClose={() => setCategoryModalVisible(false)}
+        selectedValue={selectedCategoryId}
+      />
     </SafeAreaView>
   );
 };

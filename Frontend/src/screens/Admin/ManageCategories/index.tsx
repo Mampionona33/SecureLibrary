@@ -1,8 +1,8 @@
+// screens/Admin/ManageCategories/index.tsx
 import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   FlatList,
   Modal,
@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useCategoryStore } from '@store/useCategoryStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import { SearchBar } from '@components/SearchBar';
+import CategoryForm from './CategoryForm';
 import { styles } from './styles';
 
 const ManageCategoriesScreen = ({ navigation }: any) => {
@@ -24,8 +25,6 @@ const ManageCategoriesScreen = ({ navigation }: any) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCategory, setEditingCategory] = useState<any>(null);
-  const [categoryName, setCategoryName] = useState('');
-  const [categoryDescription, setCategoryDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   React.useEffect(() => {
@@ -41,15 +40,11 @@ const ManageCategoriesScreen = ({ navigation }: any) => {
 
   const handleAdd = () => {
     setEditingCategory(null);
-    setCategoryName('');
-    setCategoryDescription('');
     setModalVisible(true);
   };
 
   const handleEdit = (category: any) => {
     setEditingCategory(category);
-    setCategoryName(category.name);
-    setCategoryDescription(category.description || '');
     setModalVisible(true);
   };
 
@@ -74,27 +69,21 @@ const ManageCategoriesScreen = ({ navigation }: any) => {
     );
   };
 
-  const handleSubmit = async () => {
-    if (!categoryName.trim()) {
-      Alert.alert('Erreur', 'Le nom de la catégorie est requis.');
-      return;
-    }
-
+  const handleFormSubmit = async (data: { name: string; description: string }) => {
     setIsSubmitting(true);
     try {
-      const data = {
-        name: categoryName.trim(),
-        description: categoryDescription.trim() || undefined,
+      const payload = {
+        name: data.name.trim(),
+        description: data.description.trim() || undefined,
         parent_id: null,
       };
       if (editingCategory) {
-        await updateCategory(editingCategory.id, data);
+        await updateCategory(editingCategory.id, payload);
       } else {
-        await createCategory(data);
+        await createCategory(payload);
       }
       setModalVisible(false);
-      setCategoryName('');
-      setCategoryDescription('');
+      setEditingCategory(null);
     } catch (error) {
       Alert.alert('Erreur', 'Impossible d\'enregistrer la catégorie.');
     } finally {
@@ -175,47 +164,18 @@ const ManageCategoriesScreen = ({ navigation }: any) => {
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.surface, borderRadius: radius.lg }]}>
-            <Text testID="category-modal-title" style={[styles.modalTitle, { color: colors.text }]}>
-              {editingCategory ? 'Modifier la Catégorie' : 'Nouvelle Catégorie'}
-            </Text>
-            <TextInput
-              testID="category-modal-name"
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Nom de la catégorie"
-              placeholderTextColor={colors.placeholder}
-              value={categoryName}
-              onChangeText={setCategoryName}
+            <CategoryForm
+              initialName={editingCategory?.name || ''}
+              initialDescription={editingCategory?.description || ''}
+              onSubmit={handleFormSubmit}
+              onCancel={() => {
+                setModalVisible(false);
+                setEditingCategory(null);
+              }}
+              isSubmitting={isSubmitting}
+              title={editingCategory ? 'Modifier la Catégorie' : 'Nouvelle Catégorie'}
+              submitLabel={editingCategory ? 'Mettre à jour' : 'Ajouter'}
             />
-            <TextInput
-              style={[styles.modalInput, { borderColor: colors.border, color: colors.text }]}
-              placeholder="Description (optionnelle)"
-              placeholderTextColor={colors.placeholder}
-              value={categoryDescription}
-              onChangeText={setCategoryDescription}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                testID="category-modal-cancel"
-                style={[styles.modalButton, styles.modalCancel, { borderColor: colors.border }]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Annuler</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                testID="category-modal-submit"
-                style={[styles.modalButton, { backgroundColor: colors.buttonPrimary }]}
-                onPress={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={colors.buttonPrimaryText} />
-                ) : (
-                  <Text style={[styles.modalButtonText, { color: colors.buttonPrimaryText }]}>
-                    {editingCategory ? 'Mettre à jour' : 'Ajouter'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
