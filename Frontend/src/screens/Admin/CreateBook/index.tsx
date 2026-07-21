@@ -20,6 +20,7 @@ import { useAppTheme } from '@theme/useAppTheme';
 import { createBookSchema, CreateBookFormType } from './schema';
 import { styles } from './styles';
 import CategoryPickerModal from '@components/CategoryPickerModal';
+import FilePickerComponent from '@components/FilePicker';
 
 const CreateBookScreen = ({ navigation }: any) => {
   const { createBook, fetchBooks } = useBookStore();
@@ -57,16 +58,31 @@ const CreateBookScreen = ({ navigation }: any) => {
     setLoading(true);
 
     try {
-      const payload: any = {
-        title: data.title.trim(),
-        author: data.author.trim(),
-        category: data.category?.trim() || null,
-        year: data.year ? Number(data.year) : null,
-        isbn: data.isbn?.trim() || null,
-        description: data.description?.trim() || null,
-      };
+      const formData = new FormData();
+      formData.append('title', data.title.trim());
+      formData.append('author', data.author.trim());
+      if (data.category) formData.append('category', data.category.trim());
+      if (data.year) formData.append('year', String(data.year));
+      if (data.isbn) formData.append('isbn', data.isbn.trim());
+      if (data.description) formData.append('description', data.description.trim());
 
-      await createBook(payload);
+      if (selectedPdf) {
+        formData.append('pdf_file', {
+          uri: selectedPdf.uri,
+          type: 'application/pdf',
+          name: selectedPdf.name,
+        } as any);
+      }
+
+      if (selectedCover) {
+        formData.append('cover_image', {
+          uri: selectedCover.uri,
+          type: 'image/jpeg',
+          name: selectedCover.name,
+        } as any);
+      }
+
+      await createBook(formData);
       await fetchBooks(true);
 
       setLoading(false);
@@ -364,55 +380,23 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Fichier PDF */}
-            <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
-              <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                Fichier PDF
-              </Text>
-              <TouchableOpacity
-                testID="create-book-pdf-picker"
-                style={[
-                  styles.filePickerButton,
-                  {
-                    borderColor: colors.border,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.inputBackground,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedPdf({ uri: 'fake.pdf', name: 'document.pdf' });
-                }}
-              >
-                <Text style={[styles.filePickerText, { color: colors.textSecondary }]}>
-                  {selectedPdf ? selectedPdf.name : 'Choisir un fichier PDF'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <FilePickerComponent
+              selectedFile={selectedPdf}
+              onFileSelected={setSelectedPdf}
+              label="Fichier PDF"
+              placeholder="Choisir un fichier PDF"
+              testID="create-book-pdf-picker"
+              type="pdf"
+            />
 
-            {/* Image de couverture */}
-            <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
-              <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                Image de couverture
-              </Text>
-              <TouchableOpacity
-                testID="create-book-cover-picker"
-                style={[
-                  styles.filePickerButton,
-                  {
-                    borderColor: colors.border,
-                    borderRadius: radius.md,
-                    backgroundColor: colors.inputBackground,
-                  },
-                ]}
-                onPress={() => {
-                  setSelectedCover({ uri: 'fake.jpg', name: 'cover.jpg' });
-                }}
-              >
-                <Text style={[styles.filePickerText, { color: colors.textSecondary }]}>
-                  {selectedCover ? selectedCover.name : 'Choisir une image'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <FilePickerComponent
+              selectedFile={selectedCover}
+              onFileSelected={setSelectedCover}
+              label="Image de couverture"
+              placeholder="Choisir une image"
+              testID="create-book-cover-picker"
+              type="image"
+            />
           </View>
 
           <TouchableOpacity

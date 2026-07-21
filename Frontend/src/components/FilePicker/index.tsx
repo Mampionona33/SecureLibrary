@@ -1,85 +1,80 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Alert } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
-import { useAppTheme } from '@theme/useAppTheme';
-import { styles } from './styles';
+import React from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { pick } from '@react-native-documents/picker';
+
+type FileType = 'pdf' | 'image' | 'all';
 
 interface FilePickerProps {
-  onFileSelected: (file: { uri: string; name: string } | null) => void;
-  selectedFile?: { uri: string; name: string } | null;
-  label?: string;
-  placeholder?: string;
+  onFileSelected: (file: { uri: string; name: string; type?: string } | null) => void;
+  selectedFile: { uri: string; name: string; type?: string } | null;
+  label: string;
+  placeholder: string;
   testID?: string;
+  type?: FileType;
 }
 
-const FilePicker: React.FC<FilePickerProps> = ({
+const FilePickerComponent: React.FC<FilePickerProps> = ({
   onFileSelected,
-  selectedFile = null,
-  label = 'Fichier PDF',
-  placeholder = 'Choisir un fichier PDF',
+  selectedFile,
+  label,
+  placeholder,
   testID = 'file-picker',
+  type = 'all',
 }) => {
-  const { theme } = useAppTheme();
-  const { colors, spacing, radius } = theme;
-
   const pickFile = async () => {
     try {
-      const result = await DocumentPicker.pickSingle({
-        type: [DocumentPicker.types.pdf],
-        presentationStyle: 'fullScreen',
+      // Sélectionner un fichier
+      const [result] = await pick({
+        mode: 'import',
+        // Limiter les types selon le besoin
+        ...(type === 'pdf' && { type: 'application/pdf' }),
+        ...(type === 'image' && { type: 'image/*' }),
       });
-      onFileSelected({
-        uri: result.uri,
-        name: result.name || 'document.pdf',
-      });
-    } catch (error) {
-      if (DocumentPicker.isCancel(error)) {
-        // L'utilisateur a annulé
+
+      if (result) {
+        onFileSelected({
+          uri: result.uri,
+          name: result.name || (type === 'pdf' ? 'document.pdf' : 'file.jpg'),
+          type: result.type || undefined,
+        });
+      }
+    } catch (err: any) {
+      if (err?.code === 'CANCELED') {
+        console.log('Sélection annulée');
       } else {
-        Alert.alert('Erreur', 'Impossible de sélectionner le fichier PDF.');
+        console.log('Erreur:', err);
+        Alert.alert('Erreur', 'Impossible de sélectionner le fichier');
       }
     }
   };
 
-  const clearFile = () => {
-    onFileSelected(null);
-  };
-
   return (
-    <View style={{ marginBottom: spacing.md }}>
-      <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-        {label}
-      </Text>
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <TouchableOpacity
-          testID={testID}
-          style={[
-            styles.filePickerButton,
-            {
-              borderColor: colors.border,
-              borderRadius: radius.md,
-              backgroundColor: colors.inputBackground,
-              flex: 1,
-            },
-          ]}
-          onPress={pickFile}
-        >
-          <Text style={[styles.filePickerText, { color: colors.textSecondary }]}>
-            {selectedFile ? selectedFile.name : placeholder}
-          </Text>
-        </TouchableOpacity>
-        {selectedFile && (
-          <TouchableOpacity
-            testID={`${testID}-clear`}
-            onPress={clearFile}
-            style={{ marginLeft: spacing.sm, padding: spacing.xs }}
-          >
-            <Text style={{ color: colors.danger, fontSize: 16 }}>✕</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+    <View style={styles.container}>
+      <Text style={styles.label}>{label}</Text>
+      <TouchableOpacity
+        testID={testID}
+        style={styles.button}
+        onPress={pickFile}
+      >
+        <Text style={styles.text}>
+          {selectedFile ? selectedFile.name : placeholder}
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 };
 
-export default FilePicker;
+const styles = StyleSheet.create({
+  container: { marginBottom: 16 },
+  label: { fontSize: 14, fontWeight: '500', marginBottom: 4, color: '#666' },
+  button: {
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 8,
+    padding: 12,
+    backgroundColor: '#F8F8F8',
+  },
+  text: { color: '#333' },
+});
+
+export default FilePickerComponent;
