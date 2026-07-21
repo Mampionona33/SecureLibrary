@@ -74,57 +74,77 @@ const ManageBooksScreen = ({ navigation }: any) => {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <View testID={`book-item-${item.id}`} style={[styles.bookItem, { borderBottomColor: colors.border }]}>
-      <View style={styles.bookInfo}>
-        <Text style={[styles.bookTitle, { color: colors.text }]}>{item.title}</Text>
-        <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
-        <View style={styles.bookMeta}>
-          <Text style={[styles.bookDate, { color: colors.textMuted }]}>
-            {new Date(item.createdAt).toLocaleDateString()}
-          </Text>
-          <View
-            style={[
-              styles.statusBadge,
-              {
-                backgroundColor:
-                  item.status === 'active' ? colors.success : colors.danger,
-              },
-            ]}
-          >
-            <Text style={styles.statusText}>
-              {item.status === 'active' ? 'Actif' : 'Archivé'}
+  const renderItem = ({ item }: { item: any }) => {
+    // ✅ Déterminer la couleur de fond en fonction du statut
+    const getBackgroundColor = () => {
+      if (item.status === 'active') {
+        return colors.success + '15'; // Vert transparent (15% d'opacité)
+      } else {
+        return colors.danger + '15'; // Rouge transparent
+      }
+    };
+
+    return (
+      <View 
+        testID={`book-item-${item.id}`} 
+        style={[
+          styles.bookItem, 
+          { 
+            borderBottomColor: colors.border,
+            backgroundColor: getBackgroundColor(), // ✅ Background color dynamique
+          }
+        ]}
+      >
+        <View style={styles.bookInfo}>
+          <Text style={[styles.bookTitle, { color: colors.text }]}>{item.title}</Text>
+          <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
+          <View style={styles.bookMeta}>
+            <Text style={[styles.bookDate, { color: colors.textMuted }]}>
+              {new Date(item.createdAt).toLocaleDateString()}
             </Text>
+            <View
+              style={[
+                styles.statusBadge,
+                {
+                  backgroundColor:
+                    item.status === 'active' ? colors.success : colors.danger,
+                },
+              ]}
+            >
+              <Text style={styles.statusText}>
+                {item.status === 'active' ? 'Actif' : 'Archivé'}
+              </Text>
+            </View>
           </View>
         </View>
+        <View style={styles.bookActions}>
+          <TouchableOpacity
+            testID={`book-edit-${item.id}`}
+            style={[styles.actionButton, { backgroundColor: colors.primary }]}
+            onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
+          >
+            <Text style={styles.actionText}>✏️</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID={`book-archive-${item.id}`}
+            style={[styles.actionButton, { backgroundColor: colors.warning }]}
+            onPress={() => handleArchive(item.id, item.status)}
+          >
+            <Text style={styles.actionText}>
+              {item.status === 'active' ? '📁' : '📂'}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            testID={`book-delete-${item.id}`}
+            style={[styles.actionButton, { backgroundColor: colors.danger }]}
+            onPress={() => handleDelete(item.id, item.title)}
+          >
+            <Text style={styles.actionText}>🗑️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.bookActions}>
-        <TouchableOpacity
-          testID={`book-edit-${item.id}`}
-          style={[styles.actionButton, { backgroundColor: colors.primary }]}
-          onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
-        >
-          <Text style={styles.actionText}>✏️</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID={`book-archive-${item.id}`}
-          style={[styles.actionButton, { backgroundColor: colors.warning }]}
-          onPress={() => handleArchive(item.id, item.status)}
-        >
-          <Text style={styles.actionText}>
-            {item.status === 'active' ? '📁' : '📂'}
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          testID={`book-delete-${item.id}`}
-          style={[styles.actionButton, { backgroundColor: colors.danger }]}
-          onPress={() => handleDelete(item.id, item.title)}
-        >
-          <Text style={styles.actionText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>

@@ -57,7 +57,10 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingVertical: 12,
+    paddingHorizontal: 12,
     borderBottomWidth: 1,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   bookInfo: {
     flex: 1,

@@ -25,11 +25,10 @@ import { apiClient } from '@api/client';
 
 const EditBookScreen = ({ route, navigation }: any) => {
   const { bookId } = route.params;
-  const { categories } = useCategoryStore();
+  const { categories, fetchCategories } = useCategoryStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
-  // États
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -58,24 +57,21 @@ const EditBookScreen = ({ route, navigation }: any) => {
     },
   });
 
-  // 🔥 Récupérer les données du livre
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
   const loadBookDetails = async () => {
     try {
       setLoading(true);
       setApiError(null);
 
-      console.log('📚 Fetching book details for ID:', bookId);
-
       const response = await apiClient.get(`/library/books/${bookId}/`);
       const bookData = response.data;
-
-      console.log('✅ Book data received:', bookData);
-      console.log('✅ Status from API:', bookData.status);
 
       setBook(bookData);
       setSelectedCategoryId(bookData.category || null);
 
-      // ✅ Reset du formulaire
       reset({
         title: bookData.title || '',
         author: bookData.author || '',
@@ -85,25 +81,12 @@ const EditBookScreen = ({ route, navigation }: any) => {
         description: bookData.description || '',
         status: bookData.status || 'active',
       });
-
-      // ✅ Forcer la mise à jour du statut
-      // setValue('status', bookData.status || 'active');
-      console.log('✅ Status set in form:', bookData.status);
-
     } catch (error: any) {
-      console.error('❌ Error fetching book:', error);
-      
       let errorMessage = 'Impossible de charger les données du livre.';
-      
-      if (error.response?.status === 404) {
-        errorMessage = 'Livre non trouvé.';
-      } else if (error.response?.status === 401) {
+      if (error.response?.status === 401) {
         errorMessage = 'Session expirée. Veuillez vous reconnecter.';
         navigation.navigate('Login');
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
       }
-
       setApiError(errorMessage);
       Alert.alert('Erreur', errorMessage);
     } finally {
@@ -115,19 +98,7 @@ const EditBookScreen = ({ route, navigation }: any) => {
     loadBookDetails();
   }, [bookId]);
 
-  // ✅ Synchroniser le statut du livre avec le formulaire
-  useEffect(() => {
-    if (book) {
-      setValue('status', book.status || 'active');
-      console.log('🔄 Status synchronisé:', book.status);
-    }
-  }, [book, setValue]);
-
   const onSubmit = async (data: CreateBookFormType) => {
-    console.log('🔄 onSubmit START');
-    console.log('📤 Status from form:', data.status);
-    console.log('📤 Full form data:', data);
-
     setApiError(null);
     setSubmitting(true);
 
@@ -143,34 +114,51 @@ const EditBookScreen = ({ route, navigation }: any) => {
       if (data.isbn) payload.isbn = data.isbn.trim();
       if (data.description) payload.description = data.description.trim();
 
-      console.log('📤 Sending payload:', JSON.stringify(payload, null, 2));
-
       const response = await apiClient.patch(`/library/books/${bookId}/`, payload);
       
-      console.log('✅ Response status:', response.data.status);
-      console.log('✅ Full response:', response.data);
+      if (response.status >= 200 && response.status < 300) {
+        const { updateBook, fetchBooks } = useBookStore.getState();
+        await updateBook(bookId, payload);
+        await fetchBooks();
 
-      // ✅ Mettre à jour le store
-      const { updateBook, fetchBooks } = useBookStore.getState();
-      await updateBook(bookId, payload);
-      await fetchBooks();
+        setSubmitting(false);
+        setCategoryModalVisible(false);
 
-      setSubmitting(false);
-
-      Alert.alert('✅ Succès', 'Le livre a été modifié avec succès.', [
-        { text: 'OK', onPress: () => navigation.navigate('ManageBooks') },
-      ]);
+        Alert.alert('✅ Succès', 'Le livre a été modifié avec succès.', [
+          { 
+            text: 'OK', 
+            onPress: () => {
+              navigation.goBack();
+            }
+          },
+        ]);
+      } else {
+        setSubmitting(false);
+        const errorMsg = response.data?.detail || `Erreur ${response.status}`;
+        setApiError(errorMsg);
+        Alert.alert('❌ Erreur', errorMsg);
+      }
     } catch (error: any) {
-      console.error('❌ Update error:', error);
-      console.error('❌ Response data:', error.response?.data);
-      
       setSubmitting(false);
       
-      const message = error.response?.data?.non_field_errors?.[0] ||
-                      error.response?.data?.detail ||
-                      error.response?.data?.status?.[0] ||
-                      error.message ||
-                      'Impossible de modifier le livre.';
+      let message = 'Impossible de modifier le livre.';
+      
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          message = 'Session expirée. Veuillez vous reconnecter.';
+          navigation.navigate('Login');
+        } else if (status === 404) {
+          message = 'Livre non trouvé.';
+        } else if (status >= 500) {
+          message = 'Erreur serveur. Réessayez plus tard.';
+        } else {
+          message = error.response.data?.detail || error.message || message;
+        }
+      } else if (error.request) {
+        message = 'Impossible de contacter le serveur.';
+      }
+      
       setApiError(message);
       Alert.alert('❌ Erreur', message);
     }
@@ -186,10 +174,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
     const category = categories.find((c) => c.id === id);
     return category ? category.name : 'Aucune';
   };
-
-  // ============================================================
-  // RENDER STATES
-  // ============================================================
 
   if (loading) {
     return (
@@ -265,10 +249,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
     );
   }
 
-  // ============================================================
-  // RENDER PRINCIPAL
-  // ============================================================
-
   return (
     <SafeAreaView style={[{ backgroundColor: colors.background, flex: 1 }]}>
       <KeyboardAvoidingView
@@ -328,7 +308,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               },
             ]}
           >
-            {/* Titre */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Titre *
@@ -368,7 +347,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               )}
             </View>
 
-            {/* Auteur */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Auteur *
@@ -408,37 +386,41 @@ const EditBookScreen = ({ route, navigation }: any) => {
               )}
             </View>
 
-            {/* Catégorie */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Catégorie
               </Text>
-              <TouchableOpacity
-                testID="edit-book-category-select"
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.inputBackground,
-                    borderColor: colors.inputBorder,
-                    borderRadius: radius.md,
-                    paddingHorizontal: spacing.md,
-                    justifyContent: 'center',
-                  },
-                ]}
-                onPress={() => setCategoryModalVisible(true)}
-              >
-                <Text
-                  style={[
-                    styles.categorySelectorText,
-                    { color: selectedCategoryId ? colors.text : colors.placeholder },
-                  ]}
-                >
-                  {selectedCategoryId ? getCategoryName(selectedCategoryId) : 'Sélectionner une catégorie'}
-                </Text>
-              </TouchableOpacity>
+              <Controller
+                control={control}
+                name="category"
+                render={({ field: { onChange, onBlur, value } }) => (
+                  <TouchableOpacity
+                    testID="edit-book-category-select"
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.inputBackground,
+                        borderColor: colors.inputBorder,
+                        borderRadius: radius.md,
+                        paddingHorizontal: spacing.md,
+                        justifyContent: 'center',
+                      },
+                    ]}
+                    onPress={() => setCategoryModalVisible(true)}
+                  >
+                    <Text
+                      style={[
+                        styles.categorySelectorText,
+                        { color: selectedCategoryId ? colors.text : colors.placeholder },
+                      ]}
+                    >
+                      {selectedCategoryId ? getCategoryName(selectedCategoryId) : 'Sélectionner une catégorie'}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              />
             </View>
 
-            {/* Année */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Année
@@ -473,7 +455,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               />
             </View>
 
-            {/* ISBN */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 ISBN
@@ -504,7 +485,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               />
             </View>
 
-            {/* Description */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Description
@@ -538,7 +518,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               />
             </View>
 
-            {/* Statut */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Statut
@@ -546,71 +525,60 @@ const EditBookScreen = ({ route, navigation }: any) => {
               <Controller
                 control={control}
                 name="status"
-                render={({ field: { onChange, value } }) => {
-                  console.log('🔍 Controller status value:', value);
-                  
-                  return (
-                    <View style={{ flexDirection: 'row', gap: 12 }}>
-                      <TouchableOpacity
-                        style={[
-                          {
-                            flex: 1,
-                            paddingVertical: 12,
-                            borderRadius: radius.md,
-                            borderWidth: 2,
-                            alignItems: 'center',
-                            backgroundColor: value === 'active' ? colors.success + '20' : colors.inputBackground,
-                            borderColor: value === 'active' ? colors.success : colors.border,
-                          },
-                        ]}
-                        onPress={() => {
-                          console.log('🔄 Changement statut -> active');
-                          onChange('active');
+                render={({ field: { onChange, value } }) => (
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity
+                      style={[
+                        {
+                          flex: 1,
+                          paddingVertical: 12,
+                          borderRadius: radius.md,
+                          borderWidth: 2,
+                          alignItems: 'center',
+                          backgroundColor: value === 'active' ? colors.success + '20' : colors.inputBackground,
+                          borderColor: value === 'active' ? colors.success : colors.border,
+                        },
+                      ]}
+                      onPress={() => onChange('active')}
+                    >
+                      <Text
+                        style={{
+                          color: value === 'active' ? colors.success : colors.textSecondary,
+                          fontWeight: value === 'active' ? 'bold' : 'normal',
                         }}
                       >
-                        <Text
-                          style={{
-                            color: value === 'active' ? colors.success : colors.textSecondary,
-                            fontWeight: value === 'active' ? 'bold' : 'normal',
-                          }}
-                        >
-                          ✅ Actif
-                        </Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity
-                        style={[
-                          {
-                            flex: 1,
-                            paddingVertical: 12,
-                            borderRadius: radius.md,
-                            borderWidth: 2,
-                            alignItems: 'center',
-                            backgroundColor: value === 'archived' ? colors.danger + '20' : colors.inputBackground,
-                            borderColor: value === 'archived' ? colors.danger : colors.border,
-                          },
-                        ]}
-                        onPress={() => {
-                          console.log('🔄 Changement statut -> archived');
-                          onChange('archived');
+                        ✅ Actif
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        {
+                          flex: 1,
+                          paddingVertical: 12,
+                          borderRadius: radius.md,
+                          borderWidth: 2,
+                          alignItems: 'center',
+                          backgroundColor: value === 'archived' ? colors.danger + '20' : colors.inputBackground,
+                          borderColor: value === 'archived' ? colors.danger : colors.border,
+                        },
+                      ]}
+                      onPress={() => onChange('archived')}
+                    >
+                      <Text
+                        style={{
+                          color: value === 'archived' ? colors.danger : colors.textSecondary,
+                          fontWeight: value === 'archived' ? 'bold' : 'normal',
                         }}
                       >
-                        <Text
-                          style={{
-                            color: value === 'archived' ? colors.danger : colors.textSecondary,
-                            fontWeight: value === 'archived' ? 'bold' : 'normal',
-                          }}
-                        >
-                          📦 Archivé
-                        </Text>
-                      </TouchableOpacity>
-                    </View>
-                  );
-                }}
+                        📦 Archivé
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               />
             </View>
 
-            {/* Fichier PDF */}
             <FilePickerComponent
               selectedFile={selectedPdf}
               onFileSelected={setSelectedPdf}
@@ -620,7 +588,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               type="pdf"
             />
 
-            {/* Image de couverture */}
             <FilePickerComponent
               selectedFile={selectedCover}
               onFileSelected={setSelectedCover}
@@ -630,7 +597,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
               type="image"
             />
 
-            {/* Info de dernière mise à jour */}
             <View style={{ marginTop: spacing.md, paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: colors.border }}>
               <Text style={{ color: colors.textSecondary, fontSize: 12 }}>
                 Dernière modification: {book.updated_at ? new Date(book.updated_at).toLocaleString() : 'N/A'}
