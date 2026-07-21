@@ -40,22 +40,42 @@ export const useBookStore = create<BookState>((set, get) => ({
       const response = await apiClient.get('/library/books/');
       set({ books: response.data, loading: false });
     } catch (error: any) {
-      set({ error: error.message || 'Failed to fetch books', loading: false });
+      set({ error: error.response?.data?.detail || error.message || 'Failed to fetch books', loading: false });
     }
   },
 
   createBook: async (data) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.post('/library/books/', data);
+      // Détecter si c'est du FormData
+      const isFormData = data instanceof FormData;
+      
+      console.log('📚 createBook - isFormData:', isFormData);
+      
+      // Configurer les headers
+      const config: any = {};
+      if (isFormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+      
+      const response = await apiClient.post('/library/books/', data, config);
       const newBook = response.data;
+      
       set((state) => ({
         books: [...state.books, newBook],
         loading: false,
       }));
       return newBook;
     } catch (error: any) {
-      set({ error: error.message || 'Failed to create book', loading: false });
+      console.error('❌ createBook error:', error.response?.data || error.message);
+      const errorMessage = error.response?.data?.non_field_errors?.[0] || 
+                           error.response?.data?.detail || 
+                           error.response?.data?.message ||
+                           error.message || 
+                           'Failed to create book';
+      set({ error: errorMessage, loading: false });
       throw error;
     }
   },
@@ -63,15 +83,29 @@ export const useBookStore = create<BookState>((set, get) => ({
   updateBook: async (id, data) => {
     set({ loading: true, error: null });
     try {
-      const response = await apiClient.put(`/library/books/${id}/`, data);
+      const isFormData = data instanceof FormData;
+      
+      const config: any = {};
+      if (isFormData) {
+        config.headers = {
+          'Content-Type': 'multipart/form-data',
+        };
+      }
+      
+      const response = await apiClient.put(`/library/books/${id}/`, data, config);
       const updatedBook = response.data;
+      
       set((state) => ({
         books: state.books.map((b) => (b.id === id ? updatedBook : b)),
         loading: false,
       }));
       return updatedBook;
     } catch (error: any) {
-      set({ error: error.message || 'Failed to update book', loading: false });
+      const errorMessage = error.response?.data?.non_field_errors?.[0] || 
+                           error.response?.data?.detail || 
+                           error.message || 
+                           'Failed to update book';
+      set({ error: errorMessage, loading: false });
       throw error;
     }
   },
@@ -85,7 +119,7 @@ export const useBookStore = create<BookState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message || 'Failed to delete book', loading: false });
+      set({ error: error.response?.data?.detail || error.message || 'Failed to delete book', loading: false });
       throw error;
     }
   },
@@ -100,7 +134,7 @@ export const useBookStore = create<BookState>((set, get) => ({
         loading: false,
       }));
     } catch (error: any) {
-      set({ error: error.message || 'Failed to archive book', loading: false });
+      set({ error: error.response?.data?.detail || error.message || 'Failed to archive book', loading: false });
       throw error;
     }
   },

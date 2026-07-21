@@ -1,0 +1,165 @@
+INFO 2026-07-21 10:56:09,312 autoreload 22936 13940 Watching for file changes with StatReloader
+INFO 2026-07-21 10:56:57,336 autoreload 8256 26604 Watching for file changes with StatReloader
+INFO 2026-07-21 10:59:10,251 autoreload 3920 27000 Watching for file changes with StatReloader
+ERROR 2026-07-21 11:01:07,134 log 3920 8148 Internal Server Error: /api/library/categories/
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 503, in dispatch
+    self.initial(request, *args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 420, in initial
+    self.perform_authentication(request)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 330, in perform_authentication
+    request.user
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\request.py", line 232, in user
+    self._authenticate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\request.py", line 385, in _authenticate
+    user_auth_tuple = authenticator.authenticate(self)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework_simplejwt\authentication.py", line 49, in authenticate
+    validated_token = self.get_validated_token(raw_token)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework_simplejwt\authentication.py", line 113, in get_validated_token
+    raise InvalidToken(
+    ...<4 lines>...
+    )
+rest_framework_simplejwt.exceptions.InvalidToken: {'detail': ErrorDetail(string="Le type de jeton fourni n'est pas valide", code='token_not_valid'), 'code': ErrorDetail(string='token_not_valid', code='token_not_valid'), 'messages': [{'token_class': ErrorDetail(string='AccessToken', code='token_not_valid'), 'token_type': ErrorDetail(string='access', code='token_not_valid'), 'message': ErrorDetail(string='Token is expired', code='token_not_valid')}]}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 182, in import_from_string
+    return import_string(val)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\utils\module_loading.py", line 30, in import_string
+    return cached_import(module_path, class_name)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\utils\module_loading.py", line 15, in cached_import
+    module = import_module(module_path)
+  File "C:\Users\Mampionona\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'core.exceptions'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\core\handlers\base.py", line 198, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    exception_handler = self.get_exception_handler()
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 304, in get_exception_handler
+    return self.settings.EXCEPTION_HANDLER
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 230, in __getattr__
+    val = perform_import(val, attr)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 171, in perform_import
+    return import_from_string(val, setting_name)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 185, in import_from_string
+    raise ImportError(msg)
+ImportError: Could not import 'core.exceptions.custom_exception_handler' for API setting 'EXCEPTION_HANDLER'. ModuleNotFoundError: No module named 'core.exceptions'.
+ERROR 2026-07-21 11:01:07,153 log 3920 8148 "GET /api/library/categories/ HTTP/1.1" 500 26544
+ERROR 2026-07-21 11:01:48,623 log 3920 8148 Internal Server Error: /api/library/books/
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 503, in dispatch
+    self.initial(request, *args, **kwargs)
+    ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 420, in initial
+    self.perform_authentication(request)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 330, in perform_authentication
+    request.user
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\request.py", line 232, in user
+    self._authenticate()
+    ~~~~~~~~~~~~~~~~~~^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\request.py", line 385, in _authenticate
+    user_auth_tuple = authenticator.authenticate(self)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework_simplejwt\authentication.py", line 49, in authenticate
+    validated_token = self.get_validated_token(raw_token)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework_simplejwt\authentication.py", line 113, in get_validated_token
+    raise InvalidToken(
+    ...<4 lines>...
+    )
+rest_framework_simplejwt.exceptions.InvalidToken: {'detail': ErrorDetail(string="Le type de jeton fourni n'est pas valide", code='token_not_valid'), 'code': ErrorDetail(string='token_not_valid', code='token_not_valid'), 'messages': [{'token_class': ErrorDetail(string='AccessToken', code='token_not_valid'), 'token_type': ErrorDetail(string='access', code='token_not_valid'), 'message': ErrorDetail(string='Token is expired', code='token_not_valid')}]}
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 182, in import_from_string
+    return import_string(val)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\utils\module_loading.py", line 30, in import_string
+    return cached_import(module_path, class_name)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\utils\module_loading.py", line 15, in cached_import
+    module = import_module(module_path)
+  File "C:\Users\Mampionona\AppData\Local\Python\pythoncore-3.14-64\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1406, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1371, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1335, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'core.exceptions'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\core\handlers\exception.py", line 55, in inner
+    response = get_response(request)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\core\handlers\base.py", line 198, in _get_response
+    response = wrapped_callback(request, *callback_args, **callback_kwargs)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\django\views\decorators\csrf.py", line 65, in _view_wrapper
+    return view_func(request, *args, **kwargs)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\viewsets.py", line 125, in view
+    return self.dispatch(request, *args, **kwargs)
+           ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 515, in dispatch
+    response = self.handle_exception(exc)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 469, in handle_exception
+    exception_handler = self.get_exception_handler()
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\views.py", line 304, in get_exception_handler
+    return self.settings.EXCEPTION_HANDLER
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 230, in __getattr__
+    val = perform_import(val, attr)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 171, in perform_import
+    return import_from_string(val, setting_name)
+  File "C:\SecureLibrary\Backend\venv\Lib\site-packages\rest_framework\settings.py", line 185, in import_from_string
+    raise ImportError(msg)
+ImportError: Could not import 'core.exceptions.custom_exception_handler' for API setting 'EXCEPTION_HANDLER'. ModuleNotFoundError: No module named 'core.exceptions'.
+ERROR 2026-07-21 11:01:48,629 log 3920 8148 "POST /api/library/books/ HTTP/1.1" 500 26472
+INFO 2026-07-21 11:04:52,240 autoreload 15776 26476 Watching for file changes with StatReloader
+WARNING 2026-07-21 11:05:04,541 log 15776 784 Unauthorized: /api/library/books/
+WARNING 2026-07-21 11:05:04,543 log 15776 784 "POST /api/library/books/ HTTP/1.1" 401 241
+INFO 2026-07-21 11:05:04,680 log 15776 784 "POST /api/token/refresh/ HTTP/1.1" 200 582
+ERROR 2026-07-21 11:05:04,940 views 15776 784 Erreur lors de la création: 'NoneType' object has no attribute 'keys'
+ERROR 2026-07-21 11:05:04,941 log 15776 784 Internal Server Error: /api/library/books/
+ERROR 2026-07-21 11:05:04,942 log 15776 784 "POST /api/library/books/ HTTP/1.1" 500 53
+INFO 2026-07-21 11:06:04,940 log 15776 784 "POST /api/users/login/ HTTP/1.1" 200 637
+INFO 2026-07-21 11:06:05,125 log 15776 784 "GET /api/users/me/ HTTP/1.1" 200 170
+ERROR 2026-07-21 11:06:07,189 log 15776 784 Internal Server Error: /api/library/books/
+ERROR 2026-07-21 11:06:07,190 log 15776 784 "GET /api/library/books/ HTTP/1.1" 500 84
+ERROR 2026-07-21 11:06:22,090 log 15776 784 Internal Server Error: /api/library/categories/
+ERROR 2026-07-21 11:06:22,092 log 15776 784 "GET /api/library/categories/ HTTP/1.1" 500 83
+ERROR 2026-07-21 11:06:51,481 views 15776 784 Erreur lors de la création: 'NoneType' object has no attribute 'keys'
+ERROR 2026-07-21 11:06:51,482 log 15776 784 Internal Server Error: /api/library/books/
+ERROR 2026-07-21 11:06:51,483 log 15776 784 "POST /api/library/books/ HTTP/1.1" 500 53
+INFO 2026-07-21 11:08:06,225 autoreload 13184 6672 Watching for file changes with StatReloader
+ERROR 2026-07-21 11:08:11,644 views 13184 18520 Erreur lors de la création: 'NoneType' object has no attribute 'keys'
+ERROR 2026-07-21 11:08:11,647 log 13184 18520 Internal Server Error: /api/library/books/
+ERROR 2026-07-21 11:08:11,648 log 13184 18520 "POST /api/library/books/ HTTP/1.1" 500 53
+INFO 2026-07-21 11:14:37,297 log 13184 23452 "GET /api/users/me/ HTTP/1.1" 200 170
+INFO 2026-07-21 11:14:50,380 log 13184 23452 "GET /api/library/books/ HTTP/1.1" 200 277
+INFO 2026-07-21 11:14:56,080 log 13184 23452 "GET /api/users/ HTTP/1.1" 200 381
+INFO 2026-07-21 11:15:11,402 log 13184 12860 "GET /api/users/me/ HTTP/1.1" 200 170
+INFO 2026-07-21 11:15:17,903 log 13184 12860 "GET /api/users/ HTTP/1.1" 200 381
+INFO 2026-07-21 11:15:39,626 log 13184 26532 "GET /api/users/me/ HTTP/1.1" 200 170
+INFO 2026-07-21 11:15:48,594 log 13184 26532 "GET /api/library/categories/ HTTP/1.1" 200 2106
+INFO 2026-07-21 11:16:02,747 autoreload 13184 6672 C:\SecureLibrary\Backend\library\models.py changed, reloading.

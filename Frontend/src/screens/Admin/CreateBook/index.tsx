@@ -21,6 +21,7 @@ import { createBookSchema, CreateBookFormType } from './schema';
 import { styles } from './styles';
 import CategoryPickerModal from '@components/CategoryPickerModal';
 import FilePickerComponent from '@components/FilePicker';
+import RNFS from 'react-native-fs';
 
 const CreateBookScreen = ({ navigation }: any) => {
   const { createBook, fetchBooks } = useBookStore();
@@ -54,52 +55,61 @@ const CreateBookScreen = ({ navigation }: any) => {
   });
 
   const onSubmit = async (data: CreateBookFormType) => {
-    setApiError(null);
-    setLoading(true);
+      console.log('=== onSubmit START ===');
 
-    try {
-      const formData = new FormData();
-      formData.append('title', data.title.trim());
-      formData.append('author', data.author.trim());
-      if (data.category) formData.append('category', data.category.trim());
-      if (data.year) formData.append('year', String(data.year));
-      if (data.isbn) formData.append('isbn', data.isbn.trim());
-      if (data.description) formData.append('description', data.description.trim());
+  setApiError(null);
+  setLoading(true);
 
-      if (selectedPdf) {
-        formData.append('pdf_file', {
-          uri: selectedPdf.uri,
-          type: 'application/pdf',
-          name: selectedPdf.name,
-        } as any);
-      }
+  try {
+    const formData = new FormData();
+    formData.append('title', data.title.trim());
+    formData.append('author', data.author.trim());
+    if (data.category) formData.append('category', data.category.trim());
+    if (data.year) formData.append('year', String(data.year));
+    if (data.isbn) formData.append('isbn', data.isbn.trim());
+    if (data.description) formData.append('description', data.description.trim());
 
-      if (selectedCover) {
-        formData.append('cover_image', {
-          uri: selectedCover.uri,
-          type: 'image/jpeg',
-          name: selectedCover.name,
-        } as any);
-      }
-
-      await createBook(formData);
-      await fetchBooks(true);
-
-      setLoading(false);
-      reset();
-      setSelectedPdf(null);
-      setSelectedCover(null);
-      setSelectedCategoryId(null);
-
-      Alert.alert('Succès', 'Le livre a été créé avec succès.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
-    } catch (error: any) {
-      setLoading(false);
-      const message = error.message || 'Impossible de créer le livre.';
-      setApiError(message);
-      Alert.alert('Erreur', message);
+    if (selectedPdf) {
+      formData.append('pdf_file', {
+    uri: selectedPdf.uri,
+    type: 'application/pdf',
+    name: selectedPdf.name,
+  } as any);
     }
+
+    if (selectedCover) {
+      console.log('Converting Cover...');
+      const coverBase64 = await RNFS.readFile(selectedCover.uri, 'base64');
+      formData.append('cover_image', {
+        uri: selectedCover.uri,
+        type: 'image/jpeg',
+        name: selectedCover.name,
+        data: coverBase64,
+      } as any);
+    }
+
+    console.log('FormData prepared');
+    await createBook(formData);
+    await fetchBooks(true);
+
+    setLoading(false);
+    reset();
+    setSelectedPdf(null);
+    setSelectedCover(null);
+    setSelectedCategoryId(null);
+
+    Alert.alert('Succès', 'Le livre a été créé avec succès.', [
+      { text: 'OK', onPress: () => navigation.goBack() },
+    ]);
+  } catch (error: any) {
+    console.log('=== ERROR ===');
+    console.log('Error:', error.response?.data || error.message);
+    
+    setLoading(false);
+    const message = error.response?.data?.non_field_errors?.[0] || error.message || 'Impossible de créer le livre.';
+    setApiError(message);
+    Alert.alert('Erreur', message);
+  } 
   };
 
   const handleCategorySelect = (categoryId: string | null) => {
@@ -164,7 +174,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               },
             ]}
           >
-            {/* Titre */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Titre *
@@ -204,7 +213,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               )}
             </View>
 
-            {/* Auteur */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Auteur *
@@ -244,7 +252,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               )}
             </View>
 
-            {/* Catégorie */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Catégorie
@@ -280,7 +287,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Année */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Année
@@ -315,7 +321,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* ISBN */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 ISBN
@@ -346,7 +351,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Description */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Description

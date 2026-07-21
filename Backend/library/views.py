@@ -1,45 +1,278 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models.signals import post_delete
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from django.db.models.signals import post_delete, pre_save
 from django.dispatch import receiver
+from django.db.models import Q
+from django.utils import timezone
 from .models import Book, Category
-from .serializers import BookSerializer, CategorySerializer
+from .serializers import (
+    BookSerializer, 
+    CategorySerializer,
+    BookListSerializer,
+    BookPopularSerializer
+)
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class CategoryViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour la gestion des catégories
+    """
     serializer_class = CategorySerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
     queryset = Category.objects.all().order_by('name')
 
+    def get_queryset(self):
+        """Filtrer les catégories"""
+        queryset = super().get_queryset()
+        
+        # Recherche par nom
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        
+        # Filtrer par parent
+        parent_id = self.request.query_params.get('parent', None)
+        if parent_id:
+            queryset = queryset.filter(parent_id=parent_id)
+        elif parent_id == 'null':
+            queryset = queryset.filter(parent__isnull=True)
+        
+        return queryset
+
 
 class BookViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet pour la gestion des livres
+    """
     serializer_class = BookSerializer
     authentication_classes = [JWTAuthentication]
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser, JSONParser]
 
-    queryset = Book.objects.all().order_by('-created_at')
-
     def get_queryset(self):
-        return Book.objects.filter(added_by=self.request.user).order_by('-created_at')
+        """
+        Filtrer les livres par utilisateur avec recherche et filtres
+        """
+        queryset = Book.objects.filter(added_by=self.request.user).order_by('-created_at')
+        
+        # 🔍 Recherche
+        search = self.request.query_params.get('search', None)
+        if search:
+            queryset = queryset.filter(
+                Q(title__icontains=search) | 
+                Q(author__icontains=search) |
+                Q(publisher__icontains=search) |
+                Q(isbn__icontains=search)
+            )
+        
+        # 📂 Filtrer par catégorie
+        category = self.request.query_params.get('category', None)
+        if category:
+            queryset = queryset.filter(category_id=category)
+        
+        # 📊 Filtrer par statut
+        status_filter = self.request.query_params.get('status', None)
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        
+        # 🌐 Filtrer par langue
+        language = self.request.query_params.get('language', None)
+        if language:
+            queryset = queryset.filter(language=language)
+        
+        # 📅 Filtrer par année
+        year = self.request.query_params.get('year', None)
+        if year:
+            queryset = queryset.filter(year=year)
+        
+        # 🏆 Tri par popularité
+        sort = self.request.query_params.get('sort', None)
+        if sort == 'popular':
+            queryset = queryset.order_by('-downloads_count', '-views_count')
+        elif sort == 'recent':
+            queryset = queryset.order_by('-created_at')
+        elif sort == 'title':
+            queryset = queryset.order_by('title')
+        
+        # 📄 Filtrer par présence de PDF
+        has_pdf = self.request.query_params.get('has_pdf', None)
+        if has_pdf == 'true':
+            queryset = queryset.exclude(pdf_file__isnull=True)
+        elif has_pdf == 'false':
+            queryset = queryset.filter(pdf_file__isnull=True)
+        
+        # 🖼️ Filtrer par présence d'image
+        has_cover = self.request.query_params.get('has_cover', None)
+        if has_cover == 'true':
+            queryset = queryset.exclude(cover_image__isnull=True)
+        elif has_cover == 'false':
+            queryset = queryset.filter(cover_image__isnull=True)
+        
+        return queryset
+
+    def get_serializer_class(self):
+        """Utiliser un serializer différent pour les listes"""
+        if self.action == 'list':
+            return BookListSerializer
+        elif self.action == 'popular':
+            return BookPopularSerializer
+        return BookSerializer
 
     def perform_create(self, serializer):
+        """Créer un livre avec l'utilisateur connecté"""
         serializer.save(added_by=self.request.user)
+        logger.info(f"📚 Livre créé: {serializer.instance.title} par {self.request.user.email}")
+
+    def perform_update(self, serializer):
+        """Mettre à jour un livre"""
+        old_title = serializer.instance.title
+        serializer.save()
+        logger.info(f"📚 Livre mis à jour: {old_title} -> {serializer.instance.title}")
+
+    def perform_destroy(self, instance):
+        """Supprimer un livre (les fichiers sont supprimés par le signal)"""
+        title = instance.title
+        instance.delete()
+        logger.info(f"🗑️ Livre supprimé: {title}")
 
     def create(self, request, *args, **kwargs):
-        print("PARSED DATA:", request.data)
+        """Créer un livre avec logs"""
+        logger.info(f"📝 Création livre - Données: {request.data.keys()}")
+        logger.info(f"📎 Fichiers reçus: {list(request.FILES.keys())}")
         return super().create(request, *args, **kwargs)
 
+    @action(detail=True, methods=['post'])
+    def increment_views(self, request, pk=None):
+        """Incrémenter le compteur de vues"""
+        book = self.get_object()
+        book.increment_views()
+        return Response({
+            'id': book.id,
+            'views_count': book.views_count
+        })
+
+    @action(detail=True, methods=['post'])
+    def increment_downloads(self, request, pk=None):
+        """Incrémenter le compteur de téléchargements"""
+        book = self.get_object()
+        book.increment_downloads()
+        return Response({
+            'id': book.id,
+            'downloads_count': book.downloads_count
+        })
+
+    @action(detail=False, methods=['get'])
+    def popular(self, request):
+        """Top 10 des livres les plus populaires"""
+        books = self.get_queryset().filter(status='active').order_by('-downloads_count')[:10]
+        serializer = self.get_serializer(books, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Statistiques des livres"""
+        books = self.get_queryset()
+        
+        stats = {
+            'total': books.count(),
+            'active': books.filter(status='active').count(),
+            'archived': books.filter(status='archived').count(),
+            'draft': books.filter(status='draft').count(),
+            'with_pdf': books.exclude(pdf_file__isnull=True).count(),
+            'with_cover': books.exclude(cover_image__isnull=True).count(),
+            'total_downloads': books.aggregate(total=models.Sum('downloads_count'))['total'] or 0,
+            'total_views': books.aggregate(total=models.Sum('views_count'))['total'] or 0,
+            'languages': books.values('language').annotate(count=models.Count('id')),
+        }
+        return Response(stats)
+
+    @action(detail=True, methods=['get'])
+    def download_pdf(self, request, pk=None):
+        """Télécharger le PDF d'un livre"""
+        book = self.get_object()
+        
+        if not book.pdf_file:
+            return Response(
+                {'error': 'Ce livre n\'a pas de PDF associé'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Incrémenter le compteur
+        book.increment_downloads()
+        
+        # Vérifier que le fichier existe
+        if not book.pdf_file.storage.exists(book.pdf_file.name):
+            return Response(
+                {'error': 'Fichier PDF introuvable'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # Créer la réponse
+        from django.http import FileResponse
+        response = FileResponse(
+            book.pdf_file.open('rb'),
+            content_type='application/pdf',
+            filename=f"{book.title.replace(' ', '_')}.pdf"
+        )
+        response['Content-Disposition'] = f'attachment; filename="{book.title.replace(" ", "_")}.pdf"'
+        return response
+
+
+# ============================================================
+# SIGNALS POUR LA SUPPRESSION DES FICHIERS
+# ============================================================
 
 @receiver(post_delete, sender=Book)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
-    if instance.pdf_file and instance.pdf_file.path:
-        if os.path.isfile(instance.pdf_file.path):
-            os.remove(instance.pdf_file.path)
-    if instance.cover_image and instance.cover_image.path:
-        if os.path.isfile(instance.cover_image.path):
-            os.remove(instance.cover_image.path)
+    """
+    Supprimer les fichiers physiques quand un livre est supprimé
+    """
+    try:
+        if instance.pdf_file:
+            instance.pdf_file.delete(save=False)
+            logger.info(f"🗑️ PDF supprimé: {instance.pdf_file.name}")
+    except Exception as e:
+        logger.error(f"❌ Erreur suppression PDF: {e}")
+    
+    try:
+        if instance.cover_image:
+            instance.cover_image.delete(save=False)
+            logger.info(f"🗑️ Image supprimée: {instance.cover_image.name}")
+    except Exception as e:
+        logger.error(f"❌ Erreur suppression image: {e}")
+
+
+@receiver(pre_save, sender=Book)
+def auto_delete_file_on_update(sender, instance, **kwargs):
+    """
+    Supprimer les anciens fichiers quand un livre est mis à jour
+    """
+    if not instance.pk:
+        return
+    
+    try:
+        old_instance = Book.objects.get(pk=instance.pk)
+        
+        # Vérifier si le PDF a changé
+        if old_instance.pdf_file and old_instance.pdf_file != instance.pdf_file:
+            old_instance.pdf_file.delete(save=False)
+            logger.info(f"🗑️ Ancien PDF supprimé: {old_instance.pdf_file.name}")
+        
+        # Vérifier si l'image a changé
+        if old_instance.cover_image and old_instance.cover_image != instance.cover_image:
+            old_instance.cover_image.delete(save=False)
+            logger.info(f"🗑️ Ancienne image supprimée: {old_instance.cover_image.name}")
+            
+    except Book.DoesNotExist:
+        pass
+    except Exception as e:
+        logger.error(f"❌ Erreur suppression fichier: {e}")
