@@ -17,8 +17,8 @@ import { valibotResolver } from '@hookform/resolvers/valibot';
 import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
 import { useAppTheme } from '@theme/useAppTheme';
-import { createBookSchema, CreateBookFormType } from '../CreateBook/schema';
-import { styles } from '../CreateBook/styles';
+import { createBookSchema, CreateBookFormType } from '../BookForm/schema';
+import { styles } from '../BookForm/styles';
 import CategoryPickerModal from '@components/CategoryPickerModal';
 import FilePickerComponent from '@components/FilePicker';
 import { apiClient } from '@api/client';
@@ -58,7 +58,7 @@ const EditBookScreen = ({ route, navigation }: any) => {
     },
   });
 
-  // 🔥 Récupérer les données du livre en temps réel
+  // 🔥 Récupérer les données du livre
   const loadBookDetails = async () => {
     try {
       setLoading(true);
@@ -70,11 +70,12 @@ const EditBookScreen = ({ route, navigation }: any) => {
       const bookData = response.data;
 
       console.log('✅ Book data received:', bookData);
+      console.log('✅ Status from API:', bookData.status);
 
       setBook(bookData);
       setSelectedCategoryId(bookData.category || null);
 
-      // Remplir le formulaire
+      // ✅ Reset du formulaire
       reset({
         title: bookData.title || '',
         author: bookData.author || '',
@@ -84,6 +85,10 @@ const EditBookScreen = ({ route, navigation }: any) => {
         description: bookData.description || '',
         status: bookData.status || 'active',
       });
+
+      // ✅ Forcer la mise à jour du statut
+      // setValue('status', bookData.status || 'active');
+      console.log('✅ Status set in form:', bookData.status);
 
     } catch (error: any) {
       console.error('❌ Error fetching book:', error);
@@ -106,63 +111,68 @@ const EditBookScreen = ({ route, navigation }: any) => {
     }
   };
 
-  // Charger les données au montage du composant
   useEffect(() => {
     loadBookDetails();
   }, [bookId]);
 
+  // ✅ Synchroniser le statut du livre avec le formulaire
+  useEffect(() => {
+    if (book) {
+      setValue('status', book.status || 'active');
+      console.log('🔄 Status synchronisé:', book.status);
+    }
+  }, [book, setValue]);
+
   const onSubmit = async (data: CreateBookFormType) => {
+    console.log('🔄 onSubmit START');
+    console.log('📤 Status from form:', data.status);
+    console.log('📤 Full form data:', data);
+
     setApiError(null);
     setSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append('title', data.title.trim());
-      formData.append('author', data.author.trim());
-      if (data.category) formData.append('category', data.category.trim());
-      if (data.year) formData.append('year', String(data.year));
-      if (data.isbn) formData.append('isbn', data.isbn.trim());
-      if (data.description) formData.append('description', data.description.trim());
-      if (data.status) formData.append('status', data.status);
-
-      if (selectedPdf) {
-        formData.append('pdf_file', {
-          uri: selectedPdf.uri,
-          type: 'application/pdf',
-          name: selectedPdf.name,
-        } as any);
-      }
-
-      if (selectedCover) {
-        formData.append('cover_image', {
-          uri: selectedCover.uri,
-          type: 'image/jpeg',
-          name: selectedCover.name,
-        } as any);
-      }
-
-      console.log('📤 Updating book...');
+      const payload: any = {
+        title: data.title.trim(),
+        author: data.author.trim(),
+        status: data.status || 'active',
+      };
       
-      // Utiliser updateBook du store
-      const { updateBook } = useBookStore.getState();
-      await updateBook(bookId, formData);
+      if (data.category) payload.category = data.category.trim();
+      if (data.year) payload.year = Number(data.year);
+      if (data.isbn) payload.isbn = data.isbn.trim();
+      if (data.description) payload.description = data.description.trim();
 
-      console.log('✅ Book updated successfully');
+      console.log('📤 Sending payload:', JSON.stringify(payload, null, 2));
+
+      const response = await apiClient.patch(`/library/books/${bookId}/`, payload);
+      
+      console.log('✅ Response status:', response.data.status);
+      console.log('✅ Full response:', response.data);
+
+      // ✅ Mettre à jour le store
+      const { updateBook, fetchBooks } = useBookStore.getState();
+      await updateBook(bookId, payload);
+      await fetchBooks();
 
       setSubmitting(false);
-      Alert.alert('Succès', 'Le livre a été modifié avec succès.', [
-        { text: 'OK', onPress: () => navigation.goBack() },
+
+      Alert.alert('✅ Succès', 'Le livre a été modifié avec succès.', [
+        { text: 'OK', onPress: () => navigation.navigate('ManageBooks') },
       ]);
     } catch (error: any) {
       console.error('❌ Update error:', error);
+      console.error('❌ Response data:', error.response?.data);
+      
       setSubmitting(false);
       
       const message = error.response?.data?.non_field_errors?.[0] ||
                       error.response?.data?.detail ||
+                      error.response?.data?.status?.[0] ||
                       error.message ||
                       'Impossible de modifier le livre.';
       setApiError(message);
-      Alert.alert('Erreur', message);
+      Alert.alert('❌ Erreur', message);
     }
   };
 
@@ -181,7 +191,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
   // RENDER STATES
   // ============================================================
 
-  // État : Chargement
   if (loading) {
     return (
       <SafeAreaView style={[{ backgroundColor: colors.background, flex: 1 }]}>
@@ -195,7 +204,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
     );
   }
 
-  // État : Erreur
   if (apiError && !book) {
     return (
       <SafeAreaView style={[{ backgroundColor: colors.background, flex: 1 }]}>
@@ -233,7 +241,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
     );
   }
 
-  // État : Livre non trouvé
   if (!book) {
     return (
       <SafeAreaView style={[{ backgroundColor: colors.background, flex: 1 }]}>
@@ -539,57 +546,67 @@ const EditBookScreen = ({ route, navigation }: any) => {
               <Controller
                 control={control}
                 name="status"
-                render={({ field: { onChange, value } }) => (
-                  <View style={{ flexDirection: 'row', gap: 12 }}>
-                    <TouchableOpacity
-                      style={[
-                        {
-                          flex: 1,
-                          paddingVertical: 12,
-                          borderRadius: radius.md,
-                          borderWidth: 2,
-                          alignItems: 'center',
-                          backgroundColor: value === 'active' ? colors.success + '20' : colors.inputBackground,
-                          borderColor: value === 'active' ? colors.success : colors.border,
-                        },
-                      ]}
-                      onPress={() => onChange('active')}
-                    >
-                      <Text
-                        style={{
-                          color: value === 'active' ? colors.success : colors.textSecondary,
-                          fontWeight: value === 'active' ? 'bold' : 'normal',
+                render={({ field: { onChange, value } }) => {
+                  console.log('🔍 Controller status value:', value);
+                  
+                  return (
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <TouchableOpacity
+                        style={[
+                          {
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: radius.md,
+                            borderWidth: 2,
+                            alignItems: 'center',
+                            backgroundColor: value === 'active' ? colors.success + '20' : colors.inputBackground,
+                            borderColor: value === 'active' ? colors.success : colors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          console.log('🔄 Changement statut -> active');
+                          onChange('active');
                         }}
                       >
-                        ✅ Actif
-                      </Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity
-                      style={[
-                        {
-                          flex: 1,
-                          paddingVertical: 12,
-                          borderRadius: radius.md,
-                          borderWidth: 2,
-                          alignItems: 'center',
-                          backgroundColor: value === 'archived' ? colors.danger + '20' : colors.inputBackground,
-                          borderColor: value === 'archived' ? colors.danger : colors.border,
-                        },
-                      ]}
-                      onPress={() => onChange('archived')}
-                    >
-                      <Text
-                        style={{
-                          color: value === 'archived' ? colors.danger : colors.textSecondary,
-                          fontWeight: value === 'archived' ? 'bold' : 'normal',
+                        <Text
+                          style={{
+                            color: value === 'active' ? colors.success : colors.textSecondary,
+                            fontWeight: value === 'active' ? 'bold' : 'normal',
+                          }}
+                        >
+                          ✅ Actif
+                        </Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity
+                        style={[
+                          {
+                            flex: 1,
+                            paddingVertical: 12,
+                            borderRadius: radius.md,
+                            borderWidth: 2,
+                            alignItems: 'center',
+                            backgroundColor: value === 'archived' ? colors.danger + '20' : colors.inputBackground,
+                            borderColor: value === 'archived' ? colors.danger : colors.border,
+                          },
+                        ]}
+                        onPress={() => {
+                          console.log('🔄 Changement statut -> archived');
+                          onChange('archived');
                         }}
                       >
-                        📦 Archivé
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                        <Text
+                          style={{
+                            color: value === 'archived' ? colors.danger : colors.textSecondary,
+                            fontWeight: value === 'archived' ? 'bold' : 'normal',
+                          }}
+                        >
+                          📦 Archivé
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                }}
               />
             </View>
 
@@ -647,7 +664,6 @@ const EditBookScreen = ({ route, navigation }: any) => {
             )}
           </TouchableOpacity>
 
-          {/* Bouton de rafraîchissement des données */}
           <TouchableOpacity
             onPress={loadBookDetails}
             style={{
