@@ -21,6 +21,7 @@ import { createBookSchema, CreateBookFormType } from '../CreateBook/schema';
 import { styles } from '../CreateBook/styles';
 import CategoryPickerModal from '@components/CategoryPickerModal';
 import FilePickerComponent from '@components/FilePicker';
+import { apiClient } from '@api/client';
 
 const EditBookScreen = ({ route, navigation }: any) => {
   const { bookId } = route.params;
@@ -28,10 +29,7 @@ const EditBookScreen = ({ route, navigation }: any) => {
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
-  // 🔥 Utiliser le store
-  const { books, updateBook, fetchBooks, loading: storeLoading } = useBookStore();
-
-  // États locaux
+  // États
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -56,50 +54,53 @@ const EditBookScreen = ({ route, navigation }: any) => {
       year: undefined,
       isbn: '',
       description: '',
+      status: 'active',
     },
   });
 
-  // 🔥 Récupérer les données du livre depuis le store
+  // 🔥 Récupérer les données du livre en temps réel
   const loadBookDetails = async () => {
     try {
       setLoading(true);
       setApiError(null);
 
-      console.log('📚 Loading book details for ID:', bookId);
+      console.log('📚 Fetching book details for ID:', bookId);
 
-      // Vérifier si le livre est déjà dans le store
-      let bookData = books.find((b) => b.id === bookId);
+      const response = await apiClient.get(`/library/books/${bookId}/`);
+      const bookData = response.data;
 
-      // Si pas trouvé, charger tous les livres
-      if (!bookData) {
-        console.log('📚 Book not in store, fetching all books...');
-        await fetchBooks();
-        // Récupérer depuis le store après fetch
-        const updatedBooks = useBookStore.getState().books;
-        bookData = updatedBooks.find((b) => b.id === bookId);
-      }
+      console.log('✅ Book data received:', bookData);
 
-      if (bookData) {
-        console.log('✅ Book found:', bookData.title);
-        setBook(bookData);
-        setSelectedCategoryId(bookData.category || null);
+      setBook(bookData);
+      setSelectedCategoryId(bookData.category || null);
 
-        // Remplir le formulaire
-        reset({
-          title: bookData.title || '',
-          author: bookData.author || '',
-          category: bookData.category || '',
-          year: bookData.year || undefined,
-          isbn: bookData.isbn || '',
-          description: bookData.description || '',
-        });
-      } else {
-        console.log('❌ Book not found');
-        setApiError('Livre non trouvé.');
-      }
+      // Remplir le formulaire
+      reset({
+        title: bookData.title || '',
+        author: bookData.author || '',
+        category: bookData.category || '',
+        year: bookData.year || undefined,
+        isbn: bookData.isbn || '',
+        description: bookData.description || '',
+        status: bookData.status || 'active',
+      });
+
     } catch (error: any) {
-      console.error('❌ Error loading book:', error);
-      setApiError(error.message || 'Impossible de charger les données du livre.');
+      console.error('❌ Error fetching book:', error);
+      
+      let errorMessage = 'Impossible de charger les données du livre.';
+      
+      if (error.response?.status === 404) {
+        errorMessage = 'Livre non trouvé.';
+      } else if (error.response?.status === 401) {
+        errorMessage = 'Session expirée. Veuillez vous reconnecter.';
+        navigation.navigate('Login');
+      } else if (error.response?.data?.detail) {
+        errorMessage = error.response.data.detail;
+      }
+
+      setApiError(errorMessage);
+      Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -122,6 +123,7 @@ const EditBookScreen = ({ route, navigation }: any) => {
       if (data.year) formData.append('year', String(data.year));
       if (data.isbn) formData.append('isbn', data.isbn.trim());
       if (data.description) formData.append('description', data.description.trim());
+      if (data.status) formData.append('status', data.status);
 
       if (selectedPdf) {
         formData.append('pdf_file', {
@@ -141,7 +143,8 @@ const EditBookScreen = ({ route, navigation }: any) => {
 
       console.log('📤 Updating book...');
       
-      // 🔥 Utiliser updateBook du store
+      // Utiliser updateBook du store
+      const { updateBook } = useBookStore.getState();
       await updateBook(bookId, formData);
 
       console.log('✅ Book updated successfully');
@@ -179,7 +182,7 @@ const EditBookScreen = ({ route, navigation }: any) => {
   // ============================================================
 
   // État : Chargement
-  if (loading || storeLoading) {
+  if (loading) {
     return (
       <SafeAreaView style={[{ backgroundColor: colors.background, flex: 1 }]}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
@@ -524,6 +527,68 @@ const EditBookScreen = ({ route, navigation }: any) => {
                     onChangeText={onChange}
                     value={value || ''}
                   />
+                )}
+              />
+            </View>
+
+            {/* Statut */}
+            <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
+              <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+                Statut
+              </Text>
+              <Controller
+                control={control}
+                name="status"
+                render={({ field: { onChange, value } }) => (
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <TouchableOpacity
+                      style={[
+                        {
+                          flex: 1,
+                          paddingVertical: 12,
+                          borderRadius: radius.md,
+                          borderWidth: 2,
+                          alignItems: 'center',
+                          backgroundColor: value === 'active' ? colors.success + '20' : colors.inputBackground,
+                          borderColor: value === 'active' ? colors.success : colors.border,
+                        },
+                      ]}
+                      onPress={() => onChange('active')}
+                    >
+                      <Text
+                        style={{
+                          color: value === 'active' ? colors.success : colors.textSecondary,
+                          fontWeight: value === 'active' ? 'bold' : 'normal',
+                        }}
+                      >
+                        ✅ Actif
+                      </Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity
+                      style={[
+                        {
+                          flex: 1,
+                          paddingVertical: 12,
+                          borderRadius: radius.md,
+                          borderWidth: 2,
+                          alignItems: 'center',
+                          backgroundColor: value === 'archived' ? colors.danger + '20' : colors.inputBackground,
+                          borderColor: value === 'archived' ? colors.danger : colors.border,
+                        },
+                      ]}
+                      onPress={() => onChange('archived')}
+                    >
+                      <Text
+                        style={{
+                          color: value === 'archived' ? colors.danger : colors.textSecondary,
+                          fontWeight: value === 'archived' ? 'bold' : 'normal',
+                        }}
+                      >
+                        📦 Archivé
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               />
             </View>
