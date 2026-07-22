@@ -25,7 +25,7 @@ import FilePickerComponent from '@components/FilePicker';
 import { encryptFile } from '@utils/cryptoUtils';
 
 const CreateBookScreen = ({ navigation }: any) => {
-  const { createBook, fetchBooks } = useBookStore();
+  const { createBook, fetchBooks, resetBooks } = useBookStore();
   const { categories, fetchCategories, loading: categoriesLoading } = useCategoryStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
@@ -87,7 +87,7 @@ const CreateBookScreen = ({ navigation }: any) => {
       if (selectedCover) {
         console.log('🖼️ Lecture de la couverture...');
         const coverBase64 = await RNBlobUtil.fs.readFile(selectedCover.uri, 'base64');
-        payload.cover_image_base64 = coverBase64;  // ← Changement ici
+        payload.cover_image_base64 = coverBase64;
         console.log('✅ Couverture en base64');
       }
 

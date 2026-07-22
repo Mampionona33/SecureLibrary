@@ -29,12 +29,17 @@ interface BookState {
   deleteBook: (id: string) => Promise<void>;
   archiveBook: (id: string, status: 'active' | 'archived') => Promise<void>;
   clearError: () => void;
+  resetBooks: () => void;
 }
 
 export const useBookStore = create<BookState>((set, get) => ({
   books: [],
   loading: false,
   error: null,
+
+  resetBooks: () => {
+    set({ books: [], loading: false, error: null });
+  },
 
   fetchBooks: async (force = false) => {
     if (get().books.length > 0 && !force) {
@@ -158,14 +163,14 @@ export const useBookStore = create<BookState>((set, get) => ({
       console.error('❌ updateBook error:', error);
       
       const errorMessage = 
-          error.response?.data?.non_field_errors?.[0] ||
-          error.response?.data?.pdf_file_encrypted?.[0] ||
-          error.response?.data?.cover_image_base64?.[0] ||  // ← Ajouté
-          error.response?.data?.cover_image?.[0] ||
-          error.response?.data?.detail ||
-          error.response?.data?.message ||
-          error.message || 
-          'Failed to create book';
+        error.response?.data?.non_field_errors?.[0] ||
+        error.response?.data?.pdf_file_encrypted?.[0] ||
+        error.response?.data?.cover_image_base64?.[0] ||
+        error.response?.data?.cover_image?.[0] ||
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message || 
+        'Failed to update book';
       
       set({ 
         error: errorMessage, 
