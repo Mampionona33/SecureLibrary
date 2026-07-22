@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from .models import Book, Category
+import base64
+from django.core.files.base import ContentFile
 
 
 # 1. D'abord définir CategorySerializer
@@ -38,15 +40,16 @@ class CategorySerializer(serializers.ModelSerializer):
 class BookSerializer(serializers.ModelSerializer):
     added_by_email = serializers.ReadOnlyField(source='added_by.email')
     added_by_name = serializers.ReadOnlyField(source='added_by.get_full_name')
-    category_detail = CategorySerializer(source='category', read_only=True)  # ✅ Maintenant CategorySerializer est défini
+    category_detail = CategorySerializer(source='category', read_only=True)
     
     # ✅ Champs calculés
     pdf_url = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
     is_popular = serializers.SerializerMethodField()
     
-    # 🆕 Champ pour recevoir le PDF en base64 (write-only)
+    # 🆕 Champs pour recevoir les fichiers en base64 (write-only)
     pdf_file_encrypted = serializers.CharField(write_only=True, required=False, allow_blank=True)
+    cover_image_base64 = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Book
@@ -66,6 +69,7 @@ class BookSerializer(serializers.ModelSerializer):
             'pdf_file_encrypted',
             'pdf_url',
             'cover_image',
+            'cover_image_base64',
             'cover_url',
             'status',
             'views_count',
@@ -157,18 +161,15 @@ class BookSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        """Créer un livre avec gestion du PDF en base64"""
-        # Extraire le champ base64
+        """Créer un livre avec gestion du PDF et de l'image en base64"""
+        # Extraire les champs base64
         pdf_base64 = validated_data.pop('pdf_file_encrypted', None)
+        cover_base64 = validated_data.pop('cover_image_base64', None)
         
         # Si on a un PDF en base64, le convertir en fichier
         if pdf_base64:
             try:
-                # Décoder le base64
-                import base64
-                from django.core.files.base import ContentFile
                 pdf_data = base64.b64decode(pdf_base64)
-                # Créer un fichier temporaire
                 pdf_file = ContentFile(pdf_data, name='book.pdf')
                 validated_data['pdf_file'] = pdf_file
             except Exception as e:
@@ -176,26 +177,43 @@ class BookSerializer(serializers.ModelSerializer):
                     'pdf_file_encrypted': f'Erreur lors du décodage du PDF: {str(e)}'
                 })
         
+        # Si on a une image en base64, la convertir en fichier
+        if cover_base64:
+            try:
+                cover_data = base64.b64decode(cover_base64)
+                cover_file = ContentFile(cover_data, name='cover.jpg')
+                validated_data['cover_image'] = cover_file
+            except Exception as e:
+                raise serializers.ValidationError({
+                    'cover_image_base64': f'Erreur lors du décodage de l\'image: {str(e)}'
+                })
+        
         # Créer le livre
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        """Mettre à jour un livre avec gestion du PDF en base64"""
+        """Mettre à jour un livre avec gestion du PDF et de l'image en base64"""
         pdf_base64 = validated_data.pop('pdf_file_encrypted', None)
+        cover_base64 = validated_data.pop('cover_image_base64', None)
         
-        # Si on a un nouveau PDF en base64
         if pdf_base64:
             try:
-                # Décoder le base64
-                import base64
-                from django.core.files.base import ContentFile
                 pdf_data = base64.b64decode(pdf_base64)
-                # Créer un fichier temporaire
                 pdf_file = ContentFile(pdf_data, name='book.pdf')
                 validated_data['pdf_file'] = pdf_file
             except Exception as e:
                 raise serializers.ValidationError({
                     'pdf_file_encrypted': f'Erreur lors du décodage du PDF: {str(e)}'
+                })
+        
+        if cover_base64:
+            try:
+                cover_data = base64.b64decode(cover_base64)
+                cover_file = ContentFile(cover_data, name='cover.jpg')
+                validated_data['cover_image'] = cover_file
+            except Exception as e:
+                raise serializers.ValidationError({
+                    'cover_image_base64': f'Erreur lors du décodage de l\'image: {str(e)}'
                 })
         
         return super().update(instance, validated_data)

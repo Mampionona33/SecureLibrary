@@ -87,7 +87,7 @@ const CreateBookScreen = ({ navigation }: any) => {
       if (selectedCover) {
         console.log('🖼️ Lecture de la couverture...');
         const coverBase64 = await RNBlobUtil.fs.readFile(selectedCover.uri, 'base64');
-        payload.cover_image_base64 = coverBase64;
+        payload.cover_image_base64 = coverBase64;  // ← Changement ici
         console.log('✅ Couverture en base64');
       }
 
