@@ -326,20 +326,26 @@ const CreateBookScreen = ({ navigation }: any) => {
                     keyboardType="numeric"
                     onBlur={onBlur}
                     onChangeText={(text) => {
-                      const num = text ? Number(text) : undefined;
-                      onChange(num);
+                      if (text === '') {
+                        onChange(undefined);
+                        return;
+                      }
+                      const num = parseInt(text, 10);
+                      if (!isNaN(num)) {
+                        onChange(num);
+                      }
                     }}
                     value={value !== undefined && value !== null ? String(value) : ''}
                   />
                 )}
               />
-            </View>
+                  </View>
 
-            <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
-              <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
-                ISBN
-              </Text>
-              <Controller
+                <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
+                <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
+                  ISBN
+                </Text>
+                <Controller
                 control={control}
                 name="isbn"
                 render={({ field: { onChange, onBlur, value } }) => (
