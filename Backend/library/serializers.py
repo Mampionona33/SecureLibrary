@@ -2,6 +2,7 @@ from rest_framework import serializers
 from .models import Book, Category
 
 
+# 1. D'abord définir CategorySerializer
 class CategorySerializer(serializers.ModelSerializer):
     parent_id = serializers.PrimaryKeyRelatedField(
         source='parent',
@@ -33,57 +34,49 @@ class CategorySerializer(serializers.ModelSerializer):
         return CategorySerializer(obj.children.all(), many=True).data
 
 
+# 2. Ensuite définir BookSerializer
 class BookSerializer(serializers.ModelSerializer):
     added_by_email = serializers.ReadOnlyField(source='added_by.email')
     added_by_name = serializers.ReadOnlyField(source='added_by.get_full_name')
-    category_detail = CategorySerializer(source='category', read_only=True)
+    category_detail = CategorySerializer(source='category', read_only=True)  # ✅ Maintenant CategorySerializer est défini
     
     # ✅ Champs calculés
     pdf_url = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
     is_popular = serializers.SerializerMethodField()
+    
+    # 🆕 Champ pour recevoir le PDF en base64 (write-only)
+    pdf_file_encrypted = serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model = Book
         fields = [
-            # Identifiant
             'id',
-            
-            # Informations principales
             'title',
             'author',
             'description',
-            
-            # Métadonnées
             'category',
             'category_detail',
             'year',
             'isbn',
-            'publisher',      # 🆕
-            'pages',          # 🆕
-            'language',       # 🆕
-            
-            # Fichiers
+            'publisher',
+            'pages',
+            'language',
             'pdf_file',
-            'pdf_url',        # 🆕
+            'pdf_file_encrypted',
+            'pdf_url',
             'cover_image',
-            'cover_url',      # 🆕
-            
-            # Statut et métriques
+            'cover_url',
             'status',
-            'views_count',    # 🆕
-            'downloads_count', # 🆕
-            'is_popular',     # 🆕
-            
-            # Relations
+            'views_count',
+            'downloads_count',
+            'is_popular',
             'added_by',
             'added_by_email',
             'added_by_name',
-            
-            # Dates
             'created_at',
             'updated_at',
-            'published_at',   # 🆕
+            'published_at',
         ]
         read_only_fields = [
             'id', 
@@ -161,15 +154,54 @@ class BookSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         """Validation croisée"""
-        # Si status est 'active', published_at doit être défini
-        if data.get('status') == 'active' and not data.get('published_at'):
-            # Optionnel : définir automatiquement
-            # from django.utils import timezone
-            # data['published_at'] = timezone.now()
-            pass
         return data
 
+    def create(self, validated_data):
+        """Créer un livre avec gestion du PDF en base64"""
+        # Extraire le champ base64
+        pdf_base64 = validated_data.pop('pdf_file_encrypted', None)
+        
+        # Si on a un PDF en base64, le convertir en fichier
+        if pdf_base64:
+            try:
+                # Décoder le base64
+                import base64
+                from django.core.files.base import ContentFile
+                pdf_data = base64.b64decode(pdf_base64)
+                # Créer un fichier temporaire
+                pdf_file = ContentFile(pdf_data, name='book.pdf')
+                validated_data['pdf_file'] = pdf_file
+            except Exception as e:
+                raise serializers.ValidationError({
+                    'pdf_file_encrypted': f'Erreur lors du décodage du PDF: {str(e)}'
+                })
+        
+        # Créer le livre
+        return super().create(validated_data)
 
+    def update(self, instance, validated_data):
+        """Mettre à jour un livre avec gestion du PDF en base64"""
+        pdf_base64 = validated_data.pop('pdf_file_encrypted', None)
+        
+        # Si on a un nouveau PDF en base64
+        if pdf_base64:
+            try:
+                # Décoder le base64
+                import base64
+                from django.core.files.base import ContentFile
+                pdf_data = base64.b64decode(pdf_base64)
+                # Créer un fichier temporaire
+                pdf_file = ContentFile(pdf_data, name='book.pdf')
+                validated_data['pdf_file'] = pdf_file
+            except Exception as e:
+                raise serializers.ValidationError({
+                    'pdf_file_encrypted': f'Erreur lors du décodage du PDF: {str(e)}'
+                })
+        
+        return super().update(instance, validated_data)
+
+
+# 3. Ensuite BookListSerializer et BookPopularSerializer
 class BookListSerializer(serializers.ModelSerializer):
     """Serializer simplifié pour les listes"""
     category_name = serializers.CharField(source='category.name', read_only=True)

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { pick } from '@react-native-documents/picker';
+import RNBlobUtil from 'react-native-blob-util'; // ✅ AJOUT
 
 type FileType = 'pdf' | 'image' | 'all';
 
@@ -23,18 +24,25 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
 }) => {
   const pickFile = async () => {
     try {
-      // Sélectionner un fichier
       const [result] = await pick({
         mode: 'import',
-        // Limiter les types selon le besoin
         ...(type === 'pdf' && { type: 'application/pdf' }),
         ...(type === 'image' && { type: 'image/*' }),
       });
 
       if (result) {
+        console.log('📁 URI originale:', result.uri);
+        
+        // ✅ Copier le fichier dans le cache
+        const fileName = result.name || (type === 'pdf' ? 'document.pdf' : 'file.jpg');
+        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName}`;
+        
+        await RNBlobUtil.fs.cp(result.uri, destPath);
+        console.log('✅ Fichier copié dans:', destPath);
+        
         onFileSelected({
-          uri: result.uri,
-          name: result.name || (type === 'pdf' ? 'document.pdf' : 'file.jpg'),
+          uri: destPath,
+          name: fileName,
           type: result.type || undefined,
         });
       }

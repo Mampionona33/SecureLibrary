@@ -90,7 +90,18 @@ WSGI_APPLICATION = 'core.wsgi.application'
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
-    )
+    ),
+    # Augmenter la limite de taille pour les requêtes
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+        'rest_framework.parsers.MultiPartParser',
+        'rest_framework.parsers.FormParser',
+    ],
+    # ✅ Ajouter des exceptions pour les gros fichiers
+    'EXCEPTION_HANDLER': 'rest_framework.views.exception_handler',
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',
+    ],
 }
 
 # Simple JWT configuration
@@ -100,8 +111,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
-
-
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -117,7 +126,6 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
-
 AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
@@ -133,29 +141,98 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/6.0/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
-
 STATIC_URL = 'static/'
 
-CORS_ALLOW_ALL_ORIGINS = True # Autorise le téléphone à communiquer avec le PC
+# CORS configuration
+CORS_ALLOW_ALL_ORIGINS = True
 
-# Configuration des fichiers médias (PDF et Images)
+# ✅ Configuration CORS plus sécurisée (optionnel)
+# CORS_ALLOWED_ORIGINS = [
+#     "http://localhost:3000",
+#     "http://127.0.0.1:3000",
+#     "http://10.0.2.2:3000",
+# ]
+
+# ====== CONFIGURATION DES FICHIERS ======
+# Media files (PDF and Images)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Clé de chiffrement (À générer avec Fernet.generate_key())
 PDF_ENCRYPTION_KEY = os.getenv('PDF_ENCRYPTION_KEY').encode()
+
+# ====== LIMITE DE TAILLE POUR LES FICHIERS ======
+# 50 Mo = 50 * 1024 * 1024 = 52428800 bytes
+MAX_UPLOAD_SIZE = 50 * 1024 * 1024  # 50 Mo
+
+# ✅ AUGMENTER LA LIMITE POUR LES REQUÊTES JSON AVEC BASE64
+# Les fichiers en base64 peuvent être plus gros que les fichiers originaux
+# (environ +33% de taille)
+DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 Mo pour le JSON
+
+# Taille maximale des fichiers uploadés (multipart)
+FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 Mo
+
+# ✅ Taille maximale du body d'une requête
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1000  # Nombre maximum de champs
+
+# Dossier temporaire pour les gros fichiers
+FILE_UPLOAD_TEMP_DIR = os.path.join(BASE_DIR, 'tmp')
+
+# Créer le dossier temporaire s'il n'existe pas
+if not os.path.exists(FILE_UPLOAD_TEMP_DIR):
+    os.makedirs(FILE_UPLOAD_TEMP_DIR)
+
+# Handlers pour les fichiers uploadés
+FILE_UPLOAD_HANDLERS = [
+    'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+    'django.core.files.uploadhandler.MemoryFileUploadHandler',
+]
+
+# Limite de temps pour les uploads (en secondes)
+# Utile pour les gros fichiers
+REQUEST_TIMEOUT = 300  # 5 minutes
+
+# Pour le développement, on peut augmenter la limite en mémoire
+if DEBUG:
+    # En développement, on peut stocker plus en mémoire
+    DATA_UPLOAD_MAX_MEMORY_SIZE = 100 * 1024 * 1024  # 100 Mo
+    FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024  # 50 Mo
+else:
+    # En production, on utilise le streaming
+    FILE_UPLOAD_HANDLERS = [
+        'django.core.files.uploadhandler.TemporaryFileUploadHandler',
+    ]
+
+# ✅ Middleware pour logger les requêtes volumineuses (optionnel)
+# Utile pour le debugging
+if DEBUG:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'handlers': {
+            'console': {
+                'class': 'logging.StreamHandler',
+            },
+        },
+        'loggers': {
+            'django': {
+                'handlers': ['console'],
+                'level': 'INFO',
+            },
+            'django.request': {
+                'handlers': ['console'],
+                'level': 'DEBUG',
+                'propagate': False,
+            },
+        },
+    }

@@ -13,6 +13,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
+import RNBlobUtil from 'react-native-blob-util';
 
 import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
@@ -21,7 +22,7 @@ import { createBookSchema, CreateBookFormType } from '../BookForm/schema';
 import { styles } from '../BookForm/styles';
 import CategoryPickerModal from '@components/CategoryPickerModal';
 import FilePickerComponent from '@components/FilePicker';
-import RNFS from 'react-native-fs';
+import { encryptFile } from '@utils/cryptoUtils';
 
 const CreateBookScreen = ({ navigation }: any) => {
   const { createBook, fetchBooks } = useBookStore();
@@ -54,47 +55,46 @@ const CreateBookScreen = ({ navigation }: any) => {
     },
   });
 
-  // ✅ Charger les catégories au montage
   useEffect(() => {
     fetchCategories();
   }, []);
 
   const onSubmit = async (data: CreateBookFormType) => {
     console.log('=== onSubmit START ===');
-
     setApiError(null);
     setLoading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('title', data.title.trim());
-      formData.append('author', data.author.trim());
-      if (data.category) formData.append('category', data.category.trim());
-      if (data.year) formData.append('year', String(data.year));
-      if (data.isbn) formData.append('isbn', data.isbn.trim());
-      if (data.description) formData.append('description', data.description.trim());
+      const payload: any = {
+        title: data.title.trim(),
+        author: data.author.trim(),
+      };
+
+      if (data.category) payload.category = data.category.trim();
+      if (data.year) payload.year = Number(data.year);
+      if (data.isbn) payload.isbn = data.isbn.trim();
+      if (data.description) payload.description = data.description.trim();
 
       if (selectedPdf) {
-        formData.append('pdf_file', {
-          uri: selectedPdf.uri,
-          type: 'application/pdf',
-          name: selectedPdf.name,
-        } as any);
+        console.log('📤 Chiffrement du PDF...');
+        const encryptedPath = await encryptFile(selectedPdf.uri);
+        const base64 = await RNBlobUtil.fs.readFile(encryptedPath, 'base64');
+        payload.pdf_file_encrypted = base64;
+        await RNBlobUtil.fs.unlink(encryptedPath);
+        console.log('✅ PDF chiffré en base64');
       }
 
       if (selectedCover) {
-        console.log('Converting Cover...');
-        const coverBase64 = await RNFS.readFile(selectedCover.uri, 'base64');
-        formData.append('cover_image', {
-          uri: selectedCover.uri,
-          type: 'image/jpeg',
-          name: selectedCover.name,
-          data: coverBase64,
-        } as any);
+        console.log('🖼️ Lecture de la couverture...');
+        const coverBase64 = await RNBlobUtil.fs.readFile(selectedCover.uri, 'base64');
+        payload.cover_image_base64 = coverBase64;
+        console.log('✅ Couverture en base64');
       }
 
-      console.log('FormData prepared');
-      await createBook(formData);
+      console.log('📤 Envoi du formulaire en JSON...');
+      await createBook(payload);
+
+      console.log('✅ Livre créé avec succès');
       await fetchBooks(true);
 
       setLoading(false);
@@ -106,15 +106,24 @@ const CreateBookScreen = ({ navigation }: any) => {
       Alert.alert('Succès', 'Le livre a été créé avec succès.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
+
     } catch (error: any) {
       console.log('=== ERROR ===');
-      console.log('Error:', error.response?.data || error.message);
-      
+      console.log('Error:', error);
+
       setLoading(false);
-      const message = error.response?.data?.non_field_errors?.[0] || error.message || 'Impossible de créer le livre.';
+      const message = 
+        error.response?.data?.non_field_errors?.[0] ||
+        error.response?.data?.pdf_file_encrypted?.[0] ||
+        error.response?.data?.cover_image_base64?.[0] ||
+        error.response?.data?.cover_image?.[0] ||
+        error.response?.data?.detail ||
+        error.message ||
+        'Impossible de créer le livre. Veuillez réessayer.';
+
       setApiError(message);
       Alert.alert('Erreur', message);
-    } 
+    }
   };
 
   const handleCategorySelect = (categoryId: string | null) => {
@@ -179,7 +188,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               },
             ]}
           >
-            {/* Titre */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Titre *
@@ -219,7 +227,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               )}
             </View>
 
-            {/* Auteur */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Auteur *
@@ -259,7 +266,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               )}
             </View>
 
-            {/* Catégorie */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Catégorie
@@ -295,7 +301,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Année */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Année
@@ -330,7 +335,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* ISBN */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 ISBN
@@ -361,7 +365,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Description */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Description
@@ -395,7 +398,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               />
             </View>
 
-            {/* Fichier PDF */}
             <FilePickerComponent
               selectedFile={selectedPdf}
               onFileSelected={setSelectedPdf}
@@ -405,7 +407,6 @@ const CreateBookScreen = ({ navigation }: any) => {
               type="pdf"
             />
 
-            {/* Image de couverture */}
             <FilePickerComponent
               selectedFile={selectedCover}
               onFileSelected={setSelectedCover}
