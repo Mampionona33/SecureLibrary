@@ -1,3 +1,4 @@
+import { Picker } from '@react-native-picker/picker';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -9,6 +10,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
@@ -37,6 +40,8 @@ const EditBookScreen = ({ route, navigation }: any) => {
   const [selectedCover, setSelectedCover] = useState<{ uri: string; name: string } | null>(null);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [yearModalVisible, setYearModalVisible] = useState(false);
+  const [yearSearch, setYearSearch] = useState('');
 
   const {
     control,
@@ -173,6 +178,27 @@ const EditBookScreen = ({ route, navigation }: any) => {
     if (!id) return 'Aucune';
     const category = categories.find((c) => c.id === id);
     return category ? category.name : 'Aucune';
+  };
+
+  const generateYearOptions = () => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
+  const getFilteredYears = () => {
+    const years = generateYearOptions();
+    if (!yearSearch) return years;
+    return years.filter(year => String(year).includes(yearSearch));
+  };
+
+  const handleYearSelect = (year: number) => {
+    setValue('year', year);
+    setYearModalVisible(false);
+    setYearSearch('');
   };
 
   if (loading) {
@@ -428,29 +454,147 @@ const EditBookScreen = ({ route, navigation }: any) => {
               <Controller
                 control={control}
                 name="year"
-                render={({ field: { onChange, onBlur, value } }) => (
-                  <TextInput
-                    testID="edit-book-year-input"
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: colors.inputBackground,
-                        borderColor: colors.inputBorder,
-                        color: colors.text,
-                        borderRadius: radius.md,
-                        paddingHorizontal: spacing.md,
-                      },
-                    ]}
-                    placeholder="Ex: 1954"
-                    placeholderTextColor={colors.placeholder}
-                    keyboardType="numeric"
-                    onBlur={onBlur}
-                    onChangeText={(text) => {
-                      const num = text ? Number(text) : undefined;
-                      onChange(num);
-                    }}
-                    value={value !== undefined && value !== null ? String(value) : ''}
-                  />
+                render={({ field: { value } }) => (
+                  <>
+                    <TouchableOpacity
+                      style={[
+                        styles.input,
+                        {
+                          backgroundColor: colors.inputBackground,
+                          borderColor: colors.inputBorder,
+                          borderRadius: radius.md,
+                          paddingHorizontal: spacing.md,
+                          justifyContent: 'center',
+                          height: 48,
+                        },
+                      ]}
+                      onPress={() => setYearModalVisible(true)}
+                    >
+                      <Text
+                        style={{
+                          color: value ? colors.text : colors.placeholder,
+                          fontSize: 16,
+                        }}
+                      >
+                        {value || 'Sélectionner une année'}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <Modal
+                      visible={yearModalVisible}
+                      transparent={true}
+                      animationType="slide"
+                      onRequestClose={() => {
+                        setYearModalVisible(false);
+                        setYearSearch('');
+                      }}
+                    >
+                      <View
+                        style={{
+                          flex: 1,
+                          backgroundColor: 'rgba(0,0,0,0.5)',
+                          justifyContent: 'flex-end',
+                        }}
+                      >
+                        <View
+                          style={{
+                            backgroundColor: colors.background,
+                            borderTopLeftRadius: radius.lg,
+                            borderTopRightRadius: radius.lg,
+                            padding: spacing.lg,
+                            maxHeight: '70%',
+                          }}
+                        >
+                          <View
+                            style={{
+                              flexDirection: 'row',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              marginBottom: spacing.md,
+                            }}
+                          >
+                            <Text
+                              style={{
+                                fontSize: 18,
+                                fontWeight: 'bold',
+                                color: colors.text,
+                              }}
+                            >
+                              Sélectionner une année
+                            </Text>
+                            <TouchableOpacity
+                              onPress={() => {
+                                setYearModalVisible(false);
+                                setYearSearch('');
+                              }}
+                            >
+                              <Text style={{ color: colors.danger, fontSize: 18 }}>✕</Text>
+                            </TouchableOpacity>
+                          </View>
+
+                          <TextInput
+                            style={{
+                              backgroundColor: colors.inputBackground,
+                              borderColor: colors.inputBorder,
+                              borderWidth: 1,
+                              borderRadius: radius.md,
+                              paddingHorizontal: spacing.md,
+                              paddingVertical: spacing.sm,
+                              color: colors.text,
+                              marginBottom: spacing.md,
+                              fontSize: 16,
+                            }}
+                            placeholder="Rechercher une année..."
+                            placeholderTextColor={colors.placeholder}
+                            value={yearSearch}
+                            onChangeText={setYearSearch}
+                            keyboardType="numeric"
+                          />
+
+                          <FlatList
+                            data={getFilteredYears()}
+                            keyExtractor={(item) => String(item)}
+                            showsVerticalScrollIndicator={true}
+                            style={{ maxHeight: 400 }}
+                            renderItem={({ item }) => (
+                              <TouchableOpacity
+                                style={{
+                                  paddingVertical: spacing.md,
+                                  paddingHorizontal: spacing.md,
+                                  borderBottomWidth: 1,
+                                  borderBottomColor: colors.border,
+                                  backgroundColor: value === item ? colors.primary + '20' : 'transparent',
+                                }}
+                                onPress={() => handleYearSelect(item)}
+                              >
+                                <Text
+                                  style={{
+                                    color: value === item ? colors.primary : colors.text,
+                                    fontWeight: value === item ? 'bold' : 'normal',
+                                    fontSize: 16,
+                                  }}
+                                >
+                                  {item}
+                                  {value === item && ' ✓'}
+                                </Text>
+                              </TouchableOpacity>
+                            )}
+                            ListEmptyComponent={
+                              <Text
+                                style={{
+                                  textAlign: 'center',
+                                  color: colors.textSecondary,
+                                  padding: spacing.lg,
+                                }}
+                              >
+                                Aucune année trouvée
+                              </Text>
+                            }
+                          />
+                        </View>
+                      </View>
+                    </Modal>
+                  </>
                 )}
               />
             </View>

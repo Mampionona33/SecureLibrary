@@ -12,9 +12,16 @@ interface CustomAxiosRequestConfig extends InternalAxiosRequestConfig {
   _retry?: boolean;
 }
 
+let isRefreshing = false;
+let failedQueue: Array<(token: string) => void> = [];
+
+const processQueue = (token: string) => {
+  failedQueue.forEach(callback => callback(token));
+  failedQueue = [];
+};
+
 const getAccessToken = async (): Promise<string | null> => {
   try {
-    // Session JSON first
     const sessionData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     if (sessionData?.password) {
       try {
@@ -34,13 +41,11 @@ const getAccessToken = async (): Promise<string | null> => {
 
 const getRefreshToken = async (): Promise<string | null> => {
   try {
-    // First try the individual refresh token
     const refreshData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
     if (refreshData?.password) {
       console.log('[getRefreshToken] Found individual refresh token');
       return refreshData.password;
     }
-    // Fallback to session JSON
     const sessionData = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
     if (sessionData?.password) {
       try {
@@ -123,11 +128,26 @@ export const responseInterceptor = async (error: any): Promise<any> => {
 
   originalRequest._retry = true;
 
+  if (isRefreshing) {
+    console.log('[Interceptor] Refresh en cours, ajout à la queue...');
+    return new Promise((resolve) => {
+      failedQueue.push((token: string) => {
+        if (originalRequest.headers) {
+          originalRequest.headers['Authorization'] = `Bearer ${token}`;
+        }
+        resolve(axios(originalRequest));
+      });
+    });
+  }
+
+  isRefreshing = true;
+
   try {
     const refreshToken = await getRefreshToken();
     if (!refreshToken) {
       console.warn('[Interceptor] No refresh token available, clearing tokens.');
       await clearAllTokens();
+      isRefreshing = false;
       return Promise.reject(error);
     }
 
@@ -143,25 +163,30 @@ export const responseInterceptor = async (error: any): Promise<any> => {
     const newAccessToken = refreshResponse.data?.access;
     const newRefreshToken = refreshResponse.data?.refresh;
 
-    if (!newAccessToken) {
-      console.warn('[Interceptor] No new access token received, clearing tokens.');
+    if (!newAccessToken || !newRefreshToken) {
+      console.warn('[Interceptor] Tokens incomplets, clearing all');
       await clearAllTokens();
+      isRefreshing = false;
       return Promise.reject(error);
     }
 
     console.log('[Interceptor] Token refreshed successfully.');
-    // Update session with the new tokens (if refresh is also rotated)
-    await updateSession(newAccessToken, newRefreshToken || refreshToken);
+    await updateSession(newAccessToken, newRefreshToken);
 
     if (originalRequest.headers) {
       originalRequest.headers['Authorization'] = `Bearer ${newAccessToken}`;
     }
 
-    console.log('[Interceptor] Retrying original request.');
+    console.log('[Interceptor] Processing queue and retrying original request.');
+    processQueue(newAccessToken);
+    isRefreshing = false;
+
     return axios(originalRequest);
   } catch (refreshError) {
     console.error('[Interceptor] Refresh failed:', refreshError);
     await clearAllTokens();
+    isRefreshing = false;
+    failedQueue = [];
     return Promise.reject(refreshError);
   }
 };
