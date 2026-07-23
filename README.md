@@ -1,6 +1,3 @@
-Voici le README.md mis à jour avec la section sur la mise en place du backend Django :
-
-```markdown
 # 📱 React Native CLI + Django Backend
 
 Projet mobile développé avec [React Native CLI](https://reactnative.dev/) et backend [Django REST Framework](https://www.django-rest-framework.org/).
@@ -314,4 +311,3 @@ cd "$ANDROID_HOME/emulator"
 - [React Native Debugging](https://reactnative.dev/docs/debugging)
 - [Django CORS Headers](https://pypi.org/project/django-cors-headers/)
 
----
