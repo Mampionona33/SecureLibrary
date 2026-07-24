@@ -1,5 +1,6 @@
 // utils/cryptoUtils.ts
 import CryptoJS from 'crypto-js';
+import 'react-native-get-random-values';
 import RNBlobUtil from 'react-native-blob-util';
 import { SECURE_LIBRARY_MASTER_KEY } from '@env';
 
