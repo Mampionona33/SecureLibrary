@@ -9,8 +9,6 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Modal,
-  FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
@@ -22,10 +20,10 @@ import { useCategoryStore } from '@store/useCategoryStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import { createBookSchema, CreateBookFormType } from './schema';
 import { styles } from './styles';
-import CategoryPickerModal from '@components/CategoryPickerModal';
+import SelectionModal, { SelectionItem } from '@components/SelectionModal';
 import FilePickerComponent from '@components/FilePicker';
 import { encryptFile } from '@utils/cryptoUtils';
-import { apiClient } from '@api/client'; // ✅ Ajout de l'import
+import { apiClient } from '@api/client';
 
 interface BookFormProps {
   navigation: any;
@@ -53,8 +51,6 @@ const BookForm: React.FC<BookFormProps> = ({
   const [selectedCover, setSelectedCover] = useState<{ uri: string; name: string } | null>(null);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-  const [yearModalVisible, setYearModalVisible] = useState(false);
-  const [yearSearch, setYearSearch] = useState('');
 
   const {
     control,
@@ -79,7 +75,6 @@ const BookForm: React.FC<BookFormProps> = ({
     fetchCategories();
   }, []);
 
-  // ✅ Charger les données si édition
   useEffect(() => {
     if (isEditing && bookId) {
       loadBookData();
@@ -90,14 +85,9 @@ const BookForm: React.FC<BookFormProps> = ({
     try {
       setLoading(true);
       setApiError(null);
-
-      console.log('📖 Chargement du livre:', bookId);
       const response = await apiClient.get(`/library/books/${bookId}/`);
       const bookData = response.data;
-
-      console.log('✅ Livre chargé:', bookData.title);
       setSelectedCategoryId(bookData.category || null);
-
       reset({
         title: bookData.title || '',
         author: bookData.author || '',
@@ -107,46 +97,17 @@ const BookForm: React.FC<BookFormProps> = ({
         description: bookData.description || '',
         status: bookData.status || 'active',
       });
-
     } catch (error: any) {
-      console.error('❌ Erreur chargement:', error);
       let errorMessage = 'Impossible de charger les données du livre.';
-      
       if (error.response?.status === 401) {
         errorMessage = 'Session expirée. Veuillez vous reconnecter.';
         navigation.navigate('Login');
-      } else if (error.response?.status === 404) {
-        errorMessage = 'Livre non trouvé.';
-      } else if (error.response?.data?.detail) {
-        errorMessage = error.response.data.detail;
       }
-
       setApiError(errorMessage);
       Alert.alert('Erreur', errorMessage);
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateYearOptions = () => {
-    const currentYear = new Date().getFullYear();
-    const years = [];
-    for (let year = currentYear; year >= 1900; year--) {
-      years.push(year);
-    }
-    return years;
-  };
-
-  const getFilteredYears = () => {
-    const years = generateYearOptions();
-    if (!yearSearch) return years;
-    return years.filter(year => String(year).includes(yearSearch));
-  };
-
-  const handleYearSelect = (year: number) => {
-    setValue('year', year);
-    setYearModalVisible(false);
-    setYearSearch('');
   };
 
   const onSubmit = async (data: CreateBookFormType) => {
@@ -185,12 +146,13 @@ const BookForm: React.FC<BookFormProps> = ({
 
       await fetchBooks(true);
       setLoading(false);
+      setSelectedPdf(null);
+      setSelectedCover(null);
 
       Alert.alert('Succès', onSuccessMsg, [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);
     } catch (error: any) {
-      console.error('❌ Erreur soumission:', error);
       setLoading(false);
       const message = error.response?.data?.detail || error.message || 'Une erreur est survenue.';
       setApiError(message);
@@ -198,9 +160,10 @@ const BookForm: React.FC<BookFormProps> = ({
     }
   };
 
-  const handleCategorySelect = (categoryId: string | null) => {
+  const handleCategorySelect = (category: SelectionItem) => {
+    const categoryId = category.id;
     setSelectedCategoryId(categoryId);
-    setValue('category', categoryId || '');
+    setValue('category', categoryId);
   };
 
   const getCategoryName = (id: string | null) => {
@@ -208,6 +171,12 @@ const BookForm: React.FC<BookFormProps> = ({
     const category = categories.find((c) => c.id === id);
     return category ? category.name : 'Aucune';
   };
+
+  const categoryItems: SelectionItem[] = categories.map((cat) => ({
+    id: cat.id,
+    label: cat.name,
+    ...cat,
+  }));
 
   if (loading && isEditing) {
     return (
@@ -353,7 +322,7 @@ const BookForm: React.FC<BookFormProps> = ({
               )}
             </View>
 
-            {/* Catégorie */}
+            {/* Catégorie avec SelectionModal */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Catégorie
@@ -384,7 +353,7 @@ const BookForm: React.FC<BookFormProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Année avec Modal */}
+            {/* Année */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Année
@@ -392,147 +361,34 @@ const BookForm: React.FC<BookFormProps> = ({
               <Controller
                 control={control}
                 name="year"
-                render={({ field: { value } }) => (
-                  <>
-                    <TouchableOpacity
-                      style={[
-                        styles.input,
-                        {
-                          backgroundColor: colors.inputBackground,
-                          borderColor: colors.inputBorder,
-                          borderRadius: radius.md,
-                          paddingHorizontal: spacing.md,
-                          justifyContent: 'center',
-                          height: 48,
-                        },
-                      ]}
-                      onPress={() => setYearModalVisible(true)}
-                    >
-                      <Text
-                        style={{
-                          color: value ? colors.text : colors.placeholder,
-                          fontSize: 16,
-                        }}
-                      >
-                        {value || 'Sélectionner une année'}
-                      </Text>
-                    </TouchableOpacity>
-
-                    <Modal
-                      visible={yearModalVisible}
-                      transparent={true}
-                      animationType="slide"
-                      onRequestClose={() => {
-                        setYearModalVisible(false);
-                        setYearSearch('');
-                      }}
-                    >
-                      <View
-                        style={{
-                          flex: 1,
-                          backgroundColor: 'rgba(0,0,0,0.5)',
-                          justifyContent: 'flex-end',
-                        }}
-                      >
-                        <View
-                          style={{
-                            backgroundColor: colors.background,
-                            borderTopLeftRadius: radius.lg,
-                            borderTopRightRadius: radius.lg,
-                            padding: spacing.lg,
-                            maxHeight: '70%',
-                          }}
-                        >
-                          <View
-                            style={{
-                              flexDirection: 'row',
-                              justifyContent: 'space-between',
-                              alignItems: 'center',
-                              marginBottom: spacing.md,
-                            }}
-                          >
-                            <Text
-                              style={{
-                                fontSize: 18,
-                                fontWeight: 'bold',
-                                color: colors.text,
-                              }}
-                            >
-                              Sélectionner une année
-                            </Text>
-                            <TouchableOpacity
-                              onPress={() => {
-                                setYearModalVisible(false);
-                                setYearSearch('');
-                              }}
-                            >
-                              <Text style={{ color: colors.danger, fontSize: 18 }}>✕</Text>
-                            </TouchableOpacity>
-                          </View>
-
-                          <TextInput
-                            style={{
-                              backgroundColor: colors.inputBackground,
-                              borderColor: colors.inputBorder,
-                              borderWidth: 1,
-                              borderRadius: radius.md,
-                              paddingHorizontal: spacing.md,
-                              paddingVertical: spacing.sm,
-                              color: colors.text,
-                              marginBottom: spacing.md,
-                              fontSize: 16,
-                            }}
-                            placeholder="Rechercher une année..."
-                            placeholderTextColor={colors.placeholder}
-                            value={yearSearch}
-                            onChangeText={setYearSearch}
-                            keyboardType="numeric"
-                          />
-
-                          <FlatList
-                            data={getFilteredYears()}
-                            keyExtractor={(item) => String(item)}
-                            showsVerticalScrollIndicator={true}
-                            style={{ maxHeight: 400 }}
-                            renderItem={({ item }) => (
-                              <TouchableOpacity
-                                style={{
-                                  paddingVertical: spacing.md,
-                                  paddingHorizontal: spacing.md,
-                                  borderBottomWidth: 1,
-                                  borderBottomColor: colors.border,
-                                  backgroundColor: value === item ? colors.primary + '20' : 'transparent',
-                                }}
-                                onPress={() => handleYearSelect(item)}
-                              >
-                                <Text
-                                  style={{
-                                    color: value === item ? colors.primary : colors.text,
-                                    fontWeight: value === item ? 'bold' : 'normal',
-                                    fontSize: 16,
-                                  }}
-                                >
-                                  {item}
-                                  {value === item && ' ✓'}
-                                </Text>
-                              </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={
-                              <Text
-                                style={{
-                                  textAlign: 'center',
-                                  color: colors.textSecondary,
-                                  padding: spacing.lg,
-                                }}
-                              >
-                                Aucune année trouvée
-                              </Text>
-                            }
-                          />
-                        </View>
-                      </View>
-                    </Modal>
-                  </>
+                render={({ field: { onChange, value } }) => (
+                  <TextInput
+                    testID={isEditing ? "edit-book-year-input" : "create-book-year-input"}
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: colors.inputBackground,
+                        borderColor: colors.inputBorder,
+                        color: colors.text,
+                        borderRadius: radius.md,
+                        paddingHorizontal: spacing.md,
+                      },
+                    ]}
+                    placeholder="Ex: 1954"
+                    placeholderTextColor={colors.placeholder}
+                    keyboardType="numeric"
+                    onChangeText={(text) => {
+                      if (text === '') {
+                        onChange(undefined);
+                        return;
+                      }
+                      const num = Number(text);
+                      if (!isNaN(num) && num > 0) {
+                        onChange(num);
+                      }
+                    }}
+                    value={value !== undefined && value !== null ? String(value) : ''}
+                  />
                 )}
               />
             </View>
@@ -715,11 +571,17 @@ const BookForm: React.FC<BookFormProps> = ({
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <CategoryPickerModal
+      <SelectionModal
         visible={categoryModalVisible}
-        onSelect={handleCategorySelect}
         onClose={() => setCategoryModalVisible(false)}
-        selectedValue={selectedCategoryId}
+        onSelect={handleCategorySelect}
+        data={categoryItems}
+        selectedId={selectedCategoryId}
+        title="Sélectionner une catégorie"
+        searchPlaceholder="Rechercher une catégorie..."
+        emptyMessage="Aucune catégorie trouvée"
+        labelKey="label"
+        valueKey="id"
       />
     </SafeAreaView>
   );
