@@ -1,3 +1,4 @@
+// screens/Admin/BookForm/index.tsx
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -51,6 +52,8 @@ const BookForm: React.FC<BookFormProps> = ({
   const [selectedCover, setSelectedCover] = useState<{ uri: string; name: string } | null>(null);
   const [categoryModalVisible, setCategoryModalVisible] = useState(false);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [yearModalVisible, setYearModalVisible] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number | undefined>(undefined);
 
   const {
     control,
@@ -81,6 +84,16 @@ const BookForm: React.FC<BookFormProps> = ({
     }
   }, [bookId, isEditing]);
 
+  // ✅ Générer les années de 1900 à aujourd'hui
+  const generateYears = (): number[] => {
+    const currentYear = new Date().getFullYear();
+    const years: number[] = [];
+    for (let year = currentYear; year >= 1900; year--) {
+      years.push(year);
+    }
+    return years;
+  };
+
   const loadBookData = async () => {
     try {
       setLoading(true);
@@ -88,6 +101,7 @@ const BookForm: React.FC<BookFormProps> = ({
       const response = await apiClient.get(`/library/books/${bookId}/`);
       const bookData = response.data;
       setSelectedCategoryId(bookData.category || null);
+      setSelectedYear(bookData.year || undefined);
       reset({
         title: bookData.title || '',
         author: bookData.author || '',
@@ -166,6 +180,12 @@ const BookForm: React.FC<BookFormProps> = ({
     setValue('category', categoryId);
   };
 
+  const handleYearSelect = (item: SelectionItem) => {
+    const year = item.value;
+    setSelectedYear(year);
+    setValue('year', year);
+  };
+
   const getCategoryName = (id: string | null) => {
     if (!id) return 'Aucune';
     const category = categories.find((c) => c.id === id);
@@ -176,6 +196,13 @@ const BookForm: React.FC<BookFormProps> = ({
     id: cat.id,
     label: cat.name,
     ...cat,
+  }));
+
+  // ✅ Années en SelectionItem
+  const yearItems: SelectionItem[] = generateYears().map((year) => ({
+    id: String(year),
+    label: String(year),
+    value: year,
   }));
 
   if (loading && isEditing) {
@@ -353,44 +380,35 @@ const BookForm: React.FC<BookFormProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Année */}
+            {/* Année avec SelectionModal */}
             <View style={[styles.inputGroup, { marginBottom: spacing.md }]}>
               <Text style={[styles.label, { color: colors.textSecondary, marginBottom: spacing.xs }]}>
                 Année
               </Text>
-              <Controller
-                control={control}
-                name="year"
-                render={({ field: { onChange, value } }) => (
-                  <TextInput
-                    testID={isEditing ? "edit-book-year-input" : "create-book-year-input"}
-                    style={[
-                      styles.input,
-                      {
-                        backgroundColor: colors.inputBackground,
-                        borderColor: colors.inputBorder,
-                        color: colors.text,
-                        borderRadius: radius.md,
-                        paddingHorizontal: spacing.md,
-                      },
-                    ]}
-                    placeholder="Ex: 1954"
-                    placeholderTextColor={colors.placeholder}
-                    keyboardType="numeric"
-                    onChangeText={(text) => {
-                      if (text === '') {
-                        onChange(undefined);
-                        return;
-                      }
-                      const num = Number(text);
-                      if (!isNaN(num) && num > 0) {
-                        onChange(num);
-                      }
-                    }}
-                    value={value !== undefined && value !== null ? String(value) : ''}
-                  />
-                )}
-              />
+              <TouchableOpacity
+                testID={isEditing ? "edit-book-year-select" : "create-book-year-select"}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: colors.inputBackground,
+                    borderColor: colors.inputBorder,
+                    borderRadius: radius.md,
+                    paddingHorizontal: spacing.md,
+                    justifyContent: 'center',
+                    height: 48,
+                  },
+                ]}
+                onPress={() => setYearModalVisible(true)}
+              >
+                <Text
+                  style={[
+                    styles.categorySelectorText,
+                    { color: selectedYear ? colors.text : colors.placeholder },
+                  ]}
+                >
+                  {selectedYear ? String(selectedYear) : 'Sélectionner une année'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* ISBN */}
@@ -571,6 +589,7 @@ const BookForm: React.FC<BookFormProps> = ({
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* Modal Catégorie */}
       <SelectionModal
         visible={categoryModalVisible}
         onClose={() => setCategoryModalVisible(false)}
@@ -582,6 +601,20 @@ const BookForm: React.FC<BookFormProps> = ({
         emptyMessage="Aucune catégorie trouvée"
         labelKey="label"
         valueKey="id"
+      />
+
+      {/* Modal Année */}
+      <SelectionModal
+        visible={yearModalVisible}
+        onClose={() => setYearModalVisible(false)}
+        onSelect={handleYearSelect}
+        data={yearItems}
+        selectedId={selectedYear ? String(selectedYear) : null}
+        title="Sélectionner une année"
+        searchPlaceholder="Rechercher une année..."
+        emptyMessage="Aucune année trouvée"
+        labelKey="label"
+        valueKey="value"
       />
     </SafeAreaView>
   );
