@@ -41,7 +41,7 @@ const BookForm: React.FC<BookFormProps> = ({
   onSuccessMsg = 'Opération réussie.',
   isEditing = false,
 }) => {
-  const { createBook, updateBook, fetchBooks } = useBookStore();
+  const { createBook, updateBook, fetchBooks, deleteBook } = useBookStore();
   const { categories, fetchCategories } = useCategoryStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
@@ -84,7 +84,6 @@ const BookForm: React.FC<BookFormProps> = ({
     }
   }, [bookId, isEditing]);
 
-  // ✅ Générer les années de 1900 à aujourd'hui
   const generateYears = (): number[] => {
     const currentYear = new Date().getFullYear();
     const years: number[] = [];
@@ -122,6 +121,37 @@ const BookForm: React.FC<BookFormProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDelete = () => {
+    if (!isEditing || !bookId) return;
+
+    Alert.alert(
+      'Confirmer la suppression',
+      'Voulez-vous vraiment supprimer ce livre ? Cette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await deleteBook(bookId);
+              await fetchBooks(true);
+              setLoading(false);
+              
+              Alert.alert('Succès', 'Le livre a été supprimé avec succès.', [
+                { text: 'OK', onPress: () => navigation.goBack() },
+              ]);
+            } catch (error) {
+              setLoading(false);
+              Alert.alert('Erreur', 'Impossible de supprimer ce livre.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const onSubmit = async (data: CreateBookFormType) => {
@@ -198,7 +228,6 @@ const BookForm: React.FC<BookFormProps> = ({
     ...cat,
   }));
 
-  // ✅ Années en SelectionItem
   const yearItems: SelectionItem[] = generateYears().map((year) => ({
     id: String(year),
     label: String(year),
@@ -230,12 +259,25 @@ const BookForm: React.FC<BookFormProps> = ({
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={true}
         >
-          <Text
-            testID={isEditing ? "edit-book-title" : "create-book-title"}
-            style={[styles.title, { color: colors.text, marginBottom: spacing.lg }]}
-          >
-            {isEditing ? 'Modifier le livre' : 'Nouveau Livre'}
-          </Text>
+          <View style={styles.headerContainer}>
+            <Text
+              testID={isEditing ? "edit-book-title" : "create-book-title"}
+              style={[styles.title, { color: colors.text }]}
+            >
+              {isEditing ? 'Modifier le livre' : 'Nouveau Livre'}
+            </Text>
+
+            {isEditing && (
+              <TouchableOpacity
+                testID="delete-book-button"
+                style={[styles.deleteButton, { backgroundColor: colors.danger }]}
+                onPress={handleDelete}
+                disabled={loading}
+              >
+                <Text style={styles.deleteButtonText}>🗑️</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
           {apiError && (
             <View

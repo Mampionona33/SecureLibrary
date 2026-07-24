@@ -14,99 +14,128 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: 'bold',
   },
   addButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 22,
   },
   addButtonText: {
-    fontSize: 18,
+    fontSize: 28,
     fontWeight: 'bold',
   },
   filterContainer: {
     flexDirection: 'row',
     marginBottom: 12,
+    gap: 8,
   },
   filterButton: {
+    flex: 1,
+    paddingVertical: 8,
     paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginRight: 8,
+    alignItems: 'center',
     borderWidth: 1,
+    borderRadius: 6,
   },
   filterButtonActive: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
   filterButtonText: {
     fontSize: 14,
+    fontWeight: '500',
   },
   searchInput: {
-    borderWidth: 1,
+    height: 44,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-    fontSize: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderRadius: 8,
   },
   listContainer: {
     paddingBottom: 20,
   },
-  bookItem: {
+  bookCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderBottomWidth: 1,
+    marginBottom: 10,
+    borderWidth: 1,
     borderRadius: 8,
-    marginBottom: 8,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    minHeight: 80, // ✅ Réduit
+  },
+  coverContainer: {
+    width: 60, // ✅ Réduit
+    height: 80, // ✅ Réduit
+    flexShrink: 0,
+    backgroundColor: '#f0f0f0',
+  },
+  coverImage: {
+    width: '100%',
+    height: '100%',
+  },
+  coverPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  coverPlaceholderText: {
+    fontSize: 24, // ✅ Réduit
   },
   bookInfo: {
     flex: 1,
-    marginRight: 8,
+    paddingVertical: 8, // ✅ Réduit
+    paddingHorizontal: 10, // ✅ Réduit
+    justifyContent: 'space-between',
   },
   bookTitle: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 14, // ✅ Réduit
+    fontWeight: '600',
+    marginBottom: 1,
+  },
+  bookRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   bookAuthor: {
-    fontSize: 14,
-    marginTop: 2,
-  },
-  bookMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  bookDate: {
-    fontSize: 12,
-    marginRight: 8,
+    fontSize: 12, // ✅ Réduit
+    flex: 1,
+    marginRight: 6,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: 6, // ✅ Réduit
+    paddingVertical: 1, // ✅ Réduit
     borderRadius: 4,
+    flexShrink: 0,
   },
-  statusText: {
-    fontSize: 10,
-    color: '#FFFFFF',
+  statusBadgeText: {
+    color: '#fff',
+    fontSize: 9, // ✅ Réduit
+    fontWeight: 'bold',
   },
-  bookActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  bookYear: {
+    fontSize: 11, // ✅ Réduit
   },
-  actionButton: {
-    padding: 6,
-    marginLeft: 6,
-    borderRadius: 4,
+  arrowContainer: {
+    justifyContent: 'center',
+    paddingHorizontal: 10, // ✅ Réduit
   },
-  actionText: {
-    fontSize: 16,
+  arrowText: {
+    fontSize: 20, // ✅ Réduit
+    fontWeight: '300',
   },
   emptyText: {
-    fontSize: 16,
     textAlign: 'center',
-    marginTop: 24,
+    marginTop: 40,
+    fontSize: 16,
   },
 });

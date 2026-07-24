@@ -7,7 +7,7 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Alert,
+  Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBookStore } from '@store/useBookStore';
@@ -15,7 +15,7 @@ import { useAppTheme } from '@theme/useAppTheme';
 import { styles } from './styles';
 
 const ManageBooksScreen = ({ navigation }: any) => {
-  const { books, loading, fetchBooks, deleteBook, archiveBook } = useBookStore();
+  const { books, loading, fetchBooks } = useBookStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -42,65 +42,65 @@ const ManageBooksScreen = ({ navigation }: any) => {
     return result;
   }, [books, filter, searchQuery]);
 
-  const handleDelete = (id: string, title: string) => {
-    Alert.alert(
-      'Confirmer la suppression',
-      `Voulez-vous vraiment supprimer "${title}" ?`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteBook(id);
-              await fetchBooks();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer ce livre.');
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleArchive = async (id: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'active' ? 'archived' : 'active';
-    try {
-      await archiveBook(id, newStatus);
-      await fetchBooks();
-    } catch (error) {
-      Alert.alert('Erreur', 'Impossible de changer le statut.');
-    }
-  };
-
   const renderItem = ({ item }: { item: any }) => {
-    // ✅ Déterminer la couleur de fond en fonction du statut
-    const getBackgroundColor = () => {
-      if (item.status === 'active') {
-        return colors.success + '15'; // Vert transparent (15% d'opacité)
-      } else {
-        return colors.danger + '15'; // Rouge transparent
-      }
-    };
+    const coverUri = item.cover_image ? item.cover_image : null;
 
     return (
-      <View 
-        testID={`book-item-${item.id}`} 
+      <TouchableOpacity
+        testID={`book-item-${item.id}`}
         style={[
-          styles.bookItem, 
-          { 
-            borderBottomColor: colors.border,
-            backgroundColor: getBackgroundColor(), // ✅ Background color dynamique
-          }
+          styles.bookCard,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.border,
+            borderRadius: radius.md,
+            shadowColor: colors.shadow || '#000',
+          },
         ]}
+        onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
+        activeOpacity={0.7}
       >
+        {/* Image de couverture */}
+        <View style={styles.coverContainer}>
+          {coverUri ? (
+            <Image
+              source={{ uri: coverUri }}
+              style={styles.coverImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View
+              style={[
+                styles.coverPlaceholder,
+                {
+                  backgroundColor: colors.primary + '20',
+                },
+              ]}
+            >
+              <Text style={[styles.coverPlaceholderText, { color: colors.primary }]}>
+                📚
+              </Text>
+            </View>
+          )}
+        </View>
+
+        {/* Informations du livre */}
         <View style={styles.bookInfo}>
-          <Text style={[styles.bookTitle, { color: colors.text }]}>{item.title}</Text>
-          <Text style={[styles.bookAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
-          <View style={styles.bookMeta}>
-            <Text style={[styles.bookDate, { color: colors.textMuted }]}>
-              {new Date(item.createdAt).toLocaleDateString()}
+          {/* Titre en haut */}
+          <Text
+            style={[styles.bookTitle, { color: colors.text }]}
+            numberOfLines={1}
+          >
+            {item.title}
+          </Text>
+
+          {/* Auteur + Statut sur la même ligne */}
+          <View style={styles.bookRow}>
+            <Text
+              style={[styles.bookAuthor, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
+              {item.author}
             </Text>
             <View
               style={[
@@ -111,38 +111,25 @@ const ManageBooksScreen = ({ navigation }: any) => {
                 },
               ]}
             >
-              <Text style={styles.statusText}>
+              <Text style={styles.statusBadgeText}>
                 {item.status === 'active' ? 'Actif' : 'Archivé'}
               </Text>
             </View>
           </View>
-        </View>
-        <View style={styles.bookActions}>
-          <TouchableOpacity
-            testID={`book-edit-${item.id}`}
-            style={[styles.actionButton, { backgroundColor: colors.primary }]}
-            onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
-          >
-            <Text style={styles.actionText}>✏️</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID={`book-archive-${item.id}`}
-            style={[styles.actionButton, { backgroundColor: colors.warning }]}
-            onPress={() => handleArchive(item.id, item.status)}
-          >
-            <Text style={styles.actionText}>
-              {item.status === 'active' ? '📁' : '📂'}
+
+          {/* Année en bas */}
+          {item.year && (
+            <Text style={[styles.bookYear, { color: colors.textMuted }]}>
+              {item.year}
             </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            testID={`book-delete-${item.id}`}
-            style={[styles.actionButton, { backgroundColor: colors.danger }]}
-            onPress={() => handleDelete(item.id, item.title)}
-          >
-            <Text style={styles.actionText}>🗑️</Text>
-          </TouchableOpacity>
+          )}
         </View>
-      </View>
+
+        {/* Flèche pour indiquer la navigation */}
+        <View style={styles.arrowContainer}>
+          <Text style={[styles.arrowText, { color: colors.textMuted }]}>›</Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -155,10 +142,20 @@ const ManageBooksScreen = ({ navigation }: any) => {
           </Text>
           <TouchableOpacity
             testID="manage-books-add"
-            style={[styles.addButton, { backgroundColor: colors.buttonPrimary, borderRadius: radius.md }]}
+            style={[
+              styles.addButton,
+              {
+                backgroundColor: colors.buttonPrimary,
+                borderRadius: radius.md,
+              },
+            ]}
             onPress={() => navigation.navigate('CreateBook')}
           >
-            <Text style={[styles.addButtonText, { color: colors.buttonPrimaryText }]}>+</Text>
+            <Text
+              style={[styles.addButtonText, { color: colors.buttonPrimaryText }]}
+            >
+              +
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -180,7 +177,11 @@ const ManageBooksScreen = ({ navigation }: any) => {
                 <Text
                   style={[
                     styles.filterButtonText,
-                    { color: isActive ? colors.buttonPrimaryText : colors.textSecondary },
+                    {
+                      color: isActive
+                        ? colors.buttonPrimaryText
+                        : colors.textSecondary,
+                    },
                   ]}
                 >
                   {labels[key]}
@@ -208,15 +209,23 @@ const ManageBooksScreen = ({ navigation }: any) => {
         />
 
         {loading ? (
-          <ActivityIndicator style={{ marginTop: spacing.xl }} size="large" color={colors.primary} />
+          <ActivityIndicator
+            style={{ marginTop: spacing.xl }}
+            size="large"
+            color={colors.primary}
+          />
         ) : (
           <FlatList
             data={filteredBooks}
             keyExtractor={(item) => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.listContainer}
+            showsVerticalScrollIndicator={false}
             ListEmptyComponent={
-              <Text testID="books-empty" style={[styles.emptyText, { color: colors.textMuted }]}>
+              <Text
+                testID="books-empty"
+                style={[styles.emptyText, { color: colors.textMuted }]}
+              >
                 Aucun livre trouvé.
               </Text>
             }
