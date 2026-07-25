@@ -6,8 +6,8 @@ import { styles } from './styles';
 
 interface BookCardUserProps {
   book: any;
-  onPress: (bookId: string) => void;
-  onDownload?: (bookId: string) => Promise<void>;
+  onPress: (book: any) => void;
+  onDownload?: (book: any) => Promise<void>;
   showStatus?: boolean;
   showCategory?: boolean;
   showYear?: boolean;
@@ -48,41 +48,41 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
   }, [book.pdf_file]);
 
   const handlePress = async () => {
-    // Si le livre est déjà téléchargé, on ouvre directement
+    // ✅ Si déjà téléchargé, ouvrir directement
     if (isDownloaded) {
-      onPress(book.id);
+      onPress(book);
       return;
     }
 
-    // Si le livre n'est pas téléchargé, on propose de le télécharger
-    if (onDownload) {
-      Alert.alert(
-        'Téléchargement requis',
-        `Le livre "${book.title}" n'est pas disponible en local. Voulez-vous le télécharger pour le lire ?`,
-        [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Télécharger',
-            onPress: async () => {
-              setIsDownloading(true);
-              try {
-                await onDownload(book.id);
+    // ✅ Si pas téléchargé, demander confirmation
+    Alert.alert(
+      'Téléchargement requis',
+      `Le livre "${book.title}" n'est pas disponible en local. Voulez-vous le télécharger pour le lire ?`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Télécharger',
+          onPress: async () => {
+            setIsDownloading(true);
+            try {
+              if (onDownload) {
+                await onDownload(book);
                 setIsDownloaded(true);
-                // Après téléchargement, ouvrir le livre
-                onPress(book.id);
-              } catch (error) {
-                Alert.alert('Erreur', 'Impossible de télécharger le livre.');
-              } finally {
-                setIsDownloading(false);
+                // ✅ Ouvrir après téléchargement
+                onPress(book);
+              } else {
+                // Si pas de fonction de téléchargement, ouvrir quand même
+                onPress(book);
               }
-            },
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de télécharger le livre.');
+            } finally {
+              setIsDownloading(false);
+            }
           },
-        ]
-      );
-    } else {
-      // Fallback: naviguer vers le lecteur qui gérera le téléchargement
-      onPress(book.id);
-    }
+        },
+      ]
+    );
   };
 
   return (
@@ -100,7 +100,7 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
       activeOpacity={0.7}
       disabled={isDownloading}
     >
-      {/* Image de couverture */}
+      {/* Couverture */}
       <View style={styles.coverContainer}>
         {coverUri ? (
           <Image
@@ -122,23 +122,22 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
             </Text>
           </View>
         )}
-        
-        {/* Badge de statut de téléchargement */}
+
+        {/* ✅ Badge de téléchargement */}
         {isDownloaded && (
-          <View style={styles.downloadedBadge}>
-            <Text style={styles.downloadedBadgeText}>✓</Text>
+          <View style={[styles.downloadBadge, { backgroundColor: colors.success }]}>
+            <Text style={styles.downloadBadgeText}>✓</Text>
           </View>
         )}
         {isDownloading && (
-          <View style={styles.downloadingBadge}>
-            <Text style={styles.downloadingBadgeText}>⏳</Text>
+          <View style={[styles.downloadBadge, { backgroundColor: colors.warning }]}>
+            <Text style={styles.downloadBadgeText}>⏳</Text>
           </View>
         )}
       </View>
 
-      {/* Informations du livre */}
+      {/* Informations */}
       <View style={styles.bookInfo}>
-        {/* Titre */}
         <Text
           style={[styles.bookTitle, { color: colors.text }]}
           numberOfLines={2}
@@ -146,7 +145,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
           {book.title}
         </Text>
 
-        {/* Auteur */}
         <Text
           style={[styles.bookAuthor, { color: colors.textSecondary }]}
           numberOfLines={1}
@@ -154,7 +152,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
           {book.author}
         </Text>
 
-        {/* Métadonnées */}
         <View style={styles.bookMeta}>
           {showYear && book.year && (
             <Text style={[styles.bookYear, { color: colors.textMuted }]}>
@@ -203,7 +200,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
         </View>
       </View>
 
-      {/* Flèche pour indiquer la navigation */}
       <View style={styles.arrowContainer}>
         <Text style={[styles.arrowText, { color: colors.textMuted }]}>›</Text>
       </View>

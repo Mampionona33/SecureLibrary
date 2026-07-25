@@ -34,36 +34,20 @@ export const styles = StyleSheet.create({
     fontSize: 32,
   },
   // ✅ Badges de statut de téléchargement
-  downloadedBadge: {
+  downloadBadge: {
     position: 'absolute',
     top: 4,
     right: 4,
-    backgroundColor: '#22c55e',
     borderRadius: 10,
     width: 20,
     height: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  downloadedBadgeText: {
+  downloadBadgeText: {
     color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
-  },
-  downloadingBadge: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    backgroundColor: '#f59e0b',
-    borderRadius: 10,
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  downloadingBadgeText: {
-    color: '#fff',
-    fontSize: 12,
   },
   downloadRequiredBadge: {
     paddingHorizontal: 6,

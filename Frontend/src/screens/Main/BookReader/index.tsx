@@ -6,6 +6,7 @@ import RNBlobUtil from 'react-native-blob-util';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
 import { decryptFile, deleteFile, isFileEncrypted } from '@utils/cryptoUtils';
+import { apiClient } from '@api/client';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookReader'>;
@@ -26,8 +27,24 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
         setLoading(true);
         setIsError(false);
 
-        // 1. Vérifier si le fichier existe en local
-        const fileName = fileUrl?.split('/').pop() || `${bookId}.pdf`;
+        // ✅ 1. Construire l'URL complète si fileUrl est null
+        let pdfUrl = fileUrl;
+        if (!pdfUrl && bookId) {
+          // Essayer de récupérer le livre depuis le store ou construire l'URL
+          const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000/api';
+          // Si on a le bookId, on peut essayer de construire l'URL
+          pdfUrl = `${baseUrl}/library/books/${bookId}/download_pdf/`;
+          console.log('📄 URL construite:', pdfUrl);
+        }
+
+        if (!pdfUrl) {
+          throw new Error('Aucune URL de fichier disponible.');
+        }
+
+        console.log('📄 URL du PDF:', pdfUrl);
+
+        // 2. Vérifier si le fichier existe en local
+        const fileName = pdfUrl.split('/').pop() || `${bookId}.pdf`;
         const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
         const exists = await RNBlobUtil.fs.exists(localPath);
 
@@ -36,33 +53,42 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
         if (exists) {
           console.log('📄 Fichier local trouvé:', localPath);
           sourcePath = localPath;
-        } else if (fileUrl) {
-          // 2. Télécharger depuis l'URL
-          console.log('📥 Téléchargement du PDF depuis:', fileUrl);
-          const response = await fetch(fileUrl);
-          const base64 = await response.text();
+        } else {
+          // 3. Télécharger depuis l'URL
+          console.log('📥 Téléchargement du PDF depuis:', pdfUrl);
+          
+          // Utiliser apiClient pour télécharger
+          const response = await apiClient.get(pdfUrl, {
+            responseType: 'arraybuffer',
+          });
+          
+          // Convertir en base64
+          const base64 = btoa(
+            new Uint8Array(response.data).reduce(
+              (data, byte) => data + String.fromCharCode(byte),
+              ''
+            )
+          );
+          
           await RNBlobUtil.fs.writeFile(localPath, base64, 'base64');
           console.log('✅ Fichier téléchargé:', localPath);
           sourcePath = localPath;
-        } else {
-          throw new Error('Aucune source de fichier disponible.');
         }
 
-        // 3. Vérifier si le fichier est chiffré
+        // 4. Vérifier si le fichier est chiffré
         const isEncrypted = await isFileEncrypted(sourcePath);
         console.log('🔐 Fichier chiffré:', isEncrypted);
 
         let finalPath: string;
 
         if (isEncrypted) {
-          // 4. Déchiffrer le fichier
+          // 5. Déchiffrer le fichier
           console.log('🔓 Déchiffrement du fichier...');
           const decrypted = await decryptFile(sourcePath);
           console.log('✅ Fichier déchiffré:', decrypted);
           finalPath = decrypted;
           setDecryptedPath(decrypted);
         } else {
-          // 5. Utiliser le fichier tel quel
           finalPath = sourcePath;
         }
 
@@ -81,7 +107,6 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
 
     loadAndDecryptPDF();
 
-    // Nettoyer le fichier déchiffré à la fermeture
     return () => {
       if (decryptedPath) {
         deleteFile(decryptedPath);
@@ -102,7 +127,6 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Top Bar / Header de lecture */}
       <View style={styles.header}>
         <TouchableOpacity
           testID="bookreader-back-button"
@@ -117,7 +141,6 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
         <View style={styles.placeholder} />
       </View>
 
-      {/* Zone d'affichage du PDF */}
       <View style={styles.container}>
         {!isError && pdfSource ? (
           <Pdf
@@ -161,7 +184,6 @@ const BookReaderScreen = ({ route, navigation }: Props) => {
         )}
       </View>
 
-      {/* Barre d'état inférieure (Pagination & Progression) */}
       {!isError && totalPages > 0 && (
         <View testID="bookreader-footer" style={styles.footer}>
           <Text testID="bookreader-page-info" style={styles.footerText}>
