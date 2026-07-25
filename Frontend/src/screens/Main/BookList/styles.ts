@@ -22,7 +22,32 @@ export const styles = StyleSheet.create({
     marginTop: 2,
     fontWeight: '400',
   },
-  // ✅ Catégories très compactes avec centrage vertical
+  filterContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  filterChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  filterChipActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
+  },
+  filterChipText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#64748b',
+  },
+  filterChipTextActive: {
+    color: '#ffffff',
+  },
   categoriesWrapper: {
     height: 36,
     justifyContent: 'center',
@@ -31,7 +56,7 @@ export const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 2,
     gap: 4,
-    alignItems: 'center', // ✅ Centrage vertical
+    alignItems: 'center',
   },
   categoryChip: {
     paddingHorizontal: 14,
@@ -41,9 +66,9 @@ export const styles = StyleSheet.create({
     marginRight: 4,
     borderWidth: 1,
     borderColor: 'transparent',
-    justifyContent: 'center', // ✅ Centrage vertical
-    alignItems: 'center', // ✅ Centrage horizontal
-    height: 28, // ✅ Hauteur fixe pour uniformité
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 28,
   },
   categoryChipActive: {
     backgroundColor: '#3b82f6',
@@ -54,7 +79,7 @@ export const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#64748b',
     textAlign: 'center',
-    includeFontPadding: false, // ✅ Évite le padding supplémentaire
+    includeFontPadding: false,
   },
   categoryChipTextActive: {
     color: '#ffffff',

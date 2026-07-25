@@ -62,10 +62,11 @@ class BookViewSet(viewsets.ModelViewSet):
         """
         Filtrer les livres par utilisateur avec recherche et filtres
         """
-        queryset = Book.objects.filter(added_by=self.request.user).order_by('-created_at')
+        queryset = Book.objects.filter(added_by=self.request.user)
+        params = self.request.query_params
         
         # 🔍 Recherche
-        search = self.request.query_params.get('search', None)
+        search = params.get('search', None)
         if search:
             queryset = queryset.filter(
                 Q(title__icontains=search) | 
@@ -74,48 +75,86 @@ class BookViewSet(viewsets.ModelViewSet):
                 Q(isbn__icontains=search)
             )
         
-        # 📂 Filtrer par catégorie
-        category = self.request.query_params.get('category', None)
+        # 📂 Filtrer par catégorie (UUID)
+        category = params.get('category', None)
         if category:
             queryset = queryset.filter(category_id=category)
         
         # 📊 Filtrer par statut
-        status_filter = self.request.query_params.get('status', None)
+        status_filter = params.get('status', None)
         if status_filter:
             queryset = queryset.filter(status=status_filter)
         
         # 🌐 Filtrer par langue
-        language = self.request.query_params.get('language', None)
+        language = params.get('language', None)
         if language:
             queryset = queryset.filter(language=language)
         
         # 📅 Filtrer par année
-        year = self.request.query_params.get('year', None)
+        year = params.get('year', None)
         if year:
-            queryset = queryset.filter(year=year)
-        
-        # 🏆 Tri par popularité
-        sort = self.request.query_params.get('sort', None)
-        if sort == 'popular':
-            queryset = queryset.order_by('-downloads_count', '-views_count')
-        elif sort == 'recent':
-            queryset = queryset.order_by('-created_at')
-        elif sort == 'title':
-            queryset = queryset.order_by('title')
+            try:
+                queryset = queryset.filter(year=int(year))
+            except ValueError:
+                pass
         
         # 📄 Filtrer par présence de PDF
-        has_pdf = self.request.query_params.get('has_pdf', None)
+        has_pdf = params.get('has_pdf', None)
         if has_pdf == 'true':
             queryset = queryset.exclude(pdf_file__isnull=True)
         elif has_pdf == 'false':
             queryset = queryset.filter(pdf_file__isnull=True)
         
         # 🖼️ Filtrer par présence d'image
-        has_cover = self.request.query_params.get('has_cover', None)
+        has_cover = params.get('has_cover', None)
         if has_cover == 'true':
             queryset = queryset.exclude(cover_image__isnull=True)
         elif has_cover == 'false':
             queryset = queryset.filter(cover_image__isnull=True)
+        
+        # 📊 Filtrer par popularité (téléchargements > seuil)
+        min_downloads = params.get('min_downloads', None)
+        if min_downloads:
+            try:
+                queryset = queryset.filter(downloads_count__gte=int(min_downloads))
+            except ValueError:
+                pass
+        
+        # 📅 Filtrer par date de création (après une date)
+        created_after = params.get('created_after', None)
+        if created_after:
+            try:
+                queryset = queryset.filter(created_at__gte=created_after)
+            except ValueError:
+                pass
+        
+        # 🏷️ Filtrer par ISBN
+        isbn = params.get('isbn', None)
+        if isbn:
+            queryset = queryset.filter(isbn__icontains=isbn)
+        
+        # 📊 Filtrer par auteur exact
+        author_exact = params.get('author_exact', None)
+        if author_exact:
+            queryset = queryset.filter(author__iexact=author_exact)
+        
+        # 🔄 Tri
+        ordering = params.get('ordering', None)
+        if ordering:
+            # Vérifier que le champ de tri est valide
+            valid_order_fields = [
+                'title', '-title', 'author', '-author',
+                'year', '-year', 'created_at', '-created_at',
+                'updated_at', '-updated_at',
+                'views_count', '-views_count',
+                'downloads_count', '-downloads_count',
+                'status', '-status'
+            ]
+            if ordering in valid_order_fields:
+                queryset = queryset.order_by(ordering)
+        else:
+            # Tri par défaut: plus récent d'abord
+            queryset = queryset.order_by('-created_at')
         
         return queryset
 

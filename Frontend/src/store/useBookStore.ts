@@ -24,6 +24,8 @@ interface BookState {
   loading: boolean;
   error: string | null;
   fetchBooks: (force?: boolean) => Promise<void>;
+  fetchActiveBooks: () => Promise<void>;
+  fetchBooksByStatus: (status: 'active' | 'archived' | 'draft') => Promise<void>;
   createBook: (data: FormData | Record<string, any>) => Promise<Book>;
   updateBook: (id: string, data: FormData | Record<string, any>) => Promise<Book>;
   deleteBook: (id: string) => Promise<void>;
@@ -54,6 +56,36 @@ export const useBookStore = create<BookState>((set, get) => ({
       console.error('❌ fetchBooks error:', error);
       set({ 
         error: error.response?.data?.detail || error.message || 'Failed to fetch books', 
+        loading: false 
+      });
+    }
+  },
+
+  // ✅ Récupérer uniquement les livres actifs
+  fetchActiveBooks: async () => {
+    set({ loading: true, error: null });
+    try {
+      const response = await apiClient.get('/library/books/?status=active');
+      set({ books: response.data, loading: false });
+    } catch (error: any) {
+      console.error('❌ fetchActiveBooks error:', error);
+      set({ 
+        error: error.response?.data?.detail || error.message || 'Failed to fetch active books', 
+        loading: false 
+      });
+    }
+  },
+
+  // ✅ Récupérer les livres par statut
+  fetchBooksByStatus: async (status: 'active' | 'archived' | 'draft') => {
+    set({ loading: true, error: null });
+    try {
+      const response = await apiClient.get(`/library/books/?status=${status}`);
+      set({ books: response.data, loading: false });
+    } catch (error: any) {
+      console.error('❌ fetchBooksByStatus error:', error);
+      set({ 
+        error: error.response?.data?.detail || error.message || `Failed to fetch ${status} books`, 
         loading: false 
       });
     }

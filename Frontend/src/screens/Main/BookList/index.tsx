@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
@@ -7,65 +7,52 @@ import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
 import BookCardUser from '@components/BookCardUser';
 import { apiClient } from '@api/client';
-import RNBlobUtil from 'react-native-blob-util';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
 
 const BookListScreen = ({ navigation }: Props) => {
-  const { books, loading: booksLoading, fetchBooks } = useBookStore();
+  const { books, loading: booksLoading, fetchActiveBooks } = useBookStore();
   const { categories, loading: categoriesLoading, fetchCategories } = useCategoryStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [filterMode, setFilterMode] = useState<'online' | 'local'>('online');
 
+  // ✅ Par défaut, charger uniquement les livres actifs (online)
   useEffect(() => {
-    fetchBooks();
+    fetchActiveBooks();
     fetchCategories();
   }, []);
 
-  const handleDownload = async (bookId: string) => {
-    try {
-      // Appel API pour télécharger le PDF
-      const response = await apiClient.get(`/library/books/${bookId}/download_pdf/`, {
-        responseType: 'arraybuffer',
-      });
-
-      // Sauvegarder le fichier en local
-      const book = books.find(b => b.id === bookId);
-      const fileName = book?.pdf_file?.split('/').pop() || `${bookId}.pdf`;
-      const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
-      
-      // Convertir en base64 et sauvegarder
-      const base64 = btoa(
-        new Uint8Array(response.data).reduce(
-          (data, byte) => data + String.fromCharCode(byte),
-          ''
-        )
-      );
-      await RNBlobUtil.fs.writeFile(localPath, base64, 'base64');
-      
-      console.log('✅ Fichier téléchargé:', localPath);
-    } catch (error) {
-      console.error('❌ Erreur téléchargement:', error);
-      throw error;
-    }
-  };
-
+  // ✅ Filtrer les livres selon le mode (online/local)
   const filteredBooks = useMemo(() => {
-    if (selectedCategory === 'all') return books;
-    return books.filter(book => book.category === selectedCategory);
-  }, [books, selectedCategory]);
+    let result = books;
+    
+    // Filtrer par catégorie
+    if (selectedCategory !== 'all') {
+      result = result.filter(book => book.category === selectedCategory);
+    }
+
+    // ✅ Filtrer par disponibilité locale
+    if (filterMode === 'local') {
+      // TODO: Vérifier si le fichier existe en local
+      // Pour l'instant, on simule avec un flag
+      result = result.filter(book => book.isDownloaded === true);
+    }
+
+    return result;
+  }, [books, selectedCategory, filterMode]);
 
   const renderBookItem = ({ item }: { item: any }) => (
     <BookCardUser
       book={item}
-      onPress={(bookId) =>
+      onPress={(bookId) => {
+        const pdfUrl = item.pdf_file ? `${apiClient.defaults.baseURL}${item.pdf_file}` : null;
         navigation.navigate('BookReader', {
           bookId: item.id,
           title: item.title,
-          fileUrl: item.pdf_file,
-        })
-      }
-      onDownload={handleDownload}
+          fileUrl: pdfUrl,
+        });
+      }}
       showStatus={false}
       showCategory={true}
       showYear={true}
@@ -76,13 +63,31 @@ const BookListScreen = ({ navigation }: Props) => {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📚 Bibliothèque</Text>
         <Text style={styles.headerSubtitle}>Parcourez et lisez vos livres</Text>
       </View>
 
-      {/* Catégories - Version horizontale compacte */}
+      {/* ✅ Filtre : En ligne / Local */}
+      <View style={styles.filterContainer}>
+        <TouchableOpacity
+          style={[styles.filterChip, filterMode === 'online' && styles.filterChipActive]}
+          onPress={() => setFilterMode('online')}
+        >
+          <Text style={[styles.filterChipText, filterMode === 'online' && styles.filterChipTextActive]}>
+            🌐 En ligne
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.filterChip, filterMode === 'local' && styles.filterChipActive]}
+          onPress={() => setFilterMode('local')}
+        >
+          <Text style={[styles.filterChipText, filterMode === 'local' && styles.filterChipTextActive]}>
+            📱 Local
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.categoriesWrapper}>
         <FlatList
           horizontal
@@ -106,14 +111,12 @@ const BookListScreen = ({ navigation }: Props) => {
         />
       </View>
 
-      {/* Nombre de livres */}
       <View style={styles.countContainer}>
         <Text style={styles.countText}>
           {filteredBooks.length} livre{filteredBooks.length > 1 ? 's' : ''} trouvé{filteredBooks.length > 1 ? 's' : ''}
         </Text>
       </View>
 
-      {/* Liste des livres */}
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3b82f6" />
