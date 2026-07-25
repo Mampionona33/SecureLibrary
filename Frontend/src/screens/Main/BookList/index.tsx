@@ -1,59 +1,61 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
-
-// Co-localisation
-import { MOCK_CATEGORIES, MOCK_BOOKS, Book } from './mockData';
+import { useBookStore } from '@store/useBookStore';
+import { useCategoryStore } from '@store/useCategoryStore';
+import BookCardUser from '@components/BookCardUser';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
 
 const BookListScreen = ({ navigation }: Props) => {
+  const { books, loading: booksLoading, fetchBooks } = useBookStore();
+  const { categories, loading: categoriesLoading, fetchCategories } = useCategoryStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // Filtrage dynamique des livres selon la catégorie active
-  const filteredBooks = useMemo(() => {
-    if (selectedCategory === 'all') return MOCK_BOOKS;
-    return MOCK_BOOKS.filter(book => book.categoryId === selectedCategory);
-  }, [selectedCategory]);
+  useEffect(() => {
+    fetchBooks();
+    fetchCategories();
+  }, []);
 
-  // Rendu d'une carte de livre
-  const renderBookItem = ({ item }: { item: Book }) => (
-    <TouchableOpacity 
-      testID={`booklist-book-${item.id}`}
-      style={styles.bookCard}
-      onPress={() => navigation.navigate('BookReader', {
-        bookId: item.id,
-        title: item.title,
-        fileUrl: item.fileUrl
-      })}
-    >
-      <View style={styles.coverContainer}>
-        <Text style={styles.coverEmoji}>{item.coverEmoji}</Text>
-      </View>
-      <View style={styles.infoContainer}>
-        <Text style={styles.bookTitle} numberOfLines={2}>{item.title}</Text>
-        <Text style={styles.bookAuthor}>{item.author}</Text>
-      </View>
-    </TouchableOpacity>
+  const filteredBooks = useMemo(() => {
+    if (selectedCategory === 'all') return books;
+    return books.filter(book => book.category === selectedCategory);
+  }, [books, selectedCategory]);
+
+  const renderBookItem = ({ item }: { item: any }) => (
+    <BookCardUser
+      book={item}
+      onPress={(bookId) =>
+        navigation.navigate('BookReader', {
+          bookId: item.id,
+          title: item.title,
+          fileUrl: item.pdf_file,
+        })
+      }
+      showStatus={false}
+      showCategory={true}
+      showYear={true}
+    />
   );
 
+  const isLoading = booksLoading || categoriesLoading;
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {/* Barre supérieure d'en-tête */}
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text testID="booklist-header-title" style={styles.headerTitle}>Bibliothèque Archives</Text>
-        <Text testID="booklist-header-subtitle" style={styles.headerSubtitle}>Sélectionnez un document crypté à décoder</Text>
+        <Text style={styles.headerTitle}>📚 Bibliothèque</Text>
+        <Text style={styles.headerSubtitle}>Parcourez et lisez vos livres</Text>
       </View>
 
-      {/* Barre de filtrage horizontale des catégories */}
-      <View style={{ height: 60 }}>
+      {/* Catégories - Version horizontale très compacte */}
+      <View style={styles.categoriesWrapper}>
         <FlatList
-          testID="booklist-categories"
-          data={MOCK_CATEGORIES}
           horizontal
+          data={[{ id: 'all', name: 'Tous' }, ...categories]}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
           keyExtractor={(item) => item.id}
@@ -61,11 +63,10 @@ const BookListScreen = ({ navigation }: Props) => {
             const isActive = selectedCategory === item.id;
             return (
               <TouchableOpacity
-                testID={`booklist-category-${item.id}`}
-                style={[styles.categoryBadge, isActive && styles.categoryBadgeActive]}
+                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
                 onPress={() => setSelectedCategory(item.id)}
               >
-                <Text style={[styles.categoryText, isActive && styles.categoryTextActive]}>
+                <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
                   {item.name}
                 </Text>
               </TouchableOpacity>
@@ -74,17 +75,34 @@ const BookListScreen = ({ navigation }: Props) => {
         />
       </View>
 
-      {/* Liste principale des livres */}
-      <FlatList
-        testID="booklist-books"
-        data={filteredBooks}
-        keyExtractor={(item) => item.id}
-        renderItem={renderBookItem}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={
-          <Text testID="booklist-empty" style={styles.emptyText}>Aucun document dans cette section.</Text>
-        }
-      />
+      {/* Nombre de livres */}
+      <View style={styles.countContainer}>
+        <Text style={styles.countText}>
+          {filteredBooks.length} livre{filteredBooks.length > 1 ? 's' : ''} trouvé{filteredBooks.length > 1 ? 's' : ''}
+        </Text>
+      </View>
+
+      {/* Liste des livres */}
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3b82f6" />
+          <Text style={styles.loadingText}>Chargement des livres...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredBooks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderBookItem}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyEmoji}>📭</Text>
+              <Text style={styles.emptyText}>Aucun livre dans cette catégorie</Text>
+            </View>
+          }
+        />
+      )}
     </SafeAreaView>
   );
 };

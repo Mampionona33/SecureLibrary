@@ -3,93 +3,98 @@ import { StyleSheet } from 'react-native';
 export const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f8fafc',
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderColor: '#e5e7eb',
+    paddingTop: 16,
+    paddingBottom: 4,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1f2937',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#0f172a',
+    letterSpacing: -0.5,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
+    fontSize: 15,
+    color: '#64748b',
     marginTop: 2,
+    fontWeight: '400',
+  },
+  // ✅ Catégories très compactes avec centrage vertical
+  categoriesWrapper: {
+    height: 36,
+    justifyContent: 'center',
   },
   categoriesContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 20,
+    paddingVertical: 2,
+    gap: 4,
+    alignItems: 'center', // ✅ Centrage vertical
   },
-  categoryBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#e5e7eb',
-    marginRight: 8,
+  categoryChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 14,
+    backgroundColor: '#f1f5f9',
+    marginRight: 4,
+    borderWidth: 1,
+    borderColor: 'transparent',
+    justifyContent: 'center', // ✅ Centrage vertical
+    alignItems: 'center', // ✅ Centrage horizontal
+    height: 28, // ✅ Hauteur fixe pour uniformité
   },
-  categoryBadgeActive: {
-    backgroundColor: '#1e3a8a',
+  categoryChipActive: {
+    backgroundColor: '#3b82f6',
+    borderColor: '#3b82f6',
   },
-  categoryText: {
-    fontSize: 14,
-    color: '#4b5563',
+  categoryChipText: {
+    fontSize: 11,
     fontWeight: '500',
+    color: '#64748b',
+    textAlign: 'center',
+    includeFontPadding: false, // ✅ Évite le padding supplémentaire
   },
-  categoryTextActive: {
+  categoryChipTextActive: {
     color: '#ffffff',
   },
+  countContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 0,
+  },
+  countText: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: '400',
+  },
   listContainer: {
-    padding: 16,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
   },
-  bookCard: {
-    flexDirection: 'row',
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  coverContainer: {
-    width: 60,
-    height: 80,
-    backgroundColor: '#f3f4f6',
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  coverEmoji: {
-    fontSize: 32,
-  },
-  infoContainer: {
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  bookTitle: {
+  loadingText: {
+    marginTop: 12,
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-    marginBottom: 4,
+    color: '#64748b',
   },
-  bookAuthor: {
-    fontSize: 14,
-    color: '#6b7280',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingTop: 60,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 12,
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#9ca3af',
-    marginTop: 40,
     fontSize: 16,
-  }
+    color: '#94a3b8',
+    textAlign: 'center',
+  },
 });

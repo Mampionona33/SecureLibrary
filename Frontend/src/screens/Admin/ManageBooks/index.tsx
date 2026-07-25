@@ -1,4 +1,3 @@
-// screens/Admin/ManageBooks/index.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
@@ -7,15 +6,16 @@ import {
   TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  Image,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBookStore } from '@store/useBookStore';
 import { useAppTheme } from '@theme/useAppTheme';
+import AdminBookCard from '@components/AdminBookCard'; // ✅ Nom modifié
 import { styles } from './styles';
 
 const ManageBooksScreen = ({ navigation }: any) => {
-  const { books, loading, fetchBooks } = useBookStore();
+  const { books, loading, fetchBooks, deleteBook, archiveBook } = useBookStore();
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
@@ -42,95 +42,27 @@ const ManageBooksScreen = ({ navigation }: any) => {
     return result;
   }, [books, filter, searchQuery]);
 
-  const renderItem = ({ item }: { item: any }) => {
-    const coverUri = item.cover_image ? item.cover_image : null;
+  const handleBookPress = (bookId: string) => {
+    navigation.navigate('EditBook', { bookId });
+  };
 
-    return (
-      <TouchableOpacity
-        testID={`book-item-${item.id}`}
-        style={[
-          styles.bookCard,
-          {
-            backgroundColor: colors.surface,
-            borderColor: colors.border,
-            borderRadius: radius.md,
-            shadowColor: colors.shadow || '#000',
-          },
-        ]}
-        onPress={() => navigation.navigate('EditBook', { bookId: item.id })}
-        activeOpacity={0.7}
-      >
-        {/* Image de couverture */}
-        <View style={styles.coverContainer}>
-          {coverUri ? (
-            <Image
-              source={{ uri: coverUri }}
-              style={styles.coverImage}
-              resizeMode="cover"
-            />
-          ) : (
-            <View
-              style={[
-                styles.coverPlaceholder,
-                {
-                  backgroundColor: colors.primary + '20',
-                },
-              ]}
-            >
-              <Text style={[styles.coverPlaceholderText, { color: colors.primary }]}>
-                📚
-              </Text>
-            </View>
-          )}
-        </View>
+  const handleArchive = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'archived' : 'active';
+    try {
+      await archiveBook(id, newStatus);
+      await fetchBooks();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de changer le statut.');
+    }
+  };
 
-        {/* Informations du livre */}
-        <View style={styles.bookInfo}>
-          {/* Titre en haut */}
-          <Text
-            style={[styles.bookTitle, { color: colors.text }]}
-            numberOfLines={1}
-          >
-            {item.title}
-          </Text>
-
-          {/* Auteur + Statut sur la même ligne */}
-          <View style={styles.bookRow}>
-            <Text
-              style={[styles.bookAuthor, { color: colors.textSecondary }]}
-              numberOfLines={1}
-            >
-              {item.author}
-            </Text>
-            <View
-              style={[
-                styles.statusBadge,
-                {
-                  backgroundColor:
-                    item.status === 'active' ? colors.success : colors.danger,
-                },
-              ]}
-            >
-              <Text style={styles.statusBadgeText}>
-                {item.status === 'active' ? 'Actif' : 'Archivé'}
-              </Text>
-            </View>
-          </View>
-
-          {/* Année en bas */}
-          {item.year && (
-            <Text style={[styles.bookYear, { color: colors.textMuted }]}>
-              {item.year}
-            </Text>
-          )}
-        </View>
-
-        {/* Flèche pour indiquer la navigation */}
-        <View style={styles.arrowContainer}>
-          <Text style={[styles.arrowText, { color: colors.textMuted }]}>›</Text>
-        </View>
-      </TouchableOpacity>
-    );
+  const handleDelete = async (id: string, title: string) => {
+    try {
+      await deleteBook(id);
+      await fetchBooks();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de supprimer ce livre.');
+    }
   };
 
   return (
@@ -218,7 +150,14 @@ const ManageBooksScreen = ({ navigation }: any) => {
           <FlatList
             data={filteredBooks}
             keyExtractor={(item) => item.id}
-            renderItem={renderItem}
+            renderItem={({ item }) => (
+              <AdminBookCard
+                book={item}
+                onPress={handleBookPress}
+                onArchive={handleArchive}
+                onDelete={handleDelete}
+              />
+            )}
             contentContainerStyle={styles.listContainer}
             showsVerticalScrollIndicator={false}
             ListEmptyComponent={
