@@ -1,11 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
 import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
 import BookCardUser from '@components/BookCardUser';
+import { apiClient } from '@api/client';
+import RNBlobUtil from 'react-native-blob-util';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
@@ -19,6 +21,34 @@ const BookListScreen = ({ navigation }: Props) => {
     fetchBooks();
     fetchCategories();
   }, []);
+
+  const handleDownload = async (bookId: string) => {
+    try {
+      // Appel API pour télécharger le PDF
+      const response = await apiClient.get(`/library/books/${bookId}/download_pdf/`, {
+        responseType: 'arraybuffer',
+      });
+
+      // Sauvegarder le fichier en local
+      const book = books.find(b => b.id === bookId);
+      const fileName = book?.pdf_file?.split('/').pop() || `${bookId}.pdf`;
+      const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
+      
+      // Convertir en base64 et sauvegarder
+      const base64 = btoa(
+        new Uint8Array(response.data).reduce(
+          (data, byte) => data + String.fromCharCode(byte),
+          ''
+        )
+      );
+      await RNBlobUtil.fs.writeFile(localPath, base64, 'base64');
+      
+      console.log('✅ Fichier téléchargé:', localPath);
+    } catch (error) {
+      console.error('❌ Erreur téléchargement:', error);
+      throw error;
+    }
+  };
 
   const filteredBooks = useMemo(() => {
     if (selectedCategory === 'all') return books;
@@ -35,6 +65,7 @@ const BookListScreen = ({ navigation }: Props) => {
           fileUrl: item.pdf_file,
         })
       }
+      onDownload={handleDownload}
       showStatus={false}
       showCategory={true}
       showYear={true}
@@ -51,7 +82,7 @@ const BookListScreen = ({ navigation }: Props) => {
         <Text style={styles.headerSubtitle}>Parcourez et lisez vos livres</Text>
       </View>
 
-      {/* Catégories - Version horizontale très compacte */}
+      {/* Catégories - Version horizontale compacte */}
       <View style={styles.categoriesWrapper}>
         <FlatList
           horizontal
