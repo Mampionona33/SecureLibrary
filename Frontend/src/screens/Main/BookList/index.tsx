@@ -1,3 +1,4 @@
+// screens/Main/BookList/index.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,32 +6,78 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
 import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
+import { useAuthStore } from '@store/useAuthStore';
 import BookCardUser from '@components/BookCardUser';
 import { apiClient } from '@api/client';
 import RNBlobUtil from 'react-native-blob-util';
+import NetInfo from '@react-native-community/netinfo';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
 
 const BookListScreen = ({ navigation }: Props) => {
-  const { books, loading: booksLoading, fetchActiveBooks } = useBookStore();
+  const { books, loading: booksLoading, fetchActiveBooks, fetchBooks } = useBookStore();
   const { categories, loading: categoriesLoading, fetchCategories } = useCategoryStore();
+  const { isStaff } = useAuthStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filterMode, setFilterMode] = useState<'online' | 'local'>('online');
   const [downloadingBooks, setDownloadingBooks] = useState<Set<string>>(new Set());
   const [localBooks, setLocalBooks] = useState<Set<string>>(new Set());
+  const [isOnline, setIsOnline] = useState(true);
 
+  // ✅ Vérifier la connexion et charger les livres
   useEffect(() => {
-    fetchActiveBooks();
-    fetchCategories();
-    checkLocalFiles();
+    const init = async () => {
+      // Vérifier la connexion
+      const netInfo = await NetInfo.fetch();
+      setIsOnline(netInfo.isConnected ?? true);
+
+      // Charger les livres uniquement si en ligne
+      if (netInfo.isConnected) {
+        console.log('📡 En ligne - Chargement des livres...');
+        try {
+          // Si admin/staff, charger tous les livres, sinon seulement les actifs
+          if (isStaff) {
+            await fetchBooks(true);
+          } else {
+            await fetchActiveBooks();
+          }
+          await fetchCategories();
+        } catch (error) {
+          console.error('❌ Erreur chargement:', error);
+        }
+      } else {
+        console.log('📡 Hors-ligne - utilisation du cache');
+      }
+
+      // Vérifier les fichiers locaux
+      await checkLocalFiles();
+    };
+
+    init();
+
+    // Écouter les changements de connexion
+    const unsubscribe = NetInfo.addEventListener((state) => {
+      setIsOnline(state.isConnected ?? true);
+      if (state.isConnected) {
+        // Recharger quand la connexion revient
+        console.log('📡 Connexion rétablie - Rechargement...');
+        if (isStaff) {
+          fetchBooks(true);
+        } else {
+          fetchActiveBooks();
+        }
+        fetchCategories();
+      }
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // ✅ Vérifier quels livres sont déjà téléchargés
   const checkLocalFiles = async () => {
     const localSet = new Set<string>();
     for (const book of books) {
-      // Vérifier par ID dans le dossier DocumentDir
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
       const exists = await RNBlobUtil.fs.exists(localPath);
@@ -43,10 +90,14 @@ const BookListScreen = ({ navigation }: Props) => {
 
   // ✅ Télécharger un livre via l'endpoint download_pdf
   const handleDownload = async (book: any) => {
+    if (!isOnline) {
+      Alert.alert('Hors-ligne', 'Vous devez être connecté à internet pour télécharger un livre.');
+      return;
+    }
+
     try {
       setDownloadingBooks(prev => new Set(prev).add(book.id));
 
-      // ✅ Utiliser l'endpoint dédié pour télécharger le PDF
       const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000/api';
       const pdfUrl = `${baseUrl}/library/books/${book.id}/download_pdf/`;
       
@@ -56,7 +107,6 @@ const BookListScreen = ({ navigation }: Props) => {
         responseType: 'arraybuffer',
       });
 
-      // Convertir en base64
       const base64 = btoa(
         new Uint8Array(response.data).reduce(
           (data, byte) => data + String.fromCharCode(byte),
@@ -64,7 +114,6 @@ const BookListScreen = ({ navigation }: Props) => {
         )
       );
 
-      // Sauvegarder en local
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
       await RNBlobUtil.fs.writeFile(localPath, base64, 'base64');
@@ -98,12 +147,10 @@ const BookListScreen = ({ navigation }: Props) => {
   const filteredBooks = useMemo(() => {
     let result = books;
     
-    // Filtrer par catégorie
     if (selectedCategory !== 'all') {
       result = result.filter(book => book.category === selectedCategory);
     }
 
-    // Filtrer par disponibilité locale
     if (filterMode === 'local') {
       result = result.filter(book => localBooks.has(book.id));
     }
@@ -113,30 +160,29 @@ const BookListScreen = ({ navigation }: Props) => {
 
   // ✅ Gérer le clic sur un livre
   const handleBookPress = (book: any) => {
-    // Si le livre est déjà en local, l'ouvrir directement
     if (localBooks.has(book.id)) {
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
-      const pdfUrl = `file://${localPath}`;
       
       navigation.navigate('BookReader', {
         bookId: book.id,
         title: book.title,
-        fileUrl: pdfUrl,
+        fileUrl: `file://${localPath}`,
       });
       return;
     }
 
-    // Sinon, demander de télécharger
+    if (!isOnline) {
+      Alert.alert('Hors-ligne', 'Ce livre n\'est pas disponible hors-ligne.');
+      return;
+    }
+
     Alert.alert(
       'Téléchargement requis',
       `"${book.title}" n'est pas disponible en local. Voulez-vous le télécharger ?`,
       [
         { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Télécharger', 
-          onPress: () => handleDownload(book) 
-        },
+        { text: 'Télécharger', onPress: () => handleDownload(book) },
       ]
     );
   };
@@ -162,7 +208,9 @@ const BookListScreen = ({ navigation }: Props) => {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>📚 Bibliothèque</Text>
-        <Text style={styles.headerSubtitle}>Parcourez et lisez vos livres</Text>
+        <Text style={[styles.headerSubtitle, { color: isOnline ? '#22c55e' : '#ef4444' }]}>
+          {isOnline ? '🟢 En ligne' : '🔴 Hors-ligne'}
+        </Text>
       </View>
 
       {/* Filtre : En ligne / Local */}

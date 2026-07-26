@@ -1,3 +1,4 @@
+# library/views.py
 from rest_framework import viewsets, permissions, status
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -60,10 +61,19 @@ class BookViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Filtrer les livres par utilisateur avec recherche et filtres
+        Filtrer les livres selon le rôle de l'utilisateur
+        - Admin/Staff : voit tous les livres
+        - Simple user : voit uniquement les livres actifs (peu importe le propriétaire)
         """
-        queryset = Book.objects.filter(added_by=self.request.user)
+        user = self.request.user
         params = self.request.query_params
+        
+        # ✅ Admin/Staff : tous les livres
+        if user.role == 'admin' or user.role == 'staff':
+            queryset = Book.objects.all()
+        else:
+            # ✅ Simple user : uniquement les livres actifs (peu importe le propriétaire)
+            queryset = Book.objects.filter(status='active')
         
         # 🔍 Recherche
         search = params.get('search', None)
@@ -80,10 +90,12 @@ class BookViewSet(viewsets.ModelViewSet):
         if category:
             queryset = queryset.filter(category_id=category)
         
-        # 📊 Filtrer par statut
+        # 📊 Filtrer par statut (uniquement pour admin/staff)
         status_filter = params.get('status', None)
         if status_filter:
-            queryset = queryset.filter(status=status_filter)
+            if user.role == 'admin' or user.role == 'staff':
+                queryset = queryset.filter(status=status_filter)
+            # Pour les simple users, on ignore le filtre status car ils ne voient que les actifs
         
         # 🌐 Filtrer par langue
         language = params.get('language', None)
@@ -141,7 +153,6 @@ class BookViewSet(viewsets.ModelViewSet):
         # 🔄 Tri
         ordering = params.get('ordering', None)
         if ordering:
-            # Vérifier que le champ de tri est valide
             valid_order_fields = [
                 'title', '-title', 'author', '-author',
                 'year', '-year', 'created_at', '-created_at',
@@ -153,7 +164,6 @@ class BookViewSet(viewsets.ModelViewSet):
             if ordering in valid_order_fields:
                 queryset = queryset.order_by(ordering)
         else:
-            # Tri par défaut: plus récent d'abord
             queryset = queryset.order_by('-created_at')
         
         return queryset
