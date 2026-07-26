@@ -1,3 +1,4 @@
+// screens/Auth/Login/index.tsx
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -7,19 +8,18 @@ import { AuthStackParamList } from '@navigation/types';
 import { useForm, Controller } from 'react-hook-form';
 import { valibotResolver } from '@hookform/resolvers/valibot';
 
-import { useAuth } from '@context/AuthContext';
-import { useAppTheme } from '@theme/useAppTheme'; // 🟢 Ton hook de thème
+import { useAuthStore } from '@store/useAuthStore';
+import { useAppTheme } from '@theme/useAppTheme';
 import { loginSchema, LoginFormType } from './schema';
 import { styles } from './styles';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 
 const LoginScreen = ({ navigation }: Props) => {
-  const { login } = useAuth();
+  const { login, isLoading: isLoadingAuth } = useAuthStore();
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   
-  // 🟢 Extraction de tes propriétés de design system
   const { theme, isDark } = useAppTheme();
   const { colors, radius, spacing } = theme;
 
@@ -51,6 +51,7 @@ const LoginScreen = ({ navigation }: Props) => {
         }
         Alert.alert('Erreur de connexion', result.message || 'Une erreur est survenue.');
       }
+      // ✅ Si succès, la navigation est gérée automatiquement par AppNavigator
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de joindre le service de sécurité.');
     } finally {
@@ -59,7 +60,6 @@ const LoginScreen = ({ navigation }: Props) => {
   };
 
   return (
-    // 🟢 Utilisation de colors.background et des espacements
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -71,15 +71,12 @@ const LoginScreen = ({ navigation }: Props) => {
         >
           <View style={[styles.headerContainer, { marginBottom: spacing.xl }]}>
             <Text style={styles.logoIcon}>🔒</Text>
-            {/* 🟢 Texte Principal */}
             <Text style={[styles.title, { color: colors.text, marginBottom: spacing.sm }]}>SecureLibrary</Text>
-            {/* 🟢 Texte Secondaire Muted */}
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
               Bibliothèque Chiffrée & Coffre-fort Numérique
             </Text>
           </View>
 
-          {/* 🟢 La carte utilise 'surface', ton 'border' et ton 'radius.lg' */}
           <View style={[
             styles.formContainer, 
             { 
@@ -90,7 +87,7 @@ const LoginScreen = ({ navigation }: Props) => {
             }
           ]}>
             
-            {/* Champ Email */}
+            {/* Email */}
             <Text style={[styles.label, { color: colors.text, marginBottom: spacing.xs }]}>Adresse Email</Text>
             <Controller
               control={control}
@@ -105,25 +102,25 @@ const LoginScreen = ({ navigation }: Props) => {
                     height: 48,
                     paddingHorizontal: spacing.sm
                   },
-                  errors.email && { borderColor: colors.danger } // 🟢 Utilise colors.danger pour l'erreur
+                  errors.email && { borderColor: colors.danger }
                 ]}>
                   <TextInput
                     style={[styles.input, { color: colors.text }]}
                     placeholder="exemple@domaine.com"
-                    placeholderTextColor={colors.placeholder} // 🟢 Ton placeholder magique
+                    placeholderTextColor={colors.placeholder}
                     keyboardType="email-address"
                     autoCapitalize="none"
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
-                    editable={!isLoading}
+                    editable={!isLoading && !isLoadingAuth}
                   />
                 </View>
               )}
             />
             {errors.email && <Text style={[styles.errorText, { color: colors.danger, marginTop: spacing.xs }]}>{errors.email.message}</Text>}
 
-            {/* Champ Mot de passe */}
+            {/* Mot de passe */}
             <Text style={[styles.label, { color: colors.text, marginBottom: spacing.xs, marginTop: spacing.md }]}>Mot de passe</Text>
             <Controller
               control={control}
@@ -148,7 +145,7 @@ const LoginScreen = ({ navigation }: Props) => {
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}
-                    editable={!isLoading}
+                    editable={!isLoading && !isLoadingAuth}
                   />
                   <TouchableOpacity
                     style={{ paddingLeft: spacing.sm }}
@@ -163,7 +160,7 @@ const LoginScreen = ({ navigation }: Props) => {
             />
             {errors.password && <Text style={[styles.errorText, { color: colors.danger, marginTop: spacing.xs }]}>{errors.password.message}</Text>}
 
-            {/* Bouton Connexion branché sur buttonPrimary, buttonPrimaryText et radius.md */}
+            {/* Bouton Connexion */}
             <TouchableOpacity
               style={[
                 styles.submitButton, 
@@ -173,12 +170,12 @@ const LoginScreen = ({ navigation }: Props) => {
                   marginTop: spacing.xl,
                   height: 48
                 },
-                isLoading && styles.submitButtonDisabled
+                (isLoading || isLoadingAuth) && styles.submitButtonDisabled
               ]}
               onPress={handleSubmit(onSubmit)}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingAuth}
             >
-              {isLoading ? (
+              {(isLoading || isLoadingAuth) ? (
                 <ActivityIndicator color={colors.buttonPrimaryText} />
               ) : (
                 <Text style={[styles.submitButtonText, { color: colors.buttonPrimaryText }]}>Se connecter</Text>

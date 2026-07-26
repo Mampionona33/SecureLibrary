@@ -1,65 +1,52 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { authService } from '@services/authService';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
+import { useAuthStore } from '@store/useAuthStore';
 import { AuthContextType } from '@types/auth';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isStaff, setIsStaff] = useState<boolean>(false);
-  const [isPendingApproval, setIsPendingApproval] = useState<boolean>(false);
-  const [isLoadingAuth, setIsLoadingAuth] = useState<boolean>(true);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const {
+    isAuthenticated,
+    isLoading: isLoadingAuth,
+    authToken,
+    isStaff,
+    isPendingApproval,
+    login: storeLogin,
+    logout: storeLogout,
+    restoreSession,
+  } = useAuthStore();
+
+  // ✅ Utiliser useRef pour éviter les appels multiples
+  const hasRestored = useRef(false);
 
   useEffect(() => {
-    const checkPersistedSession = async () => {
-      try {
-        const { token, userProfile } = await authService.restoreSession();
-
-        if (userProfile && token) {
-          setAuthToken(token);
-          setIsStaff(userProfile.user.role === 'admin' || userProfile.user.role === 'staff');
-          setIsPendingApproval(userProfile.user.status === 'pending');
-          setIsAuthenticated(userProfile.user.status !== 'pending');
-        }
-      } finally {
-        setIsLoadingAuth(false);
-      }
-    };
-    checkPersistedSession();
+    if (!hasRestored.current) {
+      hasRestored.current = true;
+      restoreSession();
+    }
   }, []);
 
   const login = async (email: string, password: string) => {
-    const result = await authService.login(email, password);
-    if (result.success && result.token && result.userProfile) {
-      setAuthToken(result.token);
-      setIsStaff(result.userProfile.user.role === 'admin' || result.userProfile.user.role === 'staff');
-      setIsPendingApproval(result.userProfile.user.status === 'pending');
-      setIsAuthenticated(result.userProfile.user.status !== 'pending');
-    }
+    const result = await storeLogin(email, password);
     return { success: result.success, message: result.message };
   };
 
   const logout = async () => {
-    await authService.logout();
-    setAuthToken(null);
-    setIsAuthenticated(false);
-    setIsStaff(false);
-    setIsPendingApproval(false);
+    await storeLogout();
+  };
+
+  const value: AuthContextType = {
+    isAuthenticated,
+    isStaff,
+    isPendingApproval,
+    isLoadingAuth,
+    authToken,
+    login,
+    logout,
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        isAuthenticated,
-        isStaff,
-        isPendingApproval,
-        isLoadingAuth,
-        authToken,
-        login,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
