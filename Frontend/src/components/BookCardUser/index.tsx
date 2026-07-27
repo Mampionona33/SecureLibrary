@@ -1,3 +1,4 @@
+// components/BookCardUser/index.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, Alert } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
@@ -23,38 +24,17 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
 }) => {
   const { theme } = useAppTheme();
   const { colors } = theme;
-  const [isDownloaded, setIsDownloaded] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const isDownloaded = book.isDownloaded || false;
+  const isDownloading = book.isDownloading || false;
 
   const coverUri = book.cover_image ? book.cover_image : null;
 
-  // Vérifier si le fichier existe en local
-  const checkLocalFile = async () => {
-    if (!book.pdf_file) return;
-    
-    try {
-      const fileName = book.pdf_file.split('/').pop() || `${book.id}.pdf`;
-      const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
-      const exists = await RNBlobUtil.fs.exists(localPath);
-      setIsDownloaded(exists);
-    } catch (error) {
-      console.error('Erreur vérification fichier local:', error);
-      setIsDownloaded(false);
-    }
-  };
-
-  useEffect(() => {
-    checkLocalFile();
-  }, [book.pdf_file]);
-
   const handlePress = async () => {
-    // ✅ Si déjà téléchargé, ouvrir directement
     if (isDownloaded) {
       onPress(book);
       return;
     }
 
-    // ✅ Si pas téléchargé, demander confirmation
     Alert.alert(
       'Téléchargement requis',
       `Le livre "${book.title}" n'est pas disponible en local. Voulez-vous le télécharger pour le lire ?`,
@@ -63,21 +43,9 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
         {
           text: 'Télécharger',
           onPress: async () => {
-            setIsDownloading(true);
-            try {
-              if (onDownload) {
-                await onDownload(book);
-                setIsDownloaded(true);
-                // ✅ Ouvrir après téléchargement
-                onPress(book);
-              } else {
-                // Si pas de fonction de téléchargement, ouvrir quand même
-                onPress(book);
-              }
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de télécharger le livre.');
-            } finally {
-              setIsDownloading(false);
+            if (onDownload) {
+              await onDownload(book);
+              onPress(book);
             }
           },
         },
@@ -100,7 +68,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
       activeOpacity={0.7}
       disabled={isDownloading}
     >
-      {/* Couverture */}
       <View style={styles.coverContainer}>
         {coverUri ? (
           <Image
@@ -123,7 +90,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
           </View>
         )}
 
-        {/* ✅ Badge de téléchargement */}
         {isDownloaded && (
           <View style={[styles.downloadBadge, { backgroundColor: colors.success }]}>
             <Text style={styles.downloadBadgeText}>✓</Text>
@@ -136,7 +102,6 @@ const BookCardUser: React.FC<BookCardUserProps> = ({
         )}
       </View>
 
-      {/* Informations */}
       <View style={styles.bookInfo}>
         <Text
           style={[styles.bookTitle, { color: colors.text }]}

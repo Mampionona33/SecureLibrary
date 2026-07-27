@@ -1,6 +1,5 @@
-// screens/Main/BookList/index.tsx
-import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
@@ -24,6 +23,7 @@ const BookListScreen = ({ navigation }: Props) => {
   const [downloadingBooks, setDownloadingBooks] = useState<Set<string>>(new Set());
   const [localBooks, setLocalBooks] = useState<Set<string>>(new Set());
   const [isOnline, setIsOnline] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // ✅ Vérifier la connexion et charger les livres
   useEffect(() => {
@@ -87,6 +87,32 @@ const BookListScreen = ({ navigation }: Props) => {
     }
     setLocalBooks(localSet);
   };
+
+  // ✅ Pull to Refresh
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const netInfo = await NetInfo.fetch();
+      setIsOnline(netInfo.isConnected ?? true);
+
+      if (netInfo.isConnected) {
+        console.log('🔄 Pull to refresh - Rechargement...');
+        if (isStaff) {
+          await fetchBooks(true);
+        } else {
+          await fetchActiveBooks();
+        }
+        await fetchCategories();
+        await checkLocalFiles();
+      } else {
+        Alert.alert('Hors-ligne', 'Impossible de rafraîchir sans connexion internet.');
+      }
+    } catch (error) {
+      console.error('❌ Erreur refresh:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [isStaff]);
 
   // ✅ Télécharger un livre via l'endpoint download_pdf
   const handleDownload = async (book: any) => {
@@ -277,6 +303,14 @@ const BookListScreen = ({ navigation }: Props) => {
           renderItem={renderBookItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3b82f6']}
+              tintColor="#3b82f6"
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>📭</Text>
