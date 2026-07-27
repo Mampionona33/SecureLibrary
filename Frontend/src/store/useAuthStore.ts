@@ -3,14 +3,54 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import { apiClient } from '@api/client';
-import axios from 'axios'; // 👈 Ajouter pour créer une instance fraîche
+import axios from 'axios';
+import { Platform } from 'react-native';
 
-// 👈 IMPORTANT: Utiliser les MÊMES clés que l'intercepteur
+// 🔥 Configuration Keychain pour persistance permanente
+const KEYCHAIN_OPTIONS = {
+  accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+  ...(Platform.OS === 'ios' && {
+    accessControl: Keychain.ACCESS_CONTROL.USER_PRESENCE,
+  }),
+};
+
 const KEYCHAIN_KEYS = {
   SESSION: 'user_session',
   ACCESS_TOKEN: 'auth_token',
   REFRESH_TOKEN: 'refresh_token',
 } as const;
+
+// 🔥 Fonctions helper pour Keychain
+const setToken = async (key: string, value: string) => {
+  try {
+    await Keychain.setGenericPassword(key, value, {
+      service: key,
+      ...KEYCHAIN_OPTIONS,
+    });
+    console.log(`✅ Token ${key} stocké`);
+  } catch (error) {
+    console.error(`❌ Erreur stockage ${key}:`, error);
+  }
+};
+
+const getToken = async (key: string) => {
+  try {
+    const result = await Keychain.getGenericPassword({ service: key });
+    return result;
+  } catch (error) {
+    console.error(`❌ Erreur récupération ${key}:`, error);
+    return null;
+  }
+};
+
+const resetToken = async (key: string) => {
+  try {
+    await Keychain.resetGenericPassword({ service: key });
+    console.log(`✅ Token ${key} supprimé`);
+  } catch (error) {
+    console.error(`❌ Erreur suppression ${key}:`, error);
+  }
+};
 
 interface User {
   id: string;
@@ -71,14 +111,12 @@ export const useAuthStore = create<AuthState>()(
         try {
           console.log('🧹 Début de la purge du store...');
           
-          // Supprimer AsyncStorage
           await AsyncStorage.removeItem(STORAGE_KEY);
           console.log('✅ AsyncStorage purgé');
           
-          // 🔥 Supprimer TOUS les tokens Keychain avec les bonnes clés
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          await resetToken(KEYCHAIN_KEYS.SESSION);
+          await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
           console.log('✅ Keychain purgé');
 
           set({
@@ -110,61 +148,48 @@ export const useAuthStore = create<AuthState>()(
       login: async (email, password) => {
         console.log('🔐 Tentative de login pour:', email);
         
-        // Purger complètement avant tout login
         await get().purgeStore();
-        
-        // Attendre que la purge soit complète
         await new Promise(resolve => setTimeout(resolve, 300));
         
         set({ isLoading: true, error: null });
         
         try {
-          // 🔥 CRÉER UNE INSTANCE FRAÎCHE D'AXIOS (sans intercepteurs)
           const freshClient = axios.create({
             baseURL: apiClient.defaults.baseURL,
             headers: { 'Content-Type': 'application/json' },
             timeout: apiClient.defaults.timeout,
           });
 
-          // 1. Login - obtenir les tokens avec l'instance fraîche
           const response = await freshClient.post('/users/login/', { email, password });
           const { access, refresh } = response.data;
           
           console.log('✅ Tokens obtenus');
 
-          // 2. 🔥 SUPPRIMER TOUT avant de stocker les nouveaux
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          await resetToken(KEYCHAIN_KEYS.SESSION);
+          await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
           
           await new Promise(resolve => setTimeout(resolve, 100));
 
-          // 3. Stocker les NOUVEAUX tokens avec les bonnes clés
-          await Keychain.setGenericPassword(KEYCHAIN_KEYS.ACCESS_TOKEN, access, { 
-            service: KEYCHAIN_KEYS.ACCESS_TOKEN 
-          });
-          await Keychain.setGenericPassword(KEYCHAIN_KEYS.REFRESH_TOKEN, refresh, { 
-            service: KEYCHAIN_KEYS.REFRESH_TOKEN 
-          });
+          await setToken(KEYCHAIN_KEYS.ACCESS_TOKEN, access);
+          await setToken(KEYCHAIN_KEYS.REFRESH_TOKEN, refresh);
           
-          // Stocker aussi en session pour compatibilité
           const session = { access, refresh };
-          await Keychain.setGenericPassword(KEYCHAIN_KEYS.SESSION, JSON.stringify(session), { 
-            service: KEYCHAIN_KEYS.SESSION 
-          });
+          await setToken(KEYCHAIN_KEYS.SESSION, JSON.stringify(session));
           
-          console.log('✅ Nouveaux tokens stockés dans Keychain');
+          console.log('✅ Nouveaux tokens stockés');
 
-          // 4. 🔥 VÉRIFIER que le token est bien stocké
-          const verifyToken = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          console.log('🔍 Vérification token stocké:', !!verifyToken?.password);
+          const verifyAccess = await getToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          const verifyRefresh = await getToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
+          console.log('🔍 Vérification tokens stockés:', {
+            access: !!verifyAccess?.password,
+            refresh: !!verifyRefresh?.password,
+          });
 
-          // 5. Récupérer le profil avec l'instance FRAÎCHE
           const userResponse = await freshClient.get('/users/me/', {
             headers: { Authorization: `Bearer ${access}` },
           });
 
-          // 6. Extraire l'utilisateur
           const userData = userResponse.data.user || userResponse.data;
           
           const user = {
@@ -188,7 +213,6 @@ export const useAuthStore = create<AuthState>()(
             isStaff: isStaff,
           });
 
-          // 7. Mettre à jour le state
           set({
             user: user,
             authToken: access,
@@ -207,10 +231,7 @@ export const useAuthStore = create<AuthState>()(
 
         } catch (error: any) {
           console.error('❌ Erreur login:', error);
-          
-          // En cas d'erreur, purger le store
           await get().purgeStore();
-          
           const message = error.response?.data?.detail || 'Identifiants incorrects';
           set({ isLoading: false, error: message });
           return { success: false, message };
@@ -222,7 +243,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true });
         
         try {
-          const refreshToken = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          const refreshToken = await getToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
           
           if (refreshToken?.password) {
             try {
@@ -236,13 +257,12 @@ export const useAuthStore = create<AuthState>()(
             }
           }
 
-          // ✅ ORDRE CRITIQUE
           await AsyncStorage.removeItem(STORAGE_KEY);
           console.log('✅ AsyncStorage purgé');
           
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          await resetToken(KEYCHAIN_KEYS.SESSION);
+          await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
           console.log('✅ Keychain purgé');
 
           set({
@@ -260,9 +280,9 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('❌ Erreur logout:', error);
           await AsyncStorage.removeItem(STORAGE_KEY);
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.SESSION });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          await Keychain.resetGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          await resetToken(KEYCHAIN_KEYS.SESSION);
+          await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
           set({
             user: null,
             authToken: null,
@@ -280,8 +300,9 @@ export const useAuthStore = create<AuthState>()(
           console.log('🔄 Restauration de la session...');
           set({ isLoading: true, error: null });
 
-          const accessToken = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.ACCESS_TOKEN });
-          const refreshToken = await Keychain.getGenericPassword({ service: KEYCHAIN_KEYS.REFRESH_TOKEN });
+          // 1. Récupérer les tokens
+          const accessToken = await getToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
+          const refreshToken = await getToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
 
           console.log('🔑 Access token trouvé:', !!accessToken?.password);
           console.log('🔑 Refresh token trouvé:', !!refreshToken?.password);
@@ -293,8 +314,8 @@ export const useAuthStore = create<AuthState>()(
             return false;
           }
 
+          // 2. Tenter de restaurer avec le token existant
           try {
-            // Créer une instance fraîche pour la restauration
             const freshClient = axios.create({
               baseURL: apiClient.defaults.baseURL,
               headers: { 
@@ -337,10 +358,88 @@ export const useAuthStore = create<AuthState>()(
               return true;
             }
           } catch (error: any) {
-            console.log('⚠️ Token invalide');
-            await get().purgeStore();
+            console.log('⚠️ Token invalide, tentative de refresh...');
+            
+            // 3. 🔥 Tenter de rafraîchir le token si disponible
+            if (refreshToken?.password) {
+              try {
+                console.log('🔄 Rafraîchissement du token...');
+                const refreshClient = axios.create({
+                  baseURL: apiClient.defaults.baseURL,
+                  headers: { 'Content-Type': 'application/json' },
+                });
+
+                const refreshResponse = await refreshClient.post('/users/login/refresh/', {
+                  refresh: refreshToken.password,
+                });
+
+                if (refreshResponse.status === 200) {
+                  const newAccessToken = refreshResponse.data.access;
+                  
+                  // 🔥 Stocker le nouveau token
+                  await setToken(KEYCHAIN_KEYS.ACCESS_TOKEN, newAccessToken);
+                  
+                  // Mettre à jour la session
+                  const session = { 
+                    access: newAccessToken, 
+                    refresh: refreshToken.password 
+                  };
+                  await setToken(KEYCHAIN_KEYS.SESSION, JSON.stringify(session));
+                  
+                  console.log('✅ Token rafraîchi avec succès');
+
+                  // 🔥 Récupérer le profil avec le nouveau token
+                  const userClient = axios.create({
+                    baseURL: apiClient.defaults.baseURL,
+                    headers: { 
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${newAccessToken}` 
+                    },
+                  });
+
+                  const userResponse = await userClient.get('/users/me/');
+
+                  if (userResponse.status === 200) {
+                    const userData = userResponse.data.user || userResponse.data;
+                    const user = {
+                      id: userData.id || '',
+                      email: userData.email || '',
+                      firstName: userData.firstName || userData.first_name || '',
+                      lastName: userData.lastName || userData.last_name || '',
+                      role: userData.role || 'user',
+                      status: userData.status || 'active',
+                      is_staff: userData.is_staff || false,
+                      is_superuser: userData.is_superuser || false,
+                      groups_list: userData.groups_list || [],
+                      ...userData,
+                    };
+
+                    const isStaff = user.role === 'admin' || user.role === 'staff' || user.is_staff === true;
+
+                    console.log('✅ Session restaurée avec nouveau token pour:', user.email);
+                    console.log('👤 Rôle:', user.role);
+
+                    set({
+                      user: user,
+                      authToken: newAccessToken,
+                      isAuthenticated: true,
+                      isStaff: isStaff,
+                      isPendingApproval: user.status === 'pending',
+                      isLoading: false,
+                      error: null,
+                    });
+                    return true;
+                  }
+                }
+              } catch (refreshError: any) {
+                console.log('❌ Refresh échoué:', refreshError.response?.data || refreshError.message);
+              }
+            }
           }
 
+          // 4. Si tout échoue, purger le store
+          console.log('⚠️ Session invalide, purge du store');
+          await get().purgeStore();
           set({ isLoading: false });
           return false;
 
