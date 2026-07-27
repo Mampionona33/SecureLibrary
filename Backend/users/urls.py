@@ -8,7 +8,8 @@ from .views import (
     EmailTokenObtainPairView,
     CurrentUserView,
     GroupViewSet,
-    CustomTokenRefreshView
+    CustomTokenRefreshView,
+    LogoutView  # 👈 Ajouter cet import
 )
 
 router = DefaultRouter()
@@ -18,6 +19,7 @@ urlpatterns = [
     path('register/', RegisterView.as_view(), name='user-register'),
     path('login/', EmailTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('login/refresh/', CustomTokenRefreshView.as_view(), name='token_refresh'),
+    path('logout/', LogoutView.as_view(), name='logout'),  # 👈 Ajouter cette ligne
     path('me/', CurrentUserView.as_view(), name='current-user'),
     path('', UserListView.as_view(), name='user-list'),
     path('<uuid:pk>/', UserDetailView.as_view(), name='user-detail'),

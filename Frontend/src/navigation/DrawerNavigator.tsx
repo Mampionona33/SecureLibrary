@@ -1,4 +1,3 @@
-// navigation/DrawerNavigator.tsx
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
@@ -15,6 +14,7 @@ import {
 import { useAuthStore } from '@store/useAuthStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import { useThemeStore } from '@store/useThemeStore';
+import { useNavigation } from '@react-navigation/native'; // 👈 Ajout
 import MainStack from './MainStack';
 import AdminStack from './AdminStack';
 
@@ -37,8 +37,11 @@ export const DrawerNavigator = () => {
     logout, 
     isLoading, 
     user,
-    isPendingApproval 
+    isPendingApproval,
+    isAuthenticated // 👈 Ajout pour vérifier l'état
   } = useAuthStore();
+  
+  const navigation = useNavigation(); // 👈 Ajout pour la redirection
   
   const [isOpen, setIsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'main' | 'admin'>(isStaff ? 'admin' : 'main');
@@ -52,6 +55,17 @@ export const DrawerNavigator = () => {
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
+  // 👈 Surveiller l'authentification pour rediriger vers Login si déconnecté
+  useEffect(() => {
+    if (!isAuthenticated && !isLoading) {
+      console.log('🚪 Utilisateur non authentifié, redirection vers Login');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Login' }],
+      });
+    }
+  }, [isAuthenticated, isLoading, navigation]);
+
   // Mise à jour de la vue quand le rôle change
   useEffect(() => {
     if (isStaff && currentView === 'main') {
@@ -59,7 +73,7 @@ export const DrawerNavigator = () => {
     } else if (!isStaff && currentView === 'admin') {
       setCurrentView('main');
     }
-  }, [isStaff]);
+  }, [isStaff, currentView]);
 
   // Gestion de l'ouverture/fermeture du drawer
   const toggleDrawer = () => {
@@ -117,8 +131,13 @@ export const DrawerNavigator = () => {
             try {
               // Fermer le drawer avant la déconnexion
               if (isOpen) toggleDrawer();
+              
+              console.log('🔓 Déconnexion demandée...');
               await logout();
-              // La redirection vers AuthStack se fait automatiquement via RootNavigator
+              
+              // ✅ La redirection se fait automatiquement via le useEffect
+              console.log('✅ Déconnexion réussie');
+              
             } catch (error) {
               console.error('❌ Erreur déconnexion:', error);
               Alert.alert(
@@ -139,9 +158,11 @@ export const DrawerNavigator = () => {
     toggleDrawer();
   };
 
+  console.log('👤 Drawer - isAuthenticated:', isAuthenticated);
   console.log('👤 Drawer - isStaff:', isStaff);
   console.log('👤 Drawer - user:', user?.email);
   console.log('👤 Drawer - currentView:', currentView);
+  console.log('👤 Drawer - isLoading:', isLoading);
 
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
@@ -186,30 +207,48 @@ export const DrawerNavigator = () => {
               <Text style={[styles.menuTitle, { color: colors.text, marginBottom: spacing.xs }]}>
                 📖 SecureLibrary
               </Text>
-              {user && (
+              {user ? (
+                <View style={styles.userInfoContainer}>
+                  <Text style={[styles.userName, { color: colors.text, fontWeight: '600' }]}>
+                    {user.firstName || user.first_name || 'Utilisateur'}
+                  </Text>
+                  <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+                    {user.email || 'Email non disponible'}
+                  </Text>
+                  <View style={styles.badgeContainer}>
+                    {isStaff && (
+                      <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
+                        <Text style={[styles.badgeText, { color: colors.primary }]}>
+                          👑 Admin
+                        </Text>
+                      </View>
+                    )}
+                    {isPendingApproval && (
+                      <View style={[styles.badge, { backgroundColor: colors.warning + '20' }]}>
+                        <Text style={[styles.badgeText, { color: colors.warning }]}>
+                          ⏳ En attente
+                        </Text>
+                      </View>
+                    )}
+                    {!isStaff && !isPendingApproval && (
+                      <View style={[styles.badge, { backgroundColor: colors.success + '20' }]}>
+                        <Text style={[styles.badgeText, { color: colors.success }]}>
+                          👤 Utilisateur
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              ) : (
                 <View style={styles.userInfoContainer}>
                   <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
-                    {user.email || 'Utilisateur'}
+                    Chargement...
                   </Text>
-                  {isStaff && (
-                    <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
-                      <Text style={[styles.badgeText, { color: colors.primary }]}>
-                        Admin
-                      </Text>
-                    </View>
-                  )}
-                  {isPendingApproval && (
-                    <View style={[styles.badge, { backgroundColor: colors.warning + '20' }]}>
-                      <Text style={[styles.badgeText, { color: colors.warning }]}>
-                        En attente
-                      </Text>
-                    </View>
-                  )}
                 </View>
               )}
             </View>
             
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
             {/* Menu items */}
             <TouchableOpacity 
@@ -377,16 +416,27 @@ const styles = StyleSheet.create({
     paddingLeft: 8,
     marginTop: 4,
   },
+  userName: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
   userEmail: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     marginBottom: 4,
   },
+  badgeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 2,
+  },
   badge: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 12,
+    marginRight: 6,
     marginTop: 2,
   },
   badgeText: {
@@ -395,7 +445,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(0,0,0,0.1)',
     marginVertical: 12,
     marginHorizontal: 8,
   },
