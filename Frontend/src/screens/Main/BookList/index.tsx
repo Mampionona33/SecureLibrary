@@ -24,19 +24,41 @@ const BookListScreen = ({ navigation }: Props) => {
   const [localBooks, setLocalBooks] = useState<Set<string>>(new Set());
   const [isOnline, setIsOnline] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // ✅ Vérifier les fichiers locaux (amélioré)
+  const checkLocalFiles = useCallback(async () => {
+    console.log('🔍 Vérification des fichiers locaux...');
+    const localSet = new Set<string>();
+    
+    for (const book of books) {
+      try {
+        const fileName = `${book.id}.pdf`;
+        const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
+        const exists = await RNBlobUtil.fs.exists(localPath);
+        if (exists) {
+          localSet.add(book.id);
+          console.log('✅ Livre trouvé en local:', book.title);
+        }
+      } catch (error) {
+        console.error('❌ Erreur vérification:', book.title, error);
+      }
+    }
+    
+    console.log('📚 Livres locaux:', localSet.size);
+    setLocalBooks(localSet);
+    return localSet;
+  }, [books]);
 
   // ✅ Vérifier la connexion et charger les livres
   useEffect(() => {
     const init = async () => {
-      // Vérifier la connexion
       const netInfo = await NetInfo.fetch();
       setIsOnline(netInfo.isConnected ?? true);
 
-      // Charger les livres uniquement si en ligne
       if (netInfo.isConnected) {
         console.log('📡 En ligne - Chargement des livres...');
         try {
-          // Si admin/staff, charger tous les livres, sinon seulement les actifs
           if (isStaff) {
             await fetchBooks(true);
           } else {
@@ -50,17 +72,16 @@ const BookListScreen = ({ navigation }: Props) => {
         console.log('📡 Hors-ligne - utilisation du cache');
       }
 
-      // Vérifier les fichiers locaux
+      // ✅ TOUJOURS vérifier les fichiers locaux après chargement
       await checkLocalFiles();
+      setIsInitialLoad(false);
     };
 
     init();
 
-    // Écouter les changements de connexion
     const unsubscribe = NetInfo.addEventListener((state) => {
       setIsOnline(state.isConnected ?? true);
       if (state.isConnected) {
-        // Recharger quand la connexion revient
         console.log('📡 Connexion rétablie - Rechargement...');
         if (isStaff) {
           fetchBooks(true);
@@ -68,25 +89,20 @@ const BookListScreen = ({ navigation }: Props) => {
           fetchActiveBooks();
         }
         fetchCategories();
+        // ✅ Re-vérifier les fichiers locaux
+        setTimeout(() => checkLocalFiles(), 500);
       }
     });
 
     return () => unsubscribe();
   }, []);
 
-  // ✅ Vérifier quels livres sont déjà téléchargés
-  const checkLocalFiles = async () => {
-    const localSet = new Set<string>();
-    for (const book of books) {
-      const fileName = `${book.id}.pdf`;
-      const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
-      const exists = await RNBlobUtil.fs.exists(localPath);
-      if (exists) {
-        localSet.add(book.id);
-      }
+  // ✅ Re-vérifier les fichiers locaux quand les livres changent
+  useEffect(() => {
+    if (!isInitialLoad && books.length > 0) {
+      checkLocalFiles();
     }
-    setLocalBooks(localSet);
-  };
+  }, [books]);
 
   // ✅ Pull to Refresh
   const onRefresh = useCallback(async () => {
@@ -103,18 +119,21 @@ const BookListScreen = ({ navigation }: Props) => {
           await fetchActiveBooks();
         }
         await fetchCategories();
+        // ✅ Forcer la vérification des fichiers locaux
         await checkLocalFiles();
       } else {
-        Alert.alert('Hors-ligne', 'Impossible de rafraîchir sans connexion internet.');
+        // ✅ Même hors-ligne, vérifier les fichiers locaux
+        await checkLocalFiles();
+        Alert.alert('Hors-ligne', 'Affichage des livres disponibles localement.');
       }
     } catch (error) {
       console.error('❌ Erreur refresh:', error);
     } finally {
       setRefreshing(false);
     }
-  }, [isStaff]);
+  }, [isStaff, checkLocalFiles]);
 
-  // ✅ Télécharger un livre via l'endpoint download_pdf
+  // ✅ Télécharger un livre
   const handleDownload = async (book: any) => {
     if (!isOnline) {
       Alert.alert('Hors-ligne', 'Vous devez être connecté à internet pour télécharger un livre.');
@@ -146,6 +165,11 @@ const BookListScreen = ({ navigation }: Props) => {
 
       console.log('✅ Fichier téléchargé:', localPath);
 
+      // ✅ Vérifier que le fichier existe
+      const fileExists = await RNBlobUtil.fs.exists(localPath);
+      console.log('✅ Fichier existe:', fileExists);
+
+      // ✅ Mettre à jour localBooks immédiatement
       setLocalBooks(prev => new Set(prev).add(book.id));
       
       Alert.alert('Succès', `"${book.title}" a été téléchargé avec succès !`);
@@ -159,7 +183,7 @@ const BookListScreen = ({ navigation }: Props) => {
 
     } catch (error) {
       console.error('❌ Erreur téléchargement:', error);
-      Alert.alert('Erreur', 'Impossible de télécharger le livre. Vérifiez que le fichier existe sur le serveur.');
+      Alert.alert('Erreur', 'Impossible de télécharger le livre.');
     } finally {
       setDownloadingBooks(prev => {
         const newSet = new Set(prev);
@@ -169,7 +193,7 @@ const BookListScreen = ({ navigation }: Props) => {
     }
   };
 
-  // ✅ Filtrer les livres selon le mode (online/local)
+  // ✅ Filtrer les livres selon le mode
   const filteredBooks = useMemo(() => {
     let result = books;
     
@@ -190,10 +214,23 @@ const BookListScreen = ({ navigation }: Props) => {
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
       
-      navigation.navigate('BookReader', {
-        bookId: book.id,
-        title: book.title,
-        fileUrl: `file://${localPath}`,
+      // ✅ Vérifier que le fichier existe avant d'ouvrir
+      RNBlobUtil.fs.exists(localPath).then(exists => {
+        if (exists) {
+          navigation.navigate('BookReader', {
+            bookId: book.id,
+            title: book.title,
+            fileUrl: `file://${localPath}`,
+          });
+        } else {
+          // ✅ Si le fichier n'existe pas, le retirer de localBooks
+          setLocalBooks(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(book.id);
+            return newSet;
+          });
+          Alert.alert('Erreur', 'Le fichier local a été supprimé. Veuillez le retélécharger.');
+        }
       });
       return;
     }
@@ -213,22 +250,27 @@ const BookListScreen = ({ navigation }: Props) => {
     );
   };
 
-  const renderBookItem = ({ item }: { item: any }) => (
-    <BookCardUser
-      book={{
-        ...item,
-        isDownloaded: localBooks.has(item.id),
-        isDownloading: downloadingBooks.has(item.id),
-      }}
-      onPress={() => handleBookPress(item)}
-      onDownload={() => handleDownload(item)}
-      showStatus={false}
-      showCategory={true}
-      showYear={true}
-    />
-  );
+  const renderBookItem = ({ item }: { item: any }) => {
+    const isDownloaded = localBooks.has(item.id);
+    const isDownloading = downloadingBooks.has(item.id);
+    
+    return (
+      <BookCardUser
+        book={{
+          ...item,
+          isDownloaded: isDownloaded,
+          isDownloading: isDownloading,
+        }}
+        onPress={() => handleBookPress(item)}
+        onDownload={() => handleDownload(item)}
+        showStatus={false}
+        showCategory={true}
+        showYear={true}
+      />
+    );
+  };
 
-  const isLoading = booksLoading || categoriesLoading;
+  const isLoading = booksLoading || categoriesLoading || isInitialLoad;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
@@ -236,6 +278,9 @@ const BookListScreen = ({ navigation }: Props) => {
         <Text style={styles.headerTitle}>📚 Bibliothèque</Text>
         <Text style={[styles.headerSubtitle, { color: isOnline ? '#22c55e' : '#ef4444' }]}>
           {isOnline ? '🟢 En ligne' : '🔴 Hors-ligne'}
+        </Text>
+        <Text style={[styles.headerSubtitle, { color: '#64748b', fontSize: 12 }]}>
+          📱 Local: {localBooks.size} livre{localBooks.size > 1 ? 's' : ''}
         </Text>
       </View>
 
