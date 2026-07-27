@@ -1,3 +1,4 @@
+// navigation/DrawerNavigator.tsx
 import React, { createContext, useContext, useState, useRef } from 'react';
 import { 
   StyleSheet, 
@@ -7,11 +8,11 @@ import {
   Animated, 
   Dimensions, 
   TouchableWithoutFeedback,
-  Switch // 🟢 Composant Switch Natif
+  Switch
 } from 'react-native';
-import { useAuth } from '@context/AuthContext';
+import { useAuthStore } from '@store/useAuthStore';
 import { useAppTheme } from '@theme/useAppTheme';
-import { useThemeStore } from '@store/useThemeStore'; // 🟢 Import du store du thème
+import { useThemeStore } from '@store/useThemeStore';
 import MainStack from './MainStack';
 import AdminStack from './AdminStack';
 
@@ -27,14 +28,13 @@ export const useCustomDrawer = () => {
 };
 
 export const DrawerNavigator = () => {
-  const { isStaff, logout } = useAuth();
+  const { isStaff, logout } = useAuthStore();
   const [isOpen, setIsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'main' | 'admin'>(isStaff ? 'admin' : 'main');
   
-  // 🟢 Thématisation et état du store
   const { theme, isDark } = useAppTheme();
   const { colors, spacing, radius } = theme;
-  const setThemeMode = useThemeStore((state) => state.setThemeMode); // Méthode pour switcher dans Zustand
+  const setThemeMode = useThemeStore((state) => state.setThemeMode);
 
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
@@ -54,21 +54,20 @@ export const DrawerNavigator = () => {
     }
   };
 
-  // 🟢 Toggle synchrone du mode clair/sombre
   const handleToggleTheme = (value: boolean) => {
     setThemeMode(value ? 'dark' : 'light');
   };
+
+  console.log('👤 isStaff dans Drawer:', isStaff);
 
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
       <View style={styles.container}>
         
-        {/* 1. APPLICATION EN ARRIÈRE-PLAN */}
         <View style={styles.contentArea}>
           {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
         </View>
 
-        {/* 2. OVERLAY ANIMÉ */}
         {isOpen && (
           <TouchableWithoutFeedback onPress={toggleDrawer}>
             <Animated.View 
@@ -83,7 +82,6 @@ export const DrawerNavigator = () => {
           </TouchableWithoutFeedback>
         )}
 
-        {/* 3. TIROIR NAVIGATION */}
         <Animated.View 
           style={[
             styles.drawer, 
@@ -101,7 +99,6 @@ export const DrawerNavigator = () => {
               📖 SecureLibrary
             </Text>
             
-            {/* Navigation principale */}
             <TouchableOpacity 
               style={[
                 styles.menuItem, 
@@ -136,7 +133,6 @@ export const DrawerNavigator = () => {
               </TouchableOpacity>
             )}
 
-            {/* 🟢 BLOC SWITCH DE THÈME (Positionné au-dessus du bouton de déconnexion) */}
             <View style={[
               styles.themeSwitchRow, 
               { 
@@ -144,7 +140,7 @@ export const DrawerNavigator = () => {
                 borderColor: colors.border,
                 borderRadius: radius.md,
                 padding: spacing.md,
-                marginTop: 'auto', // Pousse vers le bas de la page
+                marginTop: 'auto',
                 marginBottom: spacing.md
               }
             ]}>
@@ -164,7 +160,6 @@ export const DrawerNavigator = () => {
               />
             </View>
 
-            {/* Bouton Déconnexion */}
             <TouchableOpacity 
               style={[
                 styles.logoutButton, 
@@ -189,7 +184,6 @@ export const DrawerNavigator = () => {
   );
 };
 
-// 🎨 STYLES STRUCTURÉS
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
