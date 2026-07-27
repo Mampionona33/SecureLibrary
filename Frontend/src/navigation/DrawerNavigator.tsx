@@ -1,5 +1,5 @@
 // navigation/DrawerNavigator.tsx
-import React, { createContext, useContext, useState, useRef } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -8,7 +8,9 @@ import {
   Animated, 
   Dimensions, 
   TouchableWithoutFeedback,
-  Switch
+  Switch,
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import { useAuthStore } from '@store/useAuthStore';
 import { useAppTheme } from '@theme/useAppTheme';
@@ -19,6 +21,7 @@ import AdminStack from './AdminStack';
 const { width } = Dimensions.get('window');
 const DRAWER_WIDTH = width * 0.75;
 
+// Context pour le drawer
 const CustomDrawerContext = createContext<{ toggleDrawer: () => void } | undefined>(undefined);
 
 export const useCustomDrawer = () => {
@@ -28,53 +31,135 @@ export const useCustomDrawer = () => {
 };
 
 export const DrawerNavigator = () => {
-  const { isStaff, logout } = useAuthStore();
+  // États du store
+  const { 
+    isStaff, 
+    logout, 
+    isLoading, 
+    user,
+    isPendingApproval 
+  } = useAuthStore();
+  
   const [isOpen, setIsOpen] = useState(false);
   const [currentView, setCurrentView] = useState<'main' | 'admin'>(isStaff ? 'admin' : 'main');
   
+  // Thème
   const { theme, isDark } = useAppTheme();
-  const { colors, spacing, radius } = theme;
+  const { colors, spacing, radius, typography } = theme;
   const setThemeMode = useThemeStore((state) => state.setThemeMode);
 
+  // Animations
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
+  // Mise à jour de la vue quand le rôle change
+  useEffect(() => {
+    if (isStaff && currentView === 'main') {
+      setCurrentView('admin');
+    } else if (!isStaff && currentView === 'admin') {
+      setCurrentView('main');
+    }
+  }, [isStaff]);
+
+  // Gestion de l'ouverture/fermeture du drawer
   const toggleDrawer = () => {
     if (isOpen) {
+      // Fermeture
       Animated.parallel([
-        Animated.timing(animX, { toValue: -DRAWER_WIDTH, duration: 250, useNativeDriver: true }),
-        Animated.timing(animOpacity, { toValue: 0, duration: 250, useNativeDriver: true }),
+        Animated.timing(animX, { 
+          toValue: -DRAWER_WIDTH, 
+          duration: 250, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(animOpacity, { 
+          toValue: 0, 
+          duration: 250, 
+          useNativeDriver: true 
+        }),
       ]).start(() => setIsOpen(false));
     } else {
+      // Ouverture
       setIsOpen(true);
       Animated.parallel([
-        Animated.timing(animX, { toValue: 0, duration: 250, useNativeDriver: true }),
-        Animated.timing(animOpacity, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.timing(animX, { 
+          toValue: 0, 
+          duration: 250, 
+          useNativeDriver: true 
+        }),
+        Animated.timing(animOpacity, { 
+          toValue: 1, 
+          duration: 250, 
+          useNativeDriver: true 
+        }),
       ]).start();
     }
   };
 
+  // Gestion du thème
   const handleToggleTheme = (value: boolean) => {
     setThemeMode(value ? 'dark' : 'light');
   };
 
-  console.log('👤 isStaff dans Drawer:', isStaff);
+  // Gestion de la déconnexion avec confirmation
+  const handleLogout = () => {
+    Alert.alert(
+      'Déconnexion',
+      'Êtes-vous sûr de vouloir vous déconnecter ?',
+      [
+        { 
+          text: 'Annuler', 
+          style: 'cancel' 
+        },
+        { 
+          text: 'Se déconnecter', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Fermer le drawer avant la déconnexion
+              if (isOpen) toggleDrawer();
+              await logout();
+              // La redirection vers AuthStack se fait automatiquement via RootNavigator
+            } catch (error) {
+              console.error('❌ Erreur déconnexion:', error);
+              Alert.alert(
+                'Erreur',
+                'Une erreur est survenue lors de la déconnexion. Veuillez réessayer.'
+              );
+            }
+          }
+        }
+      ],
+      { cancelable: false }
+    );
+  };
+
+  // Fonction pour changer de vue
+  const handleViewChange = (view: 'main' | 'admin') => {
+    setCurrentView(view);
+    toggleDrawer();
+  };
+
+  console.log('👤 Drawer - isStaff:', isStaff);
+  console.log('👤 Drawer - user:', user?.email);
+  console.log('👤 Drawer - currentView:', currentView);
 
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
       <View style={styles.container}>
         
+        {/* Contenu principal */}
         <View style={styles.contentArea}>
           {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
         </View>
 
+        {/* Overlay quand le drawer est ouvert */}
         {isOpen && (
           <TouchableWithoutFeedback onPress={toggleDrawer}>
             <Animated.View 
               style={[
                 styles.overlay, 
                 { 
-                  backgroundColor: colors.overlay,
+                  backgroundColor: colors.overlay || 'rgba(0,0,0,0.5)',
                   opacity: animOpacity 
                 }
               ]} 
@@ -82,6 +167,7 @@ export const DrawerNavigator = () => {
           </TouchableWithoutFeedback>
         )}
 
+        {/* Drawer */}
         <Animated.View 
           style={[
             styles.drawer, 
@@ -95,21 +181,55 @@ export const DrawerNavigator = () => {
         >
           <View style={[styles.drawerContent, { padding: spacing.lg, paddingTop: spacing.xl * 1.5 }]}>
             
-            <Text style={[styles.menuTitle, { color: colors.text, marginBottom: spacing.xl }]}>
-              📖 SecureLibrary
-            </Text>
+            {/* En-tête avec info utilisateur */}
+            <View style={styles.headerContainer}>
+              <Text style={[styles.menuTitle, { color: colors.text, marginBottom: spacing.xs }]}>
+                📖 SecureLibrary
+              </Text>
+              {user && (
+                <View style={styles.userInfoContainer}>
+                  <Text style={[styles.userEmail, { color: colors.textSecondary }]}>
+                    {user.email || 'Utilisateur'}
+                  </Text>
+                  {isStaff && (
+                    <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
+                      <Text style={[styles.badgeText, { color: colors.primary }]}>
+                        Admin
+                      </Text>
+                    </View>
+                  )}
+                  {isPendingApproval && (
+                    <View style={[styles.badge, { backgroundColor: colors.warning + '20' }]}>
+                      <Text style={[styles.badgeText, { color: colors.warning }]}>
+                        En attente
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
             
+            <View style={styles.divider} />
+
+            {/* Menu items */}
             <TouchableOpacity 
               style={[
                 styles.menuItem, 
-                { borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-                currentView === 'main' && { backgroundColor: colors.surfaceVariant }
+                { 
+                  borderRadius: radius.md, 
+                  paddingVertical: spacing.md, 
+                  paddingHorizontal: spacing.sm,
+                  marginBottom: spacing.xs 
+                },
+                currentView === 'main' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
               ]} 
-              onPress={() => { setCurrentView('main'); toggleDrawer(); }}
+              onPress={() => handleViewChange('main')}
             >
               <Text style={[
                 styles.menuItemText, 
-                { color: currentView === 'main' ? colors.primary : colors.textSecondary }
+                { 
+                  color: currentView === 'main' ? colors.primary : colors.textSecondary 
+                }
               ]}>
                 📚 Ma Bibliothèque
               </Text>
@@ -119,28 +239,38 @@ export const DrawerNavigator = () => {
               <TouchableOpacity 
                 style={[
                   styles.menuItem, 
-                  { borderRadius: radius.md, paddingVertical: spacing.md, paddingHorizontal: spacing.sm },
-                  currentView === 'admin' && { backgroundColor: colors.surfaceVariant }
+                  { 
+                    borderRadius: radius.md, 
+                    paddingVertical: spacing.md, 
+                    paddingHorizontal: spacing.sm,
+                    marginBottom: spacing.xs 
+                  },
+                  currentView === 'admin' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
                 ]} 
-                onPress={() => { setCurrentView('admin'); toggleDrawer(); }}
+                onPress={() => handleViewChange('admin')}
               >
                 <Text style={[
                   styles.menuItemText, 
-                  { color: currentView === 'admin' ? colors.primary : colors.textSecondary }
+                  { 
+                    color: currentView === 'admin' ? colors.primary : colors.textSecondary 
+                  }
                 ]}>
                   ⚙️ Panel Console Admin
                 </Text>
               </TouchableOpacity>
             )}
 
+            {/* Espace flexible */}
+            <View style={{ flex: 1 }} />
+
+            {/* Theme switch */}
             <View style={[
               styles.themeSwitchRow, 
               { 
-                backgroundColor: colors.inputBackground, 
+                backgroundColor: colors.inputBackground || colors.surfaceVariant, 
                 borderColor: colors.border,
                 borderRadius: radius.md,
                 padding: spacing.md,
-                marginTop: 'auto',
                 marginBottom: spacing.md
               }
             ]}>
@@ -152,14 +282,18 @@ export const DrawerNavigator = () => {
               </View>
 
               <Switch
-                trackColor={{ false: colors.border, true: colors.primary }}
-                thumbColor={colors.surface}
-                ios_backgroundColor={colors.border}
+                trackColor={{ 
+                  false: colors.border || '#ccc', 
+                  true: colors.primary 
+                }}
+                thumbColor={colors.surface || '#fff'}
+                ios_backgroundColor={colors.border || '#ccc'}
                 onValueChange={handleToggleTheme}
                 value={isDark}
               />
             </View>
 
+            {/* Bouton de déconnexion */}
             <TouchableOpacity 
               style={[
                 styles.logoutButton, 
@@ -167,14 +301,25 @@ export const DrawerNavigator = () => {
                   backgroundColor: colors.danger + '20', 
                   borderRadius: radius.md, 
                   padding: spacing.md,
-                  marginBottom: spacing.lg 
+                  marginBottom: spacing.lg,
+                  opacity: isLoading ? 0.7 : 1,
                 }
               ]} 
-              onPress={async () => await logout()}
+              onPress={handleLogout}
+              disabled={isLoading}
             >
-              <Text style={[styles.logoutText, { color: colors.danger }]}>
-                🚪 Déconnexion
-              </Text>
+              {isLoading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="small" color={colors.danger} />
+                  <Text style={[styles.logoutText, { color: colors.danger, marginLeft: spacing.xs }]}>
+                    Déconnexion...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={[styles.logoutText, { color: colors.danger }]}>
+                  🚪 Déconnexion
+                </Text>
+              )}
             </TouchableOpacity>
             
           </View>
@@ -195,29 +340,67 @@ const styles = StyleSheet.create({
   },
   overlay: {
     position: 'absolute',
-    top: 0, bottom: 0, left: 0, right: 0,
+    top: 0, 
+    bottom: 0, 
+    left: 0, 
+    right: 0,
     zIndex: 10,
   },
   drawer: {
     position: 'absolute',
-    top: 0, bottom: 0, left: 0,
+    top: 0, 
+    bottom: 0, 
+    left: 0,
     zIndex: 20,
     borderRightWidth: 1,
     elevation: 5,
     shadowColor: '#000',
     shadowOpacity: 0.25,
     shadowRadius: 5,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
   },
   drawerContent: { 
     flex: 1,
+  },
+  headerContainer: {
+    marginBottom: 8,
   },
   menuTitle: { 
     fontSize: 22, 
     fontWeight: 'bold', 
     paddingLeft: 8 
   },
+  userInfoContainer: {
+    paddingLeft: 8,
+    marginTop: 4,
+  },
+  userEmail: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    marginVertical: 12,
+    marginHorizontal: 8,
+  },
   menuItem: { 
-    marginBottom: 8 
+    marginBottom: 4,
   },
   menuItemText: { 
     fontSize: 16, 
@@ -238,12 +421,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   logoutButton: { 
-    alignItems: 'center' 
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 48,
   },
   logoutText: { 
     fontWeight: 'bold', 
     fontSize: 16 
-  }
+  },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
 
 export default DrawerNavigator;
