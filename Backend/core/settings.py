@@ -35,7 +35,8 @@ ALLOWED_HOSTS = [
     'localhost',
     '127.0.0.1',
     '0.0.0.0',
-    '192.168.10.102'
+    '192.168.10.102',
+    'https://spicy-kiwis-tease.loca.lt'
 ]
 
 
