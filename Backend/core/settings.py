@@ -36,7 +36,7 @@ ALLOWED_HOSTS = [
     '127.0.0.1',
     '0.0.0.0',
     '192.168.10.102',
-    'https://shaggy-flies-tickle.loca.lt'
+    '*'
 ]
 
 
