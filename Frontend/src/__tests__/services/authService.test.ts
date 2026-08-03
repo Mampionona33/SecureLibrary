@@ -1,25 +1,42 @@
 // Frontend/src/__tests__/services/authService.test.ts
 
+jest.mock('@env', () => ({
+  API_URL: 'http://127.0.0.1:8000/api',
+}));
+
 import { authService } from '@services/authService';
 import { TokenResponse, UserProfileResponse } from '../types/auth';
+import { API_URL } from '@env';
 import * as Keychain from 'react-native-keychain';
 
 // Mocks
 jest.mock('react-native-keychain');
 
 describe('authService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    global.fetch = jest.fn();
+  });
+
   test('should login successfully', async () => {
-    // Arrange
     const email = 'test@example.com';
     const password = 'password';
 
-    // Mock the fetch function
-    const mockFetch = jest.fn().mockResolvedValue({
-      json: jest.fn().mockResolvedValue({
-        access: 'mockedToken',
-        refresh: 'mockedRefreshToken',
-      }),
-    });
+    const mockFetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          access: 'mockedToken',
+          refresh: 'mockedRefreshToken',
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: jest
+          .fn()
+          .mockResolvedValue({ id: '1', email: 'test@example.com' }),
+      });
 
     global.fetch = mockFetch;
 
@@ -34,9 +51,24 @@ describe('authService', () => {
 
     // Verify that the tokens were stored in Keychain
     expect(Keychain.setGenericPassword).toHaveBeenCalledTimes(3);
-    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(1, 'user_session', 'mockedToken', { service: 'auth_token' });
-    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(2, 'user_refresh', 'mockedRefreshToken', { service: 'refresh_token' });
-    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(3, 'user_session', JSON.stringify({ access: 'mockedToken', refresh: 'mockedRefreshToken' }), { service: 'user_session' });
+    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(
+      1,
+      'user_session',
+      'mockedToken',
+      { service: 'auth_token' },
+    );
+    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(
+      2,
+      'user_refresh',
+      'mockedRefreshToken',
+      { service: 'refresh_token' },
+    );
+    expect(Keychain.setGenericPassword).toHaveBeenNthCalledWith(
+      3,
+      'user_session',
+      JSON.stringify({ access: 'mockedToken', refresh: 'mockedRefreshToken' }),
+      { service: 'user_session' },
+    );
   });
 
   // Add more test cases for other functions in authService
@@ -113,22 +145,23 @@ describe('authService', () => {
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
       'user_session',
       newAccessToken,
-      { service: 'auth_token' }
+      { service: 'auth_token' },
     );
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
       'user_refresh',
       newRefreshToken,
-      { service: 'refresh_token' }
+      { service: 'refresh_token' },
     );
     expect(Keychain.setGenericPassword).toHaveBeenCalledWith(
       'user_session',
       JSON.stringify({ access: newAccessToken, refresh: newRefreshToken }),
-      { service: 'user_session' }
+      { service: 'user_session' },
     );
   });
 
   test('should return null when refresh token is missing', async () => {
     (Keychain.getGenericPassword as jest.Mock).mockResolvedValueOnce(null);
+    global.fetch = jest.fn();
 
     const result = await authService.refreshAccessToken();
 
@@ -173,10 +206,9 @@ describe('authService', () => {
     };
     const mockUserProfile = { id: '1', user: { email: 'test@example.com' } };
 
-    (Keychain.getGenericPassword as jest.Mock)
-      .mockResolvedValueOnce({
-        password: JSON.stringify(mockSession),
-      });
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValueOnce({
+      password: JSON.stringify(mockSession),
+    });
 
     const mockFetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -231,17 +263,22 @@ describe('authService', () => {
     const newAccessToken = 'new-access';
     const mockUserProfile = { id: '1', user: { email: 'test@example.com' } };
 
-    (Keychain.getGenericPassword as jest.Mock)
-      .mockResolvedValueOnce({
-        password: JSON.stringify(mockSession),
-      });
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValueOnce({
+      password: JSON.stringify(mockSession),
+    });
 
     // First fetchUserProfile fails
-    const mockFetch = jest.fn()
+    const mockFetch = jest
+      .fn()
       .mockResolvedValueOnce({ ok: false }) // profile fails
       .mockResolvedValueOnce({
         ok: true,
-        json: jest.fn().mockResolvedValue({ access: newAccessToken, refresh: 'new-refresh' }),
+        json: jest
+          .fn()
+          .mockResolvedValue({
+            access: newAccessToken,
+            refresh: 'new-refresh',
+          }),
       }) // refresh
       .mockResolvedValueOnce({
         ok: true,
@@ -251,10 +288,9 @@ describe('authService', () => {
     global.fetch = mockFetch;
 
     // Mock Keychain refresh token retrieval
-    (Keychain.getGenericPassword as jest.Mock)
-      .mockResolvedValueOnce({
-        password: 'valid-refresh',
-      });
+    (Keychain.getGenericPassword as jest.Mock).mockResolvedValueOnce({
+      password: 'valid-refresh',
+    });
 
     const result = await authService.restoreSession();
 

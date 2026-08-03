@@ -1,5 +1,12 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Image,
+} from 'react-native';
 import { pick } from '@react-native-documents/picker';
 import RNBlobUtil from 'react-native-blob-util';
 import ImagePicker from 'react-native-image-crop-picker';
@@ -7,7 +14,9 @@ import ImagePicker from 'react-native-image-crop-picker';
 type FileType = 'pdf' | 'image' | 'all';
 
 interface FilePickerProps {
-  onFileSelected: (file: { uri: string; name: string; type?: string } | null) => void;
+  onFileSelected: (
+    file: { uri: string; name: string; type?: string } | null,
+  ) => void;
   selectedFile: { uri: string; name: string; type?: string } | null;
   label: string;
   placeholder: string;
@@ -22,8 +31,8 @@ interface FilePickerProps {
 const FilePickerComponent: React.FC<FilePickerProps> = ({
   onFileSelected,
   selectedFile,
-  label,
-  placeholder,
+  label = 'Fichier PDF',
+  placeholder = 'Choisir un fichier PDF',
   testID = 'file-picker',
   type = 'all',
   onBeforeOpen,
@@ -50,7 +59,9 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
 
         if (result) {
           const fileName = result.name || 'document.pdf';
-          const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName}`;
+          const destPath = `${
+            RNBlobUtil.fs.dirs.CacheDir
+          }/${Date.now()}_${fileName}`;
           await RNBlobUtil.fs.cp(result.uri, destPath);
           onFileSelected({
             uri: destPath,
@@ -88,7 +99,9 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
         if (image) {
           const fileName = image.filename || 'cover.jpg';
           // Copier l'image recadrée dans le cache pour l'upload
-          const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName}`;
+          const destPath = `${
+            RNBlobUtil.fs.dirs.CacheDir
+          }/${Date.now()}_${fileName}`;
           await RNBlobUtil.fs.cp(image.path, destPath);
           onFileSelected({
             uri: destPath,
@@ -108,7 +121,9 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
 
         if (result) {
           const fileName = result.name || 'image.jpg';
-          const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName}`;
+          const destPath = `${
+            RNBlobUtil.fs.dirs.CacheDir
+          }/${Date.now()}_${fileName}`;
           await RNBlobUtil.fs.cp(result.uri, destPath);
           onFileSelected({
             uri: destPath,
@@ -126,7 +141,9 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
 
       if (result) {
         const fileName = result.name || 'file';
-        const destPath = `${RNBlobUtil.fs.dirs.CacheDir}/${Date.now()}_${fileName}`;
+        const destPath = `${
+          RNBlobUtil.fs.dirs.CacheDir
+        }/${Date.now()}_${fileName}`;
         await RNBlobUtil.fs.cp(result.uri, destPath);
         onFileSelected({
           uri: destPath,
@@ -156,7 +173,9 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} testID="file-picker-label">
+        {label}
+      </Text>
       <TouchableOpacity
         testID={testID}
         style={styles.button}
@@ -174,12 +193,18 @@ const FilePickerComponent: React.FC<FilePickerProps> = ({
             <Text style={styles.text} numberOfLines={1}>
               {selectedFile.name}
             </Text>
-            <TouchableOpacity onPress={removeFile} style={styles.removeButton}>
+            <TouchableOpacity
+              testID="file-picker-clear"
+              onPress={removeFile}
+              style={styles.removeButton}
+            >
               <Text style={styles.removeText}>✕</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <Text style={styles.placeholderText}>{placeholder}</Text>
+          <Text style={styles.placeholderText} testID="file-picker-placeholder">
+            {placeholder}
+          </Text>
         )}
       </TouchableOpacity>
     </View>

@@ -39,8 +39,8 @@ jest.mock('@api/interceptors', () => ({
   responseInterceptor: jest.fn(),
 }));
 
-// Importer le module
 import { apiClient } from '@api/client';
+import { MAIN_API_BASE_URL } from '@api/config';
 
 describe('apiClient', () => {
   it('should have correct base URL', () => {
@@ -66,10 +66,13 @@ describe('apiClient', () => {
 
   it('should call axios.create with correct config', () => {
     expect(axios.create).toHaveBeenCalledWith({
-      baseURL: 'http://127.0.0.1:8000/api',
+      baseURL: MAIN_API_BASE_URL,
       headers: {
         'Content-Type': 'application/json',
       },
+      timeout: 300000,
+      maxContentLength: 52428800,
+      maxBodyLength: 52428800,
     });
   });
 });

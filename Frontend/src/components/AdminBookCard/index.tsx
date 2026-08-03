@@ -53,7 +53,7 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
             style: 'destructive',
             onPress: () => onDelete(book.id, book.title),
           },
-        ]
+        ],
       );
     }
   };
@@ -92,7 +92,9 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
                 },
               ]}
             >
-              <Text style={[styles.coverPlaceholderText, { color: colors.primary }]}>
+              <Text
+                style={[styles.coverPlaceholderText, { color: colors.primary }]}
+              >
                 📚
               </Text>
             </View>
@@ -169,6 +171,7 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
             </Text>
 
             <TouchableOpacity
+              testID="action-edit"
               style={[
                 styles.modalAction,
                 {
@@ -188,6 +191,7 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
 
             {onArchive && (
               <TouchableOpacity
+                testID="action-archive"
                 style={[
                   styles.modalAction,
                   {
@@ -197,7 +201,9 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
                 ]}
                 onPress={handleArchive}
               >
-                <Text style={[styles.modalActionText, { color: colors.warning }]}>
+                <Text
+                  style={[styles.modalActionText, { color: colors.warning }]}
+                >
                   {book.status === 'active' ? '📁 Archiver' : '📂 Désarchiver'}
                 </Text>
               </TouchableOpacity>
@@ -205,6 +211,7 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
 
             {onDelete && (
               <TouchableOpacity
+                testID="action-delete"
                 style={[
                   styles.modalAction,
                   {
@@ -213,7 +220,9 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
                 ]}
                 onPress={handleDelete}
               >
-                <Text style={[styles.modalActionText, { color: colors.danger }]}>
+                <Text
+                  style={[styles.modalActionText, { color: colors.danger }]}
+                >
                   🗑️ Supprimer
                 </Text>
               </TouchableOpacity>
@@ -223,7 +232,12 @@ const AdminBookCard: React.FC<AdminBookCardProps> = ({
               style={[styles.modalCancel, { borderTopColor: colors.border }]}
               onPress={() => setModalVisible(false)}
             >
-              <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>
+              <Text
+                style={[
+                  styles.modalCancelText,
+                  { color: colors.textSecondary },
+                ]}
+              >
                 Annuler
               </Text>
             </TouchableOpacity>

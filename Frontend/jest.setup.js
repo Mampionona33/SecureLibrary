@@ -7,7 +7,9 @@ beforeAll(() => {
   console.error = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      args[0].includes('The current testing environment is not configured to support act(...)')
+      args[0].includes(
+        'The current testing environment is not configured to support act(...)',
+      )
     ) {
       return;
     }
@@ -31,9 +33,28 @@ jest.mock('react-native-mmkv', () => ({
 }));
 
 jest.mock('react-native-keychain', () => ({
+  ACCESSIBLE: {
+    WHEN_UNLOCKED_THIS_DEVICE_ONLY: 'WHEN_UNLOCKED_THIS_DEVICE_ONLY',
+  },
+  ACCESS_CONTROL: {
+    USER_PRESENCE: 'USER_PRESENCE',
+  },
   getGenericPassword: jest.fn().mockResolvedValue(false),
   setGenericPassword: jest.fn().mockResolvedValue(true),
   resetGenericPassword: jest.fn().mockResolvedValue(true),
+}));
+
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn().mockResolvedValue({ isConnected: true }),
+  addEventListener: jest.fn().mockImplementation(() => jest.fn()),
+}));
+
+jest.mock('@react-native-documents/picker', () => ({
+  pick: jest.fn(),
+}));
+
+jest.mock('react-native-image-crop-picker', () => ({
+  openPicker: jest.fn(),
 }));
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -53,6 +74,8 @@ jest.mock('react-native-blob-util', () => ({
     dirs: {
       CacheDir: '/cache',
     },
+    cp: jest.fn().mockResolvedValue(true),
+    unlink: jest.fn().mockResolvedValue(true),
   },
 }));
 

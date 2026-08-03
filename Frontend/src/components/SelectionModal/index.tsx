@@ -83,7 +83,8 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
   });
 
   const getItemLabel = (item: any): string => {
-    if (typeof item === 'string' || typeof item === 'number') return String(item);
+    if (typeof item === 'string' || typeof item === 'number')
+      return String(item);
     return item.label || item[labelKey] || item[displayKey] || String(item);
   };
 
@@ -105,11 +106,12 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
     return false;
   };
 
-  const filteredData = normalizedData.filter((item) =>
-    getItemLabel(item).toLowerCase().includes(search.toLowerCase())
+  const filteredData = normalizedData.filter(item =>
+    getItemLabel(item).toLowerCase().includes(search.toLowerCase()),
   );
 
-  const defaultKeyExtractor = (item: any, index: number) => getItemId(item, index);
+  const defaultKeyExtractor = (item: any, index: number) =>
+    getItemId(item, index);
 
   const defaultRenderItem = (item: any, isSelected: boolean) => (
     <View
@@ -138,7 +140,10 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
 
   const renderEmpty = () => (
     <View style={{ padding: spacing.lg, alignItems: 'center' }}>
-      <Text style={{ color: colors.textSecondary, textAlign: 'center' }}>
+      <Text
+        style={{ color: colors.textSecondary, textAlign: 'center' }}
+        testID="selection-empty-message"
+      >
         {emptyMessage}
       </Text>
     </View>
@@ -175,6 +180,7 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
               {/* Header */}
               <View style={[styles.header, { marginBottom: spacing.md }]}>
                 <Text
+                  testID="selection-modal-title"
                   style={{
                     fontSize: 18,
                     fontWeight: 'bold',
@@ -249,6 +255,7 @@ const SelectionModal: React.FC<SelectionModalProps> = ({
                     const isSelected = isItemSelected(item, index);
                     return (
                       <TouchableOpacity
+                        testID={`selection-item-${item.id}`}
                         onPress={() => {
                           onSelect(item);
                           onClose();

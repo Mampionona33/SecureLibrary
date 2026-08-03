@@ -26,39 +26,36 @@ const mockAxiosInstance = {
   options: jest.fn(),
 };
 
-const mockCreate = jest.fn().mockReturnValue(mockAxiosInstance);
-
-const axios = {
-  create: mockCreate,
-  get: jest.fn(),
-  post: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn(),
-  patch: jest.fn(),
-  request: jest.fn(),
-  head: jest.fn(),
-  options: jest.fn(),
-  defaults: {
-    headers: {
-      common: {},
-    },
+const axios: any = jest.fn().mockResolvedValue({});
+axios.create = jest.fn().mockReturnValue(mockAxiosInstance);
+axios.get = jest.fn();
+axios.post = jest.fn();
+axios.put = jest.fn();
+axios.delete = jest.fn();
+axios.patch = jest.fn();
+axios.request = jest.fn();
+axios.head = jest.fn();
+axios.options = jest.fn();
+axios.defaults = {
+  headers: {
+    common: {},
   },
-  interceptors: {
-    request: {
-      use: jest.fn(),
-    },
-    response: {
-      use: jest.fn(),
-    },
+};
+axios.interceptors = {
+  request: {
+    use: mockRequestUse,
+  },
+  response: {
+    use: mockResponseUse,
   },
 };
 
 // Exporter les mocks pour les tests
-(axios as any).__mocks = {
+axios.__mocks = {
   mockRequestUse,
   mockResponseUse,
   mockAxiosInstance,
-  mockCreate,
+  mockCreate: axios.create,
 };
 
 export default axios;

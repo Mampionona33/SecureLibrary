@@ -1,29 +1,31 @@
 import React from 'react';
 import ReactTestRenderer from 'react-test-renderer';
 import { Alert } from 'react-native';
-import DocumentPicker from 'react-native-document-picker';
+import { pick } from '@react-native-documents/picker';
 import FilePicker from '@components/FilePicker';
 import { useAppTheme } from '@theme/useAppTheme';
 
 // Mocks
-jest.mock('react-native', () => {
-  const React = require('react');
-  return {
-    View: 'View',
-    Text: 'Text',
-    TouchableOpacity: 'TouchableOpacity',
-    StyleSheet: { create: jest.fn(() => ({})) },
-    Alert: { alert: jest.fn() },
-    TurboModuleRegistry: { getEnforcing: jest.fn(), get: jest.fn() },
-    NativeModules: { DevMenu: null },
-    Platform: { OS: 'ios', select: jest.fn((obj) => obj.ios || obj.default) },
-  };
-}, { virtual: true });
+jest.mock(
+  'react-native',
+  () => {
+    const React = require('react');
+    return {
+      View: 'View',
+      Text: 'Text',
+      TouchableOpacity: 'TouchableOpacity',
+      StyleSheet: { create: jest.fn(() => ({})) },
+      Alert: { alert: jest.fn() },
+      TurboModuleRegistry: { getEnforcing: jest.fn(), get: jest.fn() },
+      NativeModules: { DevMenu: null },
+      Platform: { OS: 'ios', select: jest.fn(obj => obj.ios || obj.default) },
+    };
+  },
+  { virtual: true },
+);
 
-jest.mock('react-native-document-picker', () => ({
-  pickSingle: jest.fn(),
-  types: { pdf: 'application/pdf' },
-  isCancel: jest.fn(),
+jest.mock('@react-native-documents/picker', () => ({
+  pick: jest.fn(),
 }));
 
 jest.mock('@theme/useAppTheme', () => ({
@@ -87,7 +89,7 @@ describe('FilePicker', () => {
     jest.clearAllMocks();
     mockOnFileSelected.mockReset();
     Alert.alert = jest.fn();
-    (DocumentPicker.isCancel as jest.Mock).mockReturnValue(false);
+    (pick as jest.Mock).mockReset();
   });
 
   // ===== RENDER TESTS =====
@@ -96,7 +98,7 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
       expect(instance).toBeDefined();
@@ -107,14 +109,11 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
-      const root = instance.root;
-      const label = root.find(
-        (el: any) => el.props.children && typeof el.props.children === 'string' && el.props.children === 'Fichier PDF'
-      );
-      expect(label).toBeDefined();
+      const label = instance.root.findByProps({ testID: 'file-picker-label' });
+      expect(label.props.children).toBe('Fichier PDF');
     });
 
     it('devrait afficher un libellé personnalisé', async () => {
@@ -122,12 +121,18 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} label={customLabel} />
+          <FilePicker
+            onFileSelected={mockOnFileSelected}
+            label={customLabel}
+          />,
         );
       });
       const root = instance.root;
       const label = root.find(
-        (el: any) => el.props.children && typeof el.props.children === 'string' && el.props.children === customLabel
+        (el: any) =>
+          el.props.children &&
+          typeof el.props.children === 'string' &&
+          el.props.children === customLabel,
       );
       expect(label).toBeDefined();
     });
@@ -136,14 +141,13 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
-      const root = instance.root;
-      const placeholder = root.find(
-        (el: any) => el.props.children && typeof el.props.children === 'string' && el.props.children === 'Choisir un fichier PDF'
-      );
-      expect(placeholder).toBeDefined();
+      const placeholder = instance.root.findByProps({
+        testID: 'file-picker-placeholder',
+      });
+      expect(placeholder.props.children).toBe('Choisir un fichier PDF');
     });
 
     it('devrait afficher un placeholder personnalisé', async () => {
@@ -151,12 +155,18 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} placeholder={customPlaceholder} />
+          <FilePicker
+            onFileSelected={mockOnFileSelected}
+            placeholder={customPlaceholder}
+          />,
         );
       });
       const root = instance.root;
       const placeholder = root.find(
-        (el: any) => el.props.children && typeof el.props.children === 'string' && el.props.children === customPlaceholder
+        (el: any) =>
+          el.props.children &&
+          typeof el.props.children === 'string' &&
+          el.props.children === customPlaceholder,
       );
       expect(placeholder).toBeDefined();
     });
@@ -166,12 +176,18 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} selectedFile={selectedFile} />
+          <FilePicker
+            onFileSelected={mockOnFileSelected}
+            selectedFile={selectedFile}
+          />,
         );
       });
       const root = instance.root;
       const fileName = root.find(
-        (el: any) => el.props.children && typeof el.props.children === 'string' && el.props.children === 'document.pdf'
+        (el: any) =>
+          el.props.children &&
+          typeof el.props.children === 'string' &&
+          el.props.children === 'document.pdf',
       );
       expect(fileName).toBeDefined();
     });
@@ -181,7 +197,10 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} selectedFile={selectedFile} />
+          <FilePicker
+            onFileSelected={mockOnFileSelected}
+            selectedFile={selectedFile}
+          />,
         );
       });
       const root = instance.root;
@@ -192,16 +211,15 @@ describe('FilePicker', () => {
 
   // ===== INTERACTIONS =====
   describe('Interactions', () => {
-    it('devrait appeler DocumentPicker.pickSingle lors du clic sur le bouton', async () => {
-      (DocumentPicker.pickSingle as jest.Mock).mockResolvedValue({
-        uri: 'file://test.pdf',
-        name: 'document.pdf',
-      });
+    it('devrait appeler pick lors du clic sur le bouton', async () => {
+      (pick as jest.Mock).mockResolvedValue([
+        { uri: 'file://test.pdf', name: 'document.pdf' },
+      ]);
 
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
       const root = instance.root;
@@ -210,24 +228,22 @@ describe('FilePicker', () => {
 
       await ReactTestRenderer.act(async () => {
         press(pickerButton);
-        // Attendre la résolution de la promesse
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 350));
       });
 
-      expect(DocumentPicker.pickSingle).toHaveBeenCalledWith({
-        type: [DocumentPicker.types.pdf],
-        presentationStyle: 'fullScreen',
+      expect(pick).toHaveBeenCalledWith({
+        mode: 'import',
       });
     });
 
     it('devrait appeler onFileSelected avec le fichier sélectionné', async () => {
       const mockFile = { uri: 'file://test.pdf', name: 'document.pdf' };
-      (DocumentPicker.pickSingle as jest.Mock).mockResolvedValue(mockFile);
+      (pick as jest.Mock).mockResolvedValue([mockFile]);
 
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
       const root = instance.root;
@@ -235,23 +251,24 @@ describe('FilePicker', () => {
 
       await ReactTestRenderer.act(async () => {
         press(pickerButton);
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 350));
       });
 
-      expect(mockOnFileSelected).toHaveBeenCalledWith({
-        uri: mockFile.uri,
-        name: mockFile.name,
-      });
+      expect(mockOnFileSelected).toHaveBeenCalledWith(
+        expect.objectContaining({
+          name: mockFile.name,
+        }),
+      );
+      expect(mockOnFileSelected.mock.calls[0][0].uri).toContain('document.pdf');
     });
 
-    it('devrait gérer l\'annulation de la sélection', async () => {
-      (DocumentPicker.pickSingle as jest.Mock).mockRejectedValue(new Error('User cancelled'));
-      (DocumentPicker.isCancel as jest.Mock).mockReturnValue(true);
+    it("devrait gérer l'annulation de la sélection", async () => {
+      (pick as jest.Mock).mockRejectedValue({ code: 'CANCELED' });
 
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
       const root = instance.root;
@@ -259,22 +276,21 @@ describe('FilePicker', () => {
 
       await ReactTestRenderer.act(async () => {
         press(pickerButton);
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 350));
       });
 
       expect(mockOnFileSelected).not.toHaveBeenCalled();
       expect(Alert.alert).not.toHaveBeenCalled();
     });
 
-    it('devrait afficher une alerte en cas d\'erreur de sélection', async () => {
+    it("devrait afficher une alerte en cas d'erreur de sélection", async () => {
       const error = new Error('Permission denied');
-      (DocumentPicker.pickSingle as jest.Mock).mockRejectedValue(error);
-      (DocumentPicker.isCancel as jest.Mock).mockReturnValue(false);
+      (pick as jest.Mock).mockRejectedValue(error);
 
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} />
+          <FilePicker onFileSelected={mockOnFileSelected} />,
         );
       });
       const root = instance.root;
@@ -282,10 +298,13 @@ describe('FilePicker', () => {
 
       await ReactTestRenderer.act(async () => {
         press(pickerButton);
-        await Promise.resolve();
+        await new Promise(resolve => setTimeout(resolve, 350));
       });
 
-      expect(Alert.alert).toHaveBeenCalledWith('Erreur', 'Impossible de sélectionner le fichier PDF.');
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Erreur',
+        'Impossible de sélectionner le fichier',
+      );
     });
 
     it('devrait appeler onFileSelected avec null lors du clic sur le bouton de suppression', async () => {
@@ -293,7 +312,10 @@ describe('FilePicker', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <FilePicker onFileSelected={mockOnFileSelected} selectedFile={selectedFile} />
+          <FilePicker
+            onFileSelected={mockOnFileSelected}
+            selectedFile={selectedFile}
+          />,
         );
       });
       const root = instance.root;
