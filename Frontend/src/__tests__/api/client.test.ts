@@ -1,4 +1,4 @@
-// __tests__/api/client.test.ts
+import jest from 'jest';
 import axios from 'axios';
 
 // Mock d'axios
