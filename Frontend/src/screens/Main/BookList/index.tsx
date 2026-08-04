@@ -14,15 +14,20 @@ import { MainStackParamList } from '@navigation/types';
 import { useBookStore } from '@store/useBookStore';
 import { useCategoryStore } from '@store/useCategoryStore';
 import { useAuthStore } from '@store/useAuthStore';
+import { useAppTheme } from '@theme/useAppTheme';
 import BookCardUser from '@components/BookCardUser';
 import { apiClient } from '@api/client';
 import RNBlobUtil from 'react-native-blob-util';
 import NetInfo from '@react-native-community/netinfo';
-import { styles } from './styles';
+import { createStyles } from './styles';
 
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
 
 const BookListScreen = ({ navigation }: Props) => {
+  // ✅ Utiliser le thème ici
+  const { theme } = useAppTheme();
+  const styles = createStyles(theme); // ✅ Créer les styles avec le thème
+
   const {
     books,
     loading: booksLoading,
@@ -35,6 +40,7 @@ const BookListScreen = ({ navigation }: Props) => {
     fetchCategories,
   } = useCategoryStore();
   const { isStaff } = useAuthStore();
+
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filterMode, setFilterMode] = useState<'online' | 'local'>('online');
   const [downloadingBooks, setDownloadingBooks] = useState<Set<string>>(
@@ -45,7 +51,7 @@ const BookListScreen = ({ navigation }: Props) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // ✅ Vérifier les fichiers locaux (amélioré)
+  // ✅ Vérifier les fichiers locaux
   const checkLocalFiles = useCallback(async () => {
     console.log('🔍 Vérification des fichiers locaux...');
     const localSet = new Set<string>();
@@ -91,7 +97,6 @@ const BookListScreen = ({ navigation }: Props) => {
         console.log('📡 Hors-ligne - utilisation du cache');
       }
 
-      // ✅ TOUJOURS vérifier les fichiers locaux après chargement
       await checkLocalFiles();
       setIsInitialLoad(false);
     };
@@ -108,7 +113,6 @@ const BookListScreen = ({ navigation }: Props) => {
           fetchActiveBooks();
         }
         fetchCategories();
-        // ✅ Re-vérifier les fichiers locaux
         setTimeout(() => checkLocalFiles(), 500);
       }
     });
@@ -138,10 +142,8 @@ const BookListScreen = ({ navigation }: Props) => {
           await fetchActiveBooks();
         }
         await fetchCategories();
-        // ✅ Forcer la vérification des fichiers locaux
         await checkLocalFiles();
       } else {
-        // ✅ Même hors-ligne, vérifier les fichiers locaux
         await checkLocalFiles();
         Alert.alert(
           'Hors-ligne',
@@ -190,16 +192,13 @@ const BookListScreen = ({ navigation }: Props) => {
 
       console.log('✅ Fichier téléchargé:', localPath);
 
-      // ✅ Vérifier que le fichier existe
       const fileExists = await RNBlobUtil.fs.exists(localPath);
       console.log('✅ Fichier existe:', fileExists);
 
-      // ✅ Mettre à jour localBooks immédiatement
       setLocalBooks(prev => new Set(prev).add(book.id));
 
       Alert.alert('Succès', `"${book.title}" a été téléchargé avec succès !`);
 
-      // ✅ Ouvrir le livre après téléchargement
       navigation.navigate('BookReader', {
         bookId: book.id,
         title: book.title,
@@ -238,7 +237,6 @@ const BookListScreen = ({ navigation }: Props) => {
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
 
-      // ✅ Vérifier que le fichier existe avant d'ouvrir
       RNBlobUtil.fs.exists(localPath).then(exists => {
         if (exists) {
           navigation.navigate('BookReader', {
@@ -247,7 +245,6 @@ const BookListScreen = ({ navigation }: Props) => {
             fileUrl: `file://${localPath}`,
           });
         } else {
-          // ✅ Si le fichier n'existe pas, le retirer de localBooks
           setLocalBooks(prev => {
             const newSet = new Set(prev);
             newSet.delete(book.id);
@@ -300,7 +297,7 @@ const BookListScreen = ({ navigation }: Props) => {
   const isLoading = booksLoading || categoriesLoading || isInitialLoad;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
+    <SafeAreaView style={[styles.safeArea]}>
       <View style={styles.header}>
         <Text testID="booklist-header-title" style={styles.headerTitle}>
           📚 Bibliothèque
