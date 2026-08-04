@@ -1,3 +1,4 @@
+// navigation/DrawerNavigator.tsx
 import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
@@ -14,7 +15,7 @@ import {
 import { useAuthStore } from '@store/useAuthStore';
 import { useAppTheme } from '@theme/useAppTheme';
 import { useThemeStore } from '@store/useThemeStore';
-import { useNavigation } from '@react-navigation/native'; // 👈 Ajout
+import { useNavigation } from '@react-navigation/native';
 import MainStack from './MainStack';
 import AdminStack from './AdminStack';
 
@@ -38,24 +39,25 @@ export const DrawerNavigator = () => {
     isLoading, 
     user,
     isPendingApproval,
-    isAuthenticated // 👈 Ajout pour vérifier l'état
+    isAuthenticated
   } = useAuthStore();
   
-  const navigation = useNavigation(); // 👈 Ajout pour la redirection
+  const navigation = useNavigation();
   
   const [isOpen, setIsOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'main' | 'admin'>(isStaff ? 'admin' : 'main');
+  // ✅ Définir la vue par défaut : 'main' pour tout le monde
+  const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
   
   // Thème
   const { theme, isDark } = useAppTheme();
-  const { colors, spacing, radius, typography } = theme;
+  const { colors, spacing, radius } = theme;
   const setThemeMode = useThemeStore((state) => state.setThemeMode);
 
   // Animations
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
-  // 👈 Surveiller l'authentification pour rediriger vers Login si déconnecté
+  // Surveiller l'authentification pour rediriger vers Login si déconnecté
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
       console.log('🚪 Utilisateur non authentifié, redirection vers Login');
@@ -66,19 +68,12 @@ export const DrawerNavigator = () => {
     }
   }, [isAuthenticated, isLoading, navigation]);
 
-  // Mise à jour de la vue quand le rôle change
-  useEffect(() => {
-    if (isStaff && currentView === 'main') {
-      setCurrentView('admin');
-    } else if (!isStaff && currentView === 'admin') {
-      setCurrentView('main');
-    }
-  }, [isStaff, currentView]);
+  // ✅ NE PAS forcer la vue admin automatiquement
+  // Laissez l'utilisateur choisir sa vue
 
   // Gestion de l'ouverture/fermeture du drawer
   const toggleDrawer = () => {
     if (isOpen) {
-      // Fermeture
       Animated.parallel([
         Animated.timing(animX, { 
           toValue: -DRAWER_WIDTH, 
@@ -92,7 +87,6 @@ export const DrawerNavigator = () => {
         }),
       ]).start(() => setIsOpen(false));
     } else {
-      // Ouverture
       setIsOpen(true);
       Animated.parallel([
         Animated.timing(animX, { 
@@ -129,15 +123,10 @@ export const DrawerNavigator = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // Fermer le drawer avant la déconnexion
               if (isOpen) toggleDrawer();
-              
               console.log('🔓 Déconnexion demandée...');
               await logout();
-              
-              // ✅ La redirection se fait automatiquement via le useEffect
               console.log('✅ Déconnexion réussie');
-              
             } catch (error) {
               console.error('❌ Erreur déconnexion:', error);
               Alert.alert(
@@ -164,13 +153,23 @@ export const DrawerNavigator = () => {
   console.log('👤 Drawer - currentView:', currentView);
   console.log('👤 Drawer - isLoading:', isLoading);
 
+  // ✅ Déterminer quelle stack afficher
+  const renderStack = () => {
+    // Si admin ET que currentView est 'admin', afficher AdminStack
+    if (isStaff && currentView === 'admin') {
+      return <AdminStack />;
+    }
+    // Sinon, toujours afficher MainStack
+    return <MainStack />;
+  };
+
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
       <View style={styles.container}>
         
         {/* Contenu principal */}
         <View style={styles.contentArea}>
-          {currentView === 'admin' && isStaff ? <AdminStack /> : <MainStack />}
+          {renderStack()}
         </View>
 
         {/* Overlay quand le drawer est ouvert */}
@@ -260,6 +259,7 @@ export const DrawerNavigator = () => {
                   paddingHorizontal: spacing.sm,
                   marginBottom: spacing.xs 
                 },
+                // ✅ Mettre en surbrillance quand 'main' est sélectionné
                 currentView === 'main' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
               ]} 
               onPress={() => handleViewChange('main')}
@@ -284,6 +284,7 @@ export const DrawerNavigator = () => {
                     paddingHorizontal: spacing.sm,
                     marginBottom: spacing.xs 
                   },
+                  // ✅ Mettre en surbrillance quand 'admin' est sélectionné
                   currentView === 'admin' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
                 ]} 
                 onPress={() => handleViewChange('admin')}
