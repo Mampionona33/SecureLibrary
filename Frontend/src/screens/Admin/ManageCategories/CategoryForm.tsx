@@ -31,8 +31,15 @@ const CategoryForm = ({
   const { theme } = useAppTheme();
   const { colors, spacing, radius } = theme;
 
-  const [name, setName] = React.useState(initialName);
-  const [description, setDescription] = React.useState(initialDescription);
+  const [name, setName] = React.useState(initialName || '');
+  const [description, setDescription] = React.useState(
+    initialDescription || '',
+  );
+
+  React.useEffect(() => {
+    setName(initialName || '');
+    setDescription(initialDescription || '');
+  }, [initialName, initialDescription]);
 
   const handleSubmit = () => {
     if (!name.trim()) {
@@ -44,10 +51,15 @@ const CategoryForm = ({
 
   return (
     <>
-      <Text style={[styles.modalTitle, { color: colors.text }]}>{title}</Text>
+      <Text
+        testID="category-modal-title"
+        style={[styles.modalTitle, { color: colors.text }]}
+      >
+        {title}
+      </Text>
 
       <TextInput
-        testID="category-form-name"
+        testID="category-modal-name"
         style={[
           styles.modalInput,
           {
@@ -66,7 +78,7 @@ const CategoryForm = ({
       />
 
       <TextInput
-        testID="category-form-description"
+        testID="category-modal-description"
         style={[
           styles.modalInput,
           styles.textArea, // Ajouter un style pour multiligne
@@ -92,22 +104,38 @@ const CategoryForm = ({
 
       <View style={styles.modalActions}>
         <TouchableOpacity
-          testID="category-form-cancel"
-          style={[styles.modalButton, styles.modalCancel, { borderColor: colors.border }]}
+          testID="category-modal-cancel"
+          style={[
+            styles.modalButton,
+            styles.modalCancel,
+            { borderColor: colors.border },
+          ]}
           onPress={onCancel}
         >
-          <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Annuler</Text>
+          <Text
+            style={[styles.modalCancelText, { color: colors.textSecondary }]}
+          >
+            Annuler
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          testID="category-form-submit"
-          style={[styles.modalButton, { backgroundColor: colors.buttonPrimary }]}
+          testID="category-modal-submit"
+          style={[
+            styles.modalButton,
+            { backgroundColor: colors.buttonPrimary },
+          ]}
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
           {isSubmitting ? (
             <ActivityIndicator color={colors.buttonPrimaryText} />
           ) : (
-            <Text style={[styles.modalButtonText, { color: colors.buttonPrimaryText }]}>
+            <Text
+              style={[
+                styles.modalButtonText,
+                { color: colors.buttonPrimaryText },
+              ]}
+            >
               {submitLabel}
             </Text>
           )}

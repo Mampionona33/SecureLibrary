@@ -64,7 +64,8 @@ const RegisterScreen = ({ navigation }: Props) => {
         password: data.password,
       };
 
-      const response = await fetch(`${API_URL}/users/register/`, {
+      const baseUrl = API_URL || 'http://127.0.0.1:8000/api';
+      const response = await fetch(`${baseUrl}/users/register/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -91,10 +92,13 @@ const RegisterScreen = ({ navigation }: Props) => {
       Alert.alert(
         'Succès',
         'Votre compte a été créé. Un administrateur doit valider votre accès.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }]
+        [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
       );
     } catch (error: any) {
-      Alert.alert('Erreur', error.message || 'Le serveur de sécurité est injoignable.');
+      Alert.alert(
+        'Erreur',
+        error.message || 'Le serveur de sécurité est injoignable.',
+      );
     } finally {
       setIsLoading(false);
     }
@@ -114,7 +118,9 @@ const RegisterScreen = ({ navigation }: Props) => {
             <Text style={styles.logoIcon}>✍️</Text>
             <Text style={styles.title}>Créer un</Text>
             <Text style={styles.titleHighlight}>Compte Accès</Text>
-            <Text style={styles.subtitle}>Rejoignez la bibliothèque sécurisée</Text>
+            <Text style={styles.subtitle}>
+              Rejoignez la bibliothèque sécurisée
+            </Text>
           </View>
 
           <View style={styles.formContainer}>
@@ -257,7 +263,9 @@ const RegisterScreen = ({ navigation }: Props) => {
                 <View
                   style={[
                     styles.inputContainer,
-                    errors.confirmPassword ? styles.inputErrorBorder : undefined,
+                    errors.confirmPassword
+                      ? styles.inputErrorBorder
+                      : undefined,
                   ]}
                 >
                   <TextInput

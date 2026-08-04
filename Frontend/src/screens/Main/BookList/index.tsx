@@ -1,5 +1,13 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  RefreshControl,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { MainStackParamList } from '@navigation/types';
@@ -15,12 +23,23 @@ import { styles } from './styles';
 type Props = NativeStackScreenProps<MainStackParamList, 'BookList'>;
 
 const BookListScreen = ({ navigation }: Props) => {
-  const { books, loading: booksLoading, fetchActiveBooks, fetchBooks } = useBookStore();
-  const { categories, loading: categoriesLoading, fetchCategories } = useCategoryStore();
+  const {
+    books,
+    loading: booksLoading,
+    fetchActiveBooks,
+    fetchBooks,
+  } = useBookStore();
+  const {
+    categories,
+    loading: categoriesLoading,
+    fetchCategories,
+  } = useCategoryStore();
   const { isStaff } = useAuthStore();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [filterMode, setFilterMode] = useState<'online' | 'local'>('online');
-  const [downloadingBooks, setDownloadingBooks] = useState<Set<string>>(new Set());
+  const [downloadingBooks, setDownloadingBooks] = useState<Set<string>>(
+    new Set(),
+  );
   const [localBooks, setLocalBooks] = useState<Set<string>>(new Set());
   const [isOnline, setIsOnline] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -30,7 +49,7 @@ const BookListScreen = ({ navigation }: Props) => {
   const checkLocalFiles = useCallback(async () => {
     console.log('🔍 Vérification des fichiers locaux...');
     const localSet = new Set<string>();
-    
+
     for (const book of books) {
       try {
         const fileName = `${book.id}.pdf`;
@@ -44,7 +63,7 @@ const BookListScreen = ({ navigation }: Props) => {
         console.error('❌ Erreur vérification:', book.title, error);
       }
     }
-    
+
     console.log('📚 Livres locaux:', localSet.size);
     setLocalBooks(localSet);
     return localSet;
@@ -79,7 +98,7 @@ const BookListScreen = ({ navigation }: Props) => {
 
     init();
 
-    const unsubscribe = NetInfo.addEventListener((state) => {
+    const unsubscribe = NetInfo.addEventListener(state => {
       setIsOnline(state.isConnected ?? true);
       if (state.isConnected) {
         console.log('📡 Connexion rétablie - Rechargement...');
@@ -124,7 +143,10 @@ const BookListScreen = ({ navigation }: Props) => {
       } else {
         // ✅ Même hors-ligne, vérifier les fichiers locaux
         await checkLocalFiles();
-        Alert.alert('Hors-ligne', 'Affichage des livres disponibles localement.');
+        Alert.alert(
+          'Hors-ligne',
+          'Affichage des livres disponibles localement.',
+        );
       }
     } catch (error) {
       console.error('❌ Erreur refresh:', error);
@@ -136,7 +158,10 @@ const BookListScreen = ({ navigation }: Props) => {
   // ✅ Télécharger un livre
   const handleDownload = async (book: any) => {
     if (!isOnline) {
-      Alert.alert('Hors-ligne', 'Vous devez être connecté à internet pour télécharger un livre.');
+      Alert.alert(
+        'Hors-ligne',
+        'Vous devez être connecté à internet pour télécharger un livre.',
+      );
       return;
     }
 
@@ -145,7 +170,7 @@ const BookListScreen = ({ navigation }: Props) => {
 
       const baseUrl = apiClient.defaults.baseURL || 'http://localhost:8000/api';
       const pdfUrl = `${baseUrl}/library/books/${book.id}/download_pdf/`;
-      
+
       console.log('📥 Téléchargement du PDF depuis:', pdfUrl);
 
       const response = await apiClient.get(pdfUrl, {
@@ -155,8 +180,8 @@ const BookListScreen = ({ navigation }: Props) => {
       const base64 = btoa(
         new Uint8Array(response.data).reduce(
           (data, byte) => data + String.fromCharCode(byte),
-          ''
-        )
+          '',
+        ),
       );
 
       const fileName = `${book.id}.pdf`;
@@ -171,7 +196,7 @@ const BookListScreen = ({ navigation }: Props) => {
 
       // ✅ Mettre à jour localBooks immédiatement
       setLocalBooks(prev => new Set(prev).add(book.id));
-      
+
       Alert.alert('Succès', `"${book.title}" a été téléchargé avec succès !`);
 
       // ✅ Ouvrir le livre après téléchargement
@@ -180,7 +205,6 @@ const BookListScreen = ({ navigation }: Props) => {
         title: book.title,
         fileUrl: `file://${localPath}`,
       });
-
     } catch (error) {
       console.error('❌ Erreur téléchargement:', error);
       Alert.alert('Erreur', 'Impossible de télécharger le livre.');
@@ -196,7 +220,7 @@ const BookListScreen = ({ navigation }: Props) => {
   // ✅ Filtrer les livres selon le mode
   const filteredBooks = useMemo(() => {
     let result = books;
-    
+
     if (selectedCategory !== 'all') {
       result = result.filter(book => book.category === selectedCategory);
     }
@@ -213,7 +237,7 @@ const BookListScreen = ({ navigation }: Props) => {
     if (localBooks.has(book.id)) {
       const fileName = `${book.id}.pdf`;
       const localPath = `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
-      
+
       // ✅ Vérifier que le fichier existe avant d'ouvrir
       RNBlobUtil.fs.exists(localPath).then(exists => {
         if (exists) {
@@ -229,14 +253,17 @@ const BookListScreen = ({ navigation }: Props) => {
             newSet.delete(book.id);
             return newSet;
           });
-          Alert.alert('Erreur', 'Le fichier local a été supprimé. Veuillez le retélécharger.');
+          Alert.alert(
+            'Erreur',
+            'Le fichier local a été supprimé. Veuillez le retélécharger.',
+          );
         }
       });
       return;
     }
 
     if (!isOnline) {
-      Alert.alert('Hors-ligne', 'Ce livre n\'est pas disponible hors-ligne.');
+      Alert.alert('Hors-ligne', "Ce livre n'est pas disponible hors-ligne.");
       return;
     }
 
@@ -246,14 +273,14 @@ const BookListScreen = ({ navigation }: Props) => {
       [
         { text: 'Annuler', style: 'cancel' },
         { text: 'Télécharger', onPress: () => handleDownload(book) },
-      ]
+      ],
     );
   };
 
   const renderBookItem = ({ item }: { item: any }) => {
     const isDownloaded = localBooks.has(item.id);
     const isDownloading = downloadingBooks.has(item.id);
-    
+
     return (
       <BookCardUser
         book={{
@@ -275,11 +302,21 @@ const BookListScreen = ({ navigation }: Props) => {
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: '#f8fafc' }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>📚 Bibliothèque</Text>
-        <Text style={[styles.headerSubtitle, { color: isOnline ? '#22c55e' : '#ef4444' }]}>
+        <Text testID="booklist-header-title" style={styles.headerTitle}>
+          📚 Bibliothèque
+        </Text>
+        <Text
+          testID="booklist-header-subtitle"
+          style={[
+            styles.headerSubtitle,
+            { color: isOnline ? '#22c55e' : '#ef4444' },
+          ]}
+        >
           {isOnline ? '🟢 En ligne' : '🔴 Hors-ligne'}
         </Text>
-        <Text style={[styles.headerSubtitle, { color: '#64748b', fontSize: 12 }]}>
+        <Text
+          style={[styles.headerSubtitle, { color: '#64748b', fontSize: 12 }]}
+        >
           📱 Local: {localBooks.size} livre{localBooks.size > 1 ? 's' : ''}
         </Text>
       </View>
@@ -287,18 +324,34 @@ const BookListScreen = ({ navigation }: Props) => {
       {/* Filtre : En ligne / Local */}
       <View style={styles.filterContainer}>
         <TouchableOpacity
-          style={[styles.filterChip, filterMode === 'online' && styles.filterChipActive]}
+          style={[
+            styles.filterChip,
+            filterMode === 'online' && styles.filterChipActive,
+          ]}
           onPress={() => setFilterMode('online')}
         >
-          <Text style={[styles.filterChipText, filterMode === 'online' && styles.filterChipTextActive]}>
+          <Text
+            style={[
+              styles.filterChipText,
+              filterMode === 'online' && styles.filterChipTextActive,
+            ]}
+          >
             🌐 En ligne ({books.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.filterChip, filterMode === 'local' && styles.filterChipActive]}
+          style={[
+            styles.filterChip,
+            filterMode === 'local' && styles.filterChipActive,
+          ]}
           onPress={() => setFilterMode('local')}
         >
-          <Text style={[styles.filterChipText, filterMode === 'local' && styles.filterChipTextActive]}>
+          <Text
+            style={[
+              styles.filterChipText,
+              filterMode === 'local' && styles.filterChipTextActive,
+            ]}
+          >
             📱 Local ({localBooks.size})
           </Text>
         </TouchableOpacity>
@@ -307,19 +360,28 @@ const BookListScreen = ({ navigation }: Props) => {
       {/* Catégories */}
       <View style={styles.categoriesWrapper}>
         <FlatList
+          testID="booklist-categories"
           horizontal
           data={[{ id: 'all', name: 'Tous' }, ...categories]}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.categoriesContainer}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={({ item }) => {
             const isActive = selectedCategory === item.id;
             return (
               <TouchableOpacity
-                style={[styles.categoryChip, isActive && styles.categoryChipActive]}
+                style={[
+                  styles.categoryChip,
+                  isActive && styles.categoryChipActive,
+                ]}
                 onPress={() => setSelectedCategory(item.id)}
               >
-                <Text style={[styles.categoryChipText, isActive && styles.categoryChipTextActive]}>
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    isActive && styles.categoryChipTextActive,
+                  ]}
+                >
                   {item.name}
                 </Text>
               </TouchableOpacity>
@@ -331,7 +393,8 @@ const BookListScreen = ({ navigation }: Props) => {
       {/* Nombre de livres */}
       <View style={styles.countContainer}>
         <Text style={styles.countText}>
-          {filteredBooks.length} livre{filteredBooks.length > 1 ? 's' : ''} trouvé{filteredBooks.length > 1 ? 's' : ''}
+          {filteredBooks.length} livre{filteredBooks.length > 1 ? 's' : ''}{' '}
+          trouvé{filteredBooks.length > 1 ? 's' : ''}
         </Text>
       </View>
 
@@ -343,8 +406,9 @@ const BookListScreen = ({ navigation }: Props) => {
         </View>
       ) : (
         <FlatList
+          testID="booklist-books"
           data={filteredBooks}
-          keyExtractor={(item) => item.id}
+          keyExtractor={item => item.id}
           renderItem={renderBookItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
@@ -360,8 +424,8 @@ const BookListScreen = ({ navigation }: Props) => {
             <View style={styles.emptyContainer}>
               <Text style={styles.emptyEmoji}>📭</Text>
               <Text style={styles.emptyText}>
-                {filterMode === 'local' 
-                  ? 'Aucun livre téléchargé en local' 
+                {filterMode === 'local'
+                  ? 'Aucun livre téléchargé en local'
                   : 'Aucun livre dans cette catégorie'}
               </Text>
             </View>

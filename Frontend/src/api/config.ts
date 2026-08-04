@@ -1,6 +1,10 @@
-export const MAIN_API_BASE_URL = __DEV__
-  ? 'http://192.168.10.102:8000/api'  // ✅ Votre IP locale pour le développement
-  : ' https://honest-camels-stand.loca.lt/api';  // ✅ URL Localtunnel pour la release
+import { API_URL } from '@env';
+
+const DEFAULT_BASE_URL = __DEV__
+  ? 'http://192.168.10.102:8000/api' // ✅ Votre IP locale pour le développement
+  : 'https://honest-camels-stand.loca.lt/api'; // ✅ URL Localtunnel pour la release
+
+export const MAIN_API_BASE_URL = API_URL || DEFAULT_BASE_URL;
 
 export const API_TIMEOUT = 300000;
 export const API_MAX_CONTENT_LENGTH = 50 * 1024 * 1024;

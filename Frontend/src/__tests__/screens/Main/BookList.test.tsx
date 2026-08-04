@@ -77,34 +77,51 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: jest.fn(() => ({ top: 0, bottom: 0, left: 0, right: 0 })),
 }));
 
-jest.mock('react-native', () => {
-  const React = require('react');
-  return {
-    View: 'View',
-    Text: 'Text',
-    TouchableOpacity: 'TouchableOpacity',
-    SafeAreaView: 'SafeAreaView',
-    ScrollView: 'ScrollView',
-    FlatList: ({ data, renderItem, keyExtractor, ListEmptyComponent, testID }: any) => {
-      if (!data || data.length === 0) {
-        return ListEmptyComponent || null;
-      }
-      return React.createElement(
-        'View',
-        { testID },
-        data.map((item: any, index: number) => {
-          const key = keyExtractor ? keyExtractor(item, index) : index;
-          const element = renderItem({ item, index });
-          return React.cloneElement(element, { key });
-        })
-      );
-    },
-    StyleSheet: { create: jest.fn(() => ({})) },
-    TurboModuleRegistry: { getEnforcing: jest.fn(), get: jest.fn() },
-    NativeModules: { DevMenu: null, DevSettings: { addMenuItem: jest.fn(), reload: jest.fn() } },
-    Platform: { OS: 'ios', select: jest.fn((obj) => obj.ios || obj.default) },
-  };
-}, { virtual: true });
+jest.mock(
+  'react-native',
+  () => {
+    const React = require('react');
+    return {
+      View: 'View',
+      Text: 'Text',
+      TouchableOpacity: 'TouchableOpacity',
+      SafeAreaView: 'SafeAreaView',
+      ScrollView: 'ScrollView',
+      FlatList: ({
+        data,
+        renderItem,
+        keyExtractor,
+        ListEmptyComponent,
+        testID,
+      }: any) => {
+        if (!data || data.length === 0) {
+          return ListEmptyComponent || null;
+        }
+        return React.createElement(
+          'View',
+          { testID },
+          data.map((item: any, index: number) => {
+            const key = keyExtractor ? keyExtractor(item, index) : index;
+            const element = renderItem({ item, index });
+            return React.cloneElement(element, { key });
+          }),
+        );
+      },
+      ActivityIndicator: 'ActivityIndicator',
+      RefreshControl: 'RefreshControl',
+      Image: 'Image',
+      StyleSheet: { create: jest.fn(() => ({})) },
+      Alert: { alert: jest.fn() },
+      TurboModuleRegistry: { getEnforcing: jest.fn(), get: jest.fn() },
+      NativeModules: {
+        DevMenu: null,
+        DevSettings: { addMenuItem: jest.fn(), reload: jest.fn() },
+      },
+      Platform: { OS: 'ios', select: jest.fn(obj => obj.ios || obj.default) },
+    };
+  },
+  { virtual: true },
+);
 
 // ==================== TEST SETUP ====================
 
@@ -156,7 +173,7 @@ describe('BookListScreen', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <BookListScreen navigation={mockNavigation} route={mockRoute} />
+          <BookListScreen navigation={mockNavigation} route={mockRoute} />,
         );
       });
       expect(instance).toBeDefined();
@@ -167,29 +184,37 @@ describe('BookListScreen', () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <BookListScreen navigation={mockNavigation} route={mockRoute} />
+          <BookListScreen navigation={mockNavigation} route={mockRoute} />,
         );
       });
       const root = instance.root;
-      const titleElements = root.findAll((el: any) => el.props.testID === 'booklist-header-title');
-      const subtitleElements = root.findAll((el: any) => el.props.testID === 'booklist-header-subtitle');
-      
+      const titleElements = root.findAll(
+        (el: any) => el.props.testID === 'booklist-header-title',
+      );
+      const subtitleElements = root.findAll(
+        (el: any) => el.props.testID === 'booklist-header-subtitle',
+      );
+
       expect(titleElements.length).toBeGreaterThan(0);
       expect(subtitleElements.length).toBeGreaterThan(0);
-      expect(titleElements[0].props.children).toBe('Bibliothèque Archives');
-      expect(subtitleElements[0].props.children).toBe('Sélectionnez un document crypté à décoder');
+      expect(titleElements[0].props.children).toBe('📚 Bibliothèque');
+      expect(subtitleElements[0].props.children).toContain('En ligne');
     });
 
     it('devrait rendre deux FlatList (catégories et livres)', async () => {
       let instance: any;
       await ReactTestRenderer.act(async () => {
         instance = ReactTestRenderer.create(
-          <BookListScreen navigation={mockNavigation} route={mockRoute} />
+          <BookListScreen navigation={mockNavigation} route={mockRoute} />,
         );
       });
       const root = instance.root;
-      const categoriesFlatList = root.findAll((el: any) => el.props.testID === 'booklist-categories');
-      const booksFlatList = root.findAll((el: any) => el.props.testID === 'booklist-books');
+      const categoriesFlatList = root.findAll(
+        (el: any) => el.props.testID === 'booklist-categories',
+      );
+      const booksFlatList = root.findAll(
+        (el: any) => el.props.testID === 'booklist-books',
+      );
       expect(categoriesFlatList.length).toBeGreaterThan(0);
       expect(booksFlatList.length).toBeGreaterThan(0);
     });

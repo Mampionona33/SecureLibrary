@@ -11,6 +11,10 @@ const apiClientMock = {
   post: mockPost,
   put: mockPut,
   delete: mockDelete,
+  defaults: {
+    baseURL: '',
+    timeout: 10000,
+  },
 };
 
 // Export des fonctions mock pour les tests

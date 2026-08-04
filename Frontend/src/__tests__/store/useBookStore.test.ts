@@ -62,7 +62,12 @@ describe('useBookStore', () => {
   });
 
   describe('createBook', () => {
-    const newBook = { id: '3', title: 'Le Hobbit', author: 'J.R.R. Tolkien', status: 'active' };
+    const newBook = {
+      id: '3',
+      title: 'Le Hobbit',
+      author: 'J.R.R. Tolkien',
+      status: 'active',
+    };
 
     it('should create a book successfully', async () => {
       mockApiClient.post.mockResolvedValueOnce({ data: newBook });
@@ -72,10 +77,17 @@ describe('useBookStore', () => {
         author: 'J.R.R. Tolkien',
       });
 
-      expect(mockApiClient.post).toHaveBeenCalledWith('/library/books/', {
-        title: 'Le Hobbit',
-        author: 'J.R.R. Tolkien',
-      });
+      expect(mockApiClient.post).toHaveBeenCalledWith(
+        '/library/books/',
+        {
+          title: 'Le Hobbit',
+          author: 'J.R.R. Tolkien',
+        },
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 120000,
+        }),
+      );
       expect(useBookStore.getState().books).toContainEqual(newBook);
       expect(useBookStore.getState().loading).toBe(false);
       expect(useBookStore.getState().error).toBe(null);
@@ -96,7 +108,12 @@ describe('useBookStore', () => {
   });
 
   describe('updateBook', () => {
-    const updatedBook = { id: '1', title: 'Le Seigneur des Anneaux (Édition spéciale)', author: 'J.R.R. Tolkien', status: 'active' };
+    const updatedBook = {
+      id: '1',
+      title: 'Le Seigneur des Anneaux (Édition spéciale)',
+      author: 'J.R.R. Tolkien',
+      status: 'active',
+    };
 
     it('should update a book successfully', async () => {
       useBookStore.setState({ books: [mockBooks[0]] });
@@ -106,9 +123,16 @@ describe('useBookStore', () => {
         title: 'Le Seigneur des Anneaux (Édition spéciale)',
       });
 
-      expect(mockApiClient.put).toHaveBeenCalledWith('/library/books/1/', {
-        title: 'Le Seigneur des Anneaux (Édition spéciale)',
-      });
+      expect(mockApiClient.put).toHaveBeenCalledWith(
+        '/library/books/1/',
+        {
+          title: 'Le Seigneur des Anneaux (Édition spéciale)',
+        },
+        expect.objectContaining({
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 120000,
+        }),
+      );
       expect(useBookStore.getState().books[0]).toEqual(updatedBook);
       expect(useBookStore.getState().loading).toBe(false);
       expect(useBookStore.getState().error).toBe(null);

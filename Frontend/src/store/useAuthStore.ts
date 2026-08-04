@@ -8,10 +8,13 @@ import { Platform } from 'react-native';
 
 // 🔥 Configuration Keychain pour persistance permanente
 const KEYCHAIN_OPTIONS = {
-  accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
-  ...(Platform.OS === 'ios' && {
-    accessControl: Keychain.ACCESS_CONTROL.USER_PRESENCE,
+  ...(Keychain.ACCESSIBLE?.WHEN_UNLOCKED_THIS_DEVICE_ONLY && {
+    accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
   }),
+  ...(Platform.OS === 'ios' &&
+    Keychain.ACCESS_CONTROL?.USER_PRESENCE && {
+      accessControl: Keychain.ACCESS_CONTROL.USER_PRESENCE,
+    }),
 };
 
 const KEYCHAIN_KEYS = {
@@ -76,7 +79,10 @@ interface AuthState {
   isStaff: boolean;
   isPendingApproval: boolean;
 
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>;
+  login: (
+    email: string,
+    password: string,
+  ) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   restoreSession: () => Promise<boolean>;
   clearError: () => void;
@@ -110,10 +116,10 @@ export const useAuthStore = create<AuthState>()(
       purgeStore: async () => {
         try {
           console.log('🧹 Début de la purge du store...');
-          
+
           await AsyncStorage.removeItem(STORAGE_KEY);
           console.log('✅ AsyncStorage purgé');
-          
+
           await resetToken(KEYCHAIN_KEYS.SESSION);
           await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
           await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
@@ -130,7 +136,6 @@ export const useAuthStore = create<AuthState>()(
           });
 
           console.log('🧹 Store purgé avec succès');
-          
         } catch (error) {
           console.error('❌ Erreur purgeStore:', error);
           set({
@@ -147,12 +152,12 @@ export const useAuthStore = create<AuthState>()(
 
       login: async (email, password) => {
         console.log('🔐 Tentative de login pour:', email);
-        
+
         await get().purgeStore();
         await new Promise(resolve => setTimeout(resolve, 300));
-        
+
         set({ isLoading: true, error: null });
-        
+
         try {
           const freshClient = axios.create({
             baseURL: apiClient.defaults.baseURL,
@@ -160,23 +165,26 @@ export const useAuthStore = create<AuthState>()(
             timeout: apiClient.defaults.timeout,
           });
 
-          const response = await freshClient.post('/users/login/', { email, password });
+          const response = await freshClient.post('/users/login/', {
+            email,
+            password,
+          });
           const { access, refresh } = response.data;
-          
+
           console.log('✅ Tokens obtenus');
 
           await resetToken(KEYCHAIN_KEYS.SESSION);
           await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
           await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
-          
+
           await new Promise(resolve => setTimeout(resolve, 100));
 
           await setToken(KEYCHAIN_KEYS.ACCESS_TOKEN, access);
           await setToken(KEYCHAIN_KEYS.REFRESH_TOKEN, refresh);
-          
+
           const session = { access, refresh };
           await setToken(KEYCHAIN_KEYS.SESSION, JSON.stringify(session));
-          
+
           console.log('✅ Nouveaux tokens stockés');
 
           const verifyAccess = await getToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
@@ -191,7 +199,7 @@ export const useAuthStore = create<AuthState>()(
           });
 
           const userData = userResponse.data.user || userResponse.data;
-          
+
           const user = {
             id: userData.id || '',
             email: userData.email || email,
@@ -205,7 +213,10 @@ export const useAuthStore = create<AuthState>()(
             ...userData,
           };
 
-          const isStaff = user.role === 'admin' || user.role === 'staff' || user.is_staff === true;
+          const isStaff =
+            user.role === 'admin' ||
+            user.role === 'staff' ||
+            user.is_staff === true;
 
           console.log('📝 Nouvel utilisateur:', {
             email: user.email,
@@ -226,13 +237,13 @@ export const useAuthStore = create<AuthState>()(
           console.log('✅ Utilisateur connecté:', user.email);
           console.log('👤 Rôle:', user.role);
           console.log('👤 isStaff:', isStaff);
-          
-          return { success: true };
 
+          return { success: true };
         } catch (error: any) {
           console.error('❌ Erreur login:', error);
           await get().purgeStore();
-          const message = error.response?.data?.detail || 'Identifiants incorrects';
+          const message =
+            error.response?.data?.detail || 'Identifiants incorrects';
           set({ isLoading: false, error: message });
           return { success: false, message };
         }
@@ -241,25 +252,28 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         console.log('🔓 Début de la déconnexion...');
         set({ isLoading: true });
-        
+
         try {
           const refreshToken = await getToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
-          
+
           if (refreshToken?.password) {
             try {
               console.log('📤 Envoi du refresh token pour blacklist...');
-              await apiClient.post('/users/logout/', { 
-                refresh: refreshToken.password 
+              await apiClient.post('/users/logout/', {
+                refresh: refreshToken.password,
               });
               console.log('✅ Token blacklisté avec succès');
             } catch (apiError: any) {
-              console.warn('⚠️ Échec de l\'appel logout API:', apiError.response?.data || apiError.message);
+              console.warn(
+                "⚠️ Échec de l'appel logout API:",
+                apiError.response?.data || apiError.message,
+              );
             }
           }
 
           await AsyncStorage.removeItem(STORAGE_KEY);
           console.log('✅ AsyncStorage purgé');
-          
+
           await resetToken(KEYCHAIN_KEYS.SESSION);
           await resetToken(KEYCHAIN_KEYS.ACCESS_TOKEN);
           await resetToken(KEYCHAIN_KEYS.REFRESH_TOKEN);
@@ -276,7 +290,6 @@ export const useAuthStore = create<AuthState>()(
           });
 
           console.log('🔓 Utilisateur déconnecté avec succès');
-          
         } catch (error) {
           console.error('❌ Erreur logout:', error);
           await AsyncStorage.removeItem(STORAGE_KEY);
@@ -318,9 +331,9 @@ export const useAuthStore = create<AuthState>()(
           try {
             const freshClient = axios.create({
               baseURL: apiClient.defaults.baseURL,
-              headers: { 
+              headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${accessToken.password}` 
+                Authorization: `Bearer ${accessToken.password}`,
               },
             });
 
@@ -341,7 +354,10 @@ export const useAuthStore = create<AuthState>()(
                 ...userData,
               };
 
-              const isStaff = user.role === 'admin' || user.role === 'staff' || user.is_staff === true;
+              const isStaff =
+                user.role === 'admin' ||
+                user.role === 'staff' ||
+                user.is_staff === true;
 
               console.log('✅ Session restaurée pour:', user.email);
               console.log('👤 Rôle:', user.role);
@@ -359,7 +375,7 @@ export const useAuthStore = create<AuthState>()(
             }
           } catch (error: any) {
             console.log('⚠️ Token invalide, tentative de refresh...');
-            
+
             // 3. 🔥 Tenter de rafraîchir le token si disponible
             if (refreshToken?.password) {
               try {
@@ -369,42 +385,50 @@ export const useAuthStore = create<AuthState>()(
                   headers: { 'Content-Type': 'application/json' },
                 });
 
-                const refreshResponse = await refreshClient.post('/users/login/refresh/', {
-                  refresh: refreshToken.password,
-                });
+                const refreshResponse = await refreshClient.post(
+                  '/users/login/refresh/',
+                  {
+                    refresh: refreshToken.password,
+                  },
+                );
 
                 if (refreshResponse.status === 200) {
                   const newAccessToken = refreshResponse.data.access;
-                  
+
                   // 🔥 Stocker le nouveau token
                   await setToken(KEYCHAIN_KEYS.ACCESS_TOKEN, newAccessToken);
-                  
+
                   // Mettre à jour la session
-                  const session = { 
-                    access: newAccessToken, 
-                    refresh: refreshToken.password 
+                  const session = {
+                    access: newAccessToken,
+                    refresh: refreshToken.password,
                   };
-                  await setToken(KEYCHAIN_KEYS.SESSION, JSON.stringify(session));
-                  
+                  await setToken(
+                    KEYCHAIN_KEYS.SESSION,
+                    JSON.stringify(session),
+                  );
+
                   console.log('✅ Token rafraîchi avec succès');
 
                   // 🔥 Récupérer le profil avec le nouveau token
                   const userClient = axios.create({
                     baseURL: apiClient.defaults.baseURL,
-                    headers: { 
+                    headers: {
                       'Content-Type': 'application/json',
-                      'Authorization': `Bearer ${newAccessToken}` 
+                      Authorization: `Bearer ${newAccessToken}`,
                     },
                   });
 
                   const userResponse = await userClient.get('/users/me/');
 
                   if (userResponse.status === 200) {
-                    const userData = userResponse.data.user || userResponse.data;
+                    const userData =
+                      userResponse.data.user || userResponse.data;
                     const user = {
                       id: userData.id || '',
                       email: userData.email || '',
-                      firstName: userData.firstName || userData.first_name || '',
+                      firstName:
+                        userData.firstName || userData.first_name || '',
                       lastName: userData.lastName || userData.last_name || '',
                       role: userData.role || 'user',
                       status: userData.status || 'active',
@@ -414,9 +438,15 @@ export const useAuthStore = create<AuthState>()(
                       ...userData,
                     };
 
-                    const isStaff = user.role === 'admin' || user.role === 'staff' || user.is_staff === true;
+                    const isStaff =
+                      user.role === 'admin' ||
+                      user.role === 'staff' ||
+                      user.is_staff === true;
 
-                    console.log('✅ Session restaurée avec nouveau token pour:', user.email);
+                    console.log(
+                      '✅ Session restaurée avec nouveau token pour:',
+                      user.email,
+                    );
                     console.log('👤 Rôle:', user.role);
 
                     set({
@@ -432,7 +462,10 @@ export const useAuthStore = create<AuthState>()(
                   }
                 }
               } catch (refreshError: any) {
-                console.log('❌ Refresh échoué:', refreshError.response?.data || refreshError.message);
+                console.log(
+                  '❌ Refresh échoué:',
+                  refreshError.response?.data || refreshError.message,
+                );
               }
             }
           }
@@ -442,7 +475,6 @@ export const useAuthStore = create<AuthState>()(
           await get().purgeStore();
           set({ isLoading: false });
           return false;
-
         } catch (error) {
           console.error('❌ Erreur restoreSession:', error);
           await get().purgeStore();
@@ -453,6 +485,6 @@ export const useAuthStore = create<AuthState>()(
 
       clearError: () => set({ error: null }),
     }),
-    persistConfig
-  )
+    persistConfig,
+  ),
 );
