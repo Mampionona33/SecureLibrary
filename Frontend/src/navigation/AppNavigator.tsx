@@ -1,4 +1,3 @@
-// navigation/AppNavigator.tsx (Version améliorée)
 import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -19,6 +18,7 @@ import DrawerNavigator from './DrawerNavigator';
 import HomeScreen from '@screens/Home';
 import PendingApprovalScreen from '../screens/Auth/PendingApproval';
 import { navigationRef } from './NavigationService';
+import { useAuthStore } from '@store/useAuthStore'; // ✅ Ajouter
 
 export const RootStack = createNativeStackNavigator();
 
@@ -50,30 +50,51 @@ const AppNavigator = () => {
   const { isAuthenticated, isPendingApproval, isLoadingAuth } = useAuth();
   const { isDark } = useAppTheme();
 
+  // ✅ Récupérer restoreSession depuis le store
+  const { restoreSession } = useAuthStore();
+
   const navigationTheme = isDark ? navigationDarkTheme : navigationLightTheme;
   const [isReady, setIsReady] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [offlineAlertShown, setOfflineAlertShown] = useState(false);
+  const [isSessionRestored, setIsSessionRestored] = useState(false);
 
+  // ✅ Restaurer la session au démarrage
+  useEffect(() => {
+    const restore = async () => {
+      try {
+        console.log('🔄 [AppNavigator] Restauration de la session...');
+        const restored = await restoreSession();
+        setIsSessionRestored(true);
+        console.log('🔄 [AppNavigator] Session restaurée:', restored);
+        
+        // ✅ Vérifier l'état après restauration
+        const state = useAuthStore.getState();
+        console.log('📱 [AppNavigator] État après restauration:', {
+          isAuthenticated: state.isAuthenticated,
+          user: state.user?.email,
+          authToken: state.authToken ? '✅ présent' : '❌ absent',
+        });
+      } catch (error) {
+        console.error('❌ [AppNavigator] Erreur restauration:', error);
+        setIsSessionRestored(true);
+      }
+    };
+    restore();
+  }, []);
+
+  // ✅ Initialisation réseau
   useEffect(() => {
     const init = async () => {
       try {
-        // Vérifier la connexion internet
         const netInfo = await NetInfo.fetch();
         const connected = netInfo.isConnected ?? true;
         setIsOnline(connected);
         
         if (!connected) {
           console.log('🔴 Mode hors-ligne - Utilisation des données locales');
-          
-          // ✅ Afficher un message une seule fois
           if (!offlineAlertShown) {
             setOfflineAlertShown(true);
-            // Alert.alert(
-            //   'Mode hors-ligne',
-            //   'Vous êtes hors-ligne. Les livres téléchargés sont disponibles.',
-            //   [{ text: 'OK' }]
-            // );
           }
         }
       } catch (error) {
@@ -84,7 +105,6 @@ const AppNavigator = () => {
     };
     init();
 
-    // Écouter les changements de connexion
     const unsubscribe = NetInfo.addEventListener((state) => {
       const connected = state.isConnected ?? true;
       setIsOnline(connected);
@@ -92,17 +112,11 @@ const AppNavigator = () => {
       if (connected) {
         console.log('🟢 Connexion rétablie - Refresh automatique...');
         handleReconnect();
-        // Réinitialiser l'alerte pour la prochaine fois
         setOfflineAlertShown(false);
       } else {
         console.log('🔴 Connexion perdue - Mode hors-ligne');
         if (!offlineAlertShown) {
           setOfflineAlertShown(true);
-          // Alert.alert(
-          //   'Hors-ligne',
-          //   'Vous êtes en mode hors-ligne. Les données locales sont disponibles.',
-          //   [{ text: 'OK' }]
-          // );
         }
       }
     });
@@ -113,26 +127,30 @@ const AppNavigator = () => {
     };
   }, []);
 
-  // ✅ Gérer la reconnexion automatique
+  // ✅ Gérer la reconnexion automatique avec restauration de session
   const handleReconnect = async () => {
     try {
-      // ✅ Restaurer la session si authentifié
-      if (isAuthenticated) {
-        console.log('🔄 Restauration de la session...');
-        // await restoreSession();
+      console.log('🔄 [AppNavigator] Reconnexion - Restauration...');
+      
+      // ✅ Restaurer la session
+      const restored = await restoreSession();
+      
+      if (restored) {
+        console.log('✅ [AppNavigator] Session restaurée après reconnexion');
+        
+        // ✅ Recharger les données si nécessaire
+        // const { fetchBooks } = useBookStore.getState();
+        // await fetchBooks();
+      } else {
+        console.log('⚠️ [AppNavigator] Échec de la restauration après reconnexion');
       }
-      
-      // ✅ Recharger les livres
-      // const { fetchBooks } = useBookStore.getState();
-      // await fetchBooks();
-      
     } catch (error) {
-      console.error('❌ Erreur reconnexion:', error);
+      console.error('❌ [AppNavigator] Erreur reconnexion:', error);
     }
   };
 
-  // ✅ Écran de chargement
-  if (!isReady || isLoadingVault || isLoadingAuth) {
+  // ✅ Écrans de chargement
+  if (!isReady || isLoadingVault || isLoadingAuth || !isSessionRestored) {
     return <LoadingScreen />;
   }
 
@@ -143,10 +161,6 @@ const AppNavigator = () => {
   console.log('🏦 Vault:', isVaultConfigured && isVaultUnlocked ? '✅ Déverrouillé' : '🔒 Verrouillé');
   console.log('⏳ Pending:', isPendingApproval);
   console.log('========================================');
-
-  // ============================================
-  // ✅ LOGIQUE DE NAVIGATION
-  // ============================================
 
   return (
     <NavigationContainer theme={navigationTheme} ref={navigationRef}>
