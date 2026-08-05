@@ -32,7 +32,6 @@ export const useCustomDrawer = () => {
 };
 
 export const DrawerNavigator = () => {
-  // États du store
   const { 
     isStaff, 
     logout, 
@@ -45,19 +44,17 @@ export const DrawerNavigator = () => {
   const navigation = useNavigation();
   
   const [isOpen, setIsOpen] = useState(false);
-  // ✅ Définir la vue par défaut : 'main' pour tout le monde
+  // ✅ État initial : toujours 'main' (Ma Bibliothèque)
   const [currentView, setCurrentView] = useState<'main' | 'admin'>('main');
   
-  // Thème
   const { theme, isDark } = useAppTheme();
   const { colors, spacing, radius } = theme;
   const setThemeMode = useThemeStore((state) => state.setThemeMode);
 
-  // Animations
   const animX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const animOpacity = useRef(new Animated.Value(0)).current;
 
-  // Surveiller l'authentification pour rediriger vers Login si déconnecté
+  // ✅ SEULEMENT rediriger vers Login si non authentifié
   useEffect(() => {
     if (!isAuthenticated && !isLoading) {
       console.log('🚪 Utilisateur non authentifié, redirection vers Login');
@@ -68,10 +65,15 @@ export const DrawerNavigator = () => {
     }
   }, [isAuthenticated, isLoading, navigation]);
 
-  // ✅ NE PAS forcer la vue admin automatiquement
-  // Laissez l'utilisateur choisir sa vue
+  // ❌ SUPPRIMER CE useEffect - IL FORCE LA VUE ADMIN
+  // useEffect(() => {
+  //   if (isStaff && currentView === 'main') {
+  //     setCurrentView('admin');
+  //   } else if (!isStaff && currentView === 'admin') {
+  //     setCurrentView('main');
+  //   }
+  // }, [isStaff]);
 
-  // Gestion de l'ouverture/fermeture du drawer
   const toggleDrawer = () => {
     if (isOpen) {
       Animated.parallel([
@@ -103,12 +105,10 @@ export const DrawerNavigator = () => {
     }
   };
 
-  // Gestion du thème
   const handleToggleTheme = (value: boolean) => {
     setThemeMode(value ? 'dark' : 'light');
   };
 
-  // Gestion de la déconnexion avec confirmation
   const handleLogout = () => {
     Alert.alert(
       'Déconnexion',
@@ -141,10 +141,31 @@ export const DrawerNavigator = () => {
     );
   };
 
-  // Fonction pour changer de vue
+  // ✅ Changer de vue (appelé par les touches du menu)
   const handleViewChange = (view: 'main' | 'admin') => {
+    console.log(`📱 Changement de vue demandé: ${view}`);
+    console.log(`📱 isStaff: ${isStaff}, currentView: ${currentView}`);
+    
+    // ✅ Si l'utilisateur n'est pas staff, ne pas permettre la vue admin
+    if (view === 'admin' && !isStaff) {
+      console.warn('⚠️ Tentative d\'accès admin non autorisé');
+      return;
+    }
+    
     setCurrentView(view);
     toggleDrawer();
+  };
+
+  // ✅ Déterminer quelle stack afficher
+  const renderStack = () => {
+    // ✅ Si l'utilisateur est staff ET a choisi la vue admin
+    if (isStaff && currentView === 'admin') {
+      console.log('📱 Affichage: AdminStack');
+      return <AdminStack />;
+    }
+    // ✅ Par défaut : MainStack (Ma Bibliothèque)
+    console.log('📱 Affichage: MainStack');
+    return <MainStack />;
   };
 
   console.log('👤 Drawer - isAuthenticated:', isAuthenticated);
@@ -152,16 +173,6 @@ export const DrawerNavigator = () => {
   console.log('👤 Drawer - user:', user?.email);
   console.log('👤 Drawer - currentView:', currentView);
   console.log('👤 Drawer - isLoading:', isLoading);
-
-  // ✅ Déterminer quelle stack afficher
-  const renderStack = () => {
-    // Si admin ET que currentView est 'admin', afficher AdminStack
-    if (isStaff && currentView === 'admin') {
-      return <AdminStack />;
-    }
-    // Sinon, toujours afficher MainStack
-    return <MainStack />;
-  };
 
   return (
     <CustomDrawerContext.Provider value={{ toggleDrawer }}>
@@ -172,7 +183,6 @@ export const DrawerNavigator = () => {
           {renderStack()}
         </View>
 
-        {/* Overlay quand le drawer est ouvert */}
         {isOpen && (
           <TouchableWithoutFeedback onPress={toggleDrawer}>
             <Animated.View 
@@ -187,7 +197,6 @@ export const DrawerNavigator = () => {
           </TouchableWithoutFeedback>
         )}
 
-        {/* Drawer */}
         <Animated.View 
           style={[
             styles.drawer, 
@@ -201,7 +210,6 @@ export const DrawerNavigator = () => {
         >
           <View style={[styles.drawerContent, { padding: spacing.lg, paddingTop: spacing.xl * 1.5 }]}>
             
-            {/* En-tête avec info utilisateur */}
             <View style={styles.headerContainer}>
               <Text style={[styles.menuTitle, { color: colors.text, marginBottom: spacing.xs }]}>
                 📖 SecureLibrary
@@ -249,7 +257,7 @@ export const DrawerNavigator = () => {
             
             <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-            {/* Menu items */}
+            {/* ✅ MENU - Ma Bibliothèque */}
             <TouchableOpacity 
               style={[
                 styles.menuItem, 
@@ -259,7 +267,6 @@ export const DrawerNavigator = () => {
                   paddingHorizontal: spacing.sm,
                   marginBottom: spacing.xs 
                 },
-                // ✅ Mettre en surbrillance quand 'main' est sélectionné
                 currentView === 'main' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
               ]} 
               onPress={() => handleViewChange('main')}
@@ -274,6 +281,7 @@ export const DrawerNavigator = () => {
               </Text>
             </TouchableOpacity>
 
+            {/* ✅ MENU - Panel Admin (uniquement si staff) */}
             {isStaff && (
               <TouchableOpacity 
                 style={[
@@ -284,7 +292,6 @@ export const DrawerNavigator = () => {
                     paddingHorizontal: spacing.sm,
                     marginBottom: spacing.xs 
                   },
-                  // ✅ Mettre en surbrillance quand 'admin' est sélectionné
                   currentView === 'admin' && { backgroundColor: colors.surfaceVariant || colors.primary + '15' }
                 ]} 
                 onPress={() => handleViewChange('admin')}
@@ -300,10 +307,8 @@ export const DrawerNavigator = () => {
               </TouchableOpacity>
             )}
 
-            {/* Espace flexible */}
             <View style={{ flex: 1 }} />
 
-            {/* Theme switch */}
             <View style={[
               styles.themeSwitchRow, 
               { 
@@ -333,7 +338,6 @@ export const DrawerNavigator = () => {
               />
             </View>
 
-            {/* Bouton de déconnexion */}
             <TouchableOpacity 
               style={[
                 styles.logoutButton, 
